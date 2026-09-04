@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Company;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -17,12 +19,16 @@ class BranchFactory extends Factory
     public function definition(): array
     {
         return [
-            'user_id' => 1, // Will be overridden in tests
+            // Merge fixup: both FKs are constrained() (NOT NULL), so the old hardcoded
+            // id=1 default only ever worked against a seeded database — always broken
+            // against a fresh RefreshDatabase test run with nothing at id 1. Callers
+            // that need a SPECIFIC user/company still override these explicitly.
+            'user_id' => User::factory(),
             'name' => $this->faker->company,
             'email' => $this->faker->unique()->safeEmail,
             'phone' => $this->faker->phoneNumber,
             'address' => $this->faker->address,
-            'company_id' => 1, // Will be overridden in tests
+            'company_id' => Company::factory(),
         ];
     }
 }

@@ -2,6 +2,8 @@
 
 namespace Database\Factories;
 
+use App\Models\Agent;
+use App\Models\Client;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,8 +20,16 @@ class InvoiceFactory extends Factory
     {
         return [
             'invoice_number' => $this->faker->unique()->numerify('INV-#####'),
-            'client_id' => null,
-            'agent_id' => null, // Will be overridden in tests
+            // Merge fixup: invoices.client_id is a required (NOT NULL) foreignId
+            // (migration: $table->foreignId('client_id')->constrained()), so a bare
+            // null default always violated that constraint on the real MySQL
+            // connection this suite runs against — pre-existing on both merge
+            // parents, only surfaced now because tests/Unit/Vouchers/
+            // VoucherDataRepositoryTest.php (new, theirs) is the first test to call
+            // Invoice::factory()->create() without an explicit client_id override.
+            'client_id' => Client::factory(),
+            // Same NOT NULL / constrained() gap as client_id above.
+            'agent_id' => Agent::factory(),
             'currency' => 'USD',
             'sub_amount' => $this->faker->randomFloat(2, 100, 10000),
             'amount' => $this->faker->randomFloat(2, 100, 10000),

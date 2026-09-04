@@ -61,7 +61,9 @@
                             <th class="py-2 px-4 text-center">Task Date</th>
                             @endif
                             <th class="py-2 px-4 text-left">Reference</th>
-                            <th class="py-2 px-4 text-left">Client Name</th>
+                            <th class="py-2 px-4 text-left">MyFatoorah Ref</th>
+                            <th class="py-2 px-4 text-left">Client</th>
+                            <th class="py-2 px-4 text-left">INV Number</th>
                             <th class="py-2 px-4 text-left">Description</th>
                             <th class="py-2 px-4 text-center">Account</th>
                             <th class="py-2 px-4 text-center">Debit</th>
@@ -77,6 +79,8 @@
                             @if($showIssueColumn)
                             <td class="py-2 px-4 text-center">-</td>
                             @endif
+                            <td class="py-2 px-4 text-left">-</td>
+                            <td class="py-2 px-4 text-left">-</td>
                             <td class="py-2 px-4 text-left">-</td>
                             <td class="py-2 px-4 text-left">-</td>
                             <td class="py-2 px-4 text-left text-blue-700">Opening Balance</td>
@@ -109,10 +113,36 @@
                             </td>
                             @endif
                             <td class="py-2 px-4 text-left">
-                                {{ $entry->task?->reference ?? $entry->transaction?->reference_number ?? $entry->voucher_number ?? '-' }}
+                                @php
+                                    $waRefDisplay = $entry->task?->reference ?? $entry->transaction?->reference_number ?? $entry->voucher_number ?? '-';
+                                @endphp
+                                @if ($entry->voucher_number && $waRefDisplay === $entry->voucher_number)
+                                    <a href="{{ route('payment.link.show', ['companyId' => $entry->company_id, 'voucherNumber' => $entry->voucher_number]) }}"
+                                       target="_blank" rel="noopener"
+                                       class="text-blue-600 hover:underline">{{ $entry->voucher_number }}</a>
+                                @else
+                                    {{ $waRefDisplay }}
+                                @endif
                             </td>
                             <td class="py-2 px-4 text-left">
-                                {{ $entry->task?->client_name ?? $entry->transaction?->name ?? $entry->name ?? '-' }}
+                                {{ $entry->transaction?->payment?->invoice_reference ?? '-' }}
+                            </td>
+                            <td class="py-2 px-4 text-left">
+                                {{ $entry->transaction?->payment?->client?->full_name ?? $entry->invoice?->client?->full_name ?? $entry->task?->client?->full_name ?? $entry->task?->client_name ?? $entry->transaction?->name ?? $entry->name ?? '-' }}
+                            </td>
+                            <td class="py-2 px-4 text-left">
+                                @php
+                                    $waInvoices = ($entry->transaction?->payment?->paymentApplications ?? collect())
+                                        ->map(fn($a) => $a->invoice)->filter()->unique('id');
+                                    if ($waInvoices->isEmpty() && $entry->invoice) { $waInvoices = collect([$entry->invoice]); }
+                                @endphp
+                                @forelse ($waInvoices as $inv)
+                                    <a href="{{ route('invoice.details', ['companyId' => $entry->company_id, 'invoiceNumber' => $inv->invoice_number]) }}"
+                                       target="_blank" rel="noopener"
+                                       class="text-blue-600 hover:underline">{{ $inv->invoice_number }}</a>@if(!$loop->last), @endif
+                                @empty
+                                    -
+                                @endforelse
                             </td>
                             <td class="py-2 px-4 text-left">
                                 @if ($entry->task && $entry->task->type === 'flight')

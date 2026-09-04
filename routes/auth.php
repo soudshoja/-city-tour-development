@@ -12,11 +12,12 @@ use App\Http\Controllers\Auth\TwoFAController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
-// Registration form
-Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
-
-// Admin registration
-Route::post('register', [RegisteredUserController::class, 'storeAdmin'])->name('register.admin');
+// Legacy self-registration (creates ADMIN users) — local development only.
+// Public tenant registration lives at /register/company/{token} (invite-gated).
+if (app()->environment('local')) {
+    Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('register', [RegisteredUserController::class, 'storeAdmin'])->name('register.admin');
+}
 
 
 

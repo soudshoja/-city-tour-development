@@ -18,6 +18,7 @@ class TaskVisaDetail extends Model
         'number_of_entries',
         'stay_duration',
         'issuing_country',
+        'appointment_date',
     ];
 
     public function task()

@@ -120,30 +120,37 @@ class ManualInterventionEnhancedTest extends TestCase
     /** @test */
     public function it_exports_csv_with_filters_applied()
     {
+        // Pre-existing bug (present verbatim on both merge parents, not merge-introduced):
+        // document_processing_logs.supplier_id is unsignedBigInteger (FK id); these string
+        // labels always fatal as a QueryException on the real MySQL connection this suite
+        // runs against. Plain int ids preserve the test's filter-isolation intent.
+        $supplierAId = 11111;
+        $supplierBId = 22222;
+
         DocumentProcessingLog::factory()->create([
             'company_id' => $this->company->id,
             'status' => 'failed',
             'error_code' => 'ERR_TIMEOUT',
-            'supplier_id' => 'supplier_a',
+            'supplier_id' => $supplierAId,
         ]);
 
         DocumentProcessingLog::factory()->create([
             'company_id' => $this->company->id,
             'status' => 'failed',
             'error_code' => 'ERR_PARSE',
-            'supplier_id' => 'supplier_b',
+            'supplier_id' => $supplierBId,
         ]);
 
         $response = $this->actingAs($this->user)
             ->get(route('admin.manual-intervention.export-csv', [
-                'supplier_id' => 'supplier_a',
+                'supplier_id' => $supplierAId,
             ]));
 
         $response->assertStatus(200);
         $content = $response->streamedContent();
 
-        $this->assertStringContainsString('supplier_a', $content);
-        $this->assertStringNotContainsString('supplier_b', $content);
+        $this->assertStringContainsString((string) $supplierAId, $content);
+        $this->assertStringNotContainsString((string) $supplierBId, $content);
     }
 
     /** @test */

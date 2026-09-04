@@ -69,7 +69,7 @@ class AirFileParser
                 'task_flight_details' => $this->parseFlightDetails(),
             ];
 
-            return [$data];
+            return [$this->applyReissueSellingTotal($data)];
         }
 
         // Create a task for each passenger
@@ -77,29 +77,34 @@ class AirFileParser
         foreach ($passengers as $passenger) {
             $paxIdx = (int)$passenger['passenger_number'];
             $reference = substr($passenger['ticket_number'], -10);
+            // Mixed-content support: per-passenger override of file-level status.
+            // Used when a single AIR file contains both T-K main tickets and EMD
+            // seat tickets — the seats stay 'emd' (file status) and the main
+            // tickets are tagged 'issued' via force_status.
+            $effStatus = $passenger['force_status'] ?? $this->extractStatus();
             $data = [
                 'additional_info' => $this->extractAdditionalInfo(),
                 'ticket_number' => $passenger['ticket_number'],
                 'gds_reference' => $this->extractGdsReference(),
                 'airline_reference' => $this->extractAirlineReference(),
-                'status' => $this->extractStatus(),
-                'supplier_status' => $this->extractStatus(), // Same as status
+                'status' => $effStatus,
+                'supplier_status' => $effStatus,
                 'refund_date' => $this->extractRefundDate(),
                 'void_date' => $this->extractVoidDate(),
-                'price' => $this->extractStatus() === 'emd' ? $passenger['price'] : $this->extractPrice(),
+                'price' => $effStatus === 'emd' ? $passenger['price'] : $this->extractPrice(),
                 'currency' => $this->extractExchangeCurrency(), // Primary currency (same as exchange_currency)
                 'exchange_currency' => $this->extractExchangeCurrency(),
                 'original_price' => $this->extractOriginalPrice(),
                 'original_currency' => $this->extractOriginalCurrency(),
-                'total' => $this->extractStatus() === 'emd' ? $passenger['price'] : $this->extractTotal(),
+                'total' => $effStatus === 'emd' ? $passenger['price'] : $this->extractTotal(),
                 'surcharge' => $this->extractSurcharge(),
                 'penalty_fee' => $this->extractPenaltyFee(),
                 'tax' => $this->extractTax(),
                 'taxes_record' => $this->extractTaxesRecord(),
                 'refund_charge' => $this->extractRefundCharge(),
                 'reference' => $reference,
-                'original_ticket_number' => $this->extractStatus() === 'void' ? $passenger['ticket_number'] : $this->extractOriginalTicketNumber(),
-                'original_reference' => $this->extractStatus() === 'void' ? $reference : $this->extractOriginalReference(),
+                'original_ticket_number' => $effStatus === 'void' ? $passenger['ticket_number'] : $this->extractOriginalTicketNumber(),
+                'original_reference' => $effStatus === 'void' ? $reference : $this->extractOriginalReference(),
                 'created_by' => $this->extractCreatedBy(),
                 'issued_by' => $this->extractIssuedBy(),
                 'iata_number' => $this->extractIataNumber(),
@@ -117,7 +122,7 @@ class AirFileParser
                 'task_flight_details' => $this->parseFlightDetails($paxIdx),
             ];
 
-            $tasks[] = $data;
+            $tasks[] = $this->applyReissueSellingTotal($data);
         }
 
         return $tasks;
@@ -394,6 +399,14 @@ class AirFileParser
 
         // Check for VOID only if ;VOIDddMMM; is in a specific line format
         if ($this->findLine('/;VOID\d{2}[A-Z]{3};/')) {
+            // RFNX = void OF a refund (not a ticket void): a VOID block that also
+            // carries an "R-NNN-NNNNNNNNNN" refund line (e.g. R-229-9559096972).
+            // Plain ticket voids have no R- line. 'refund_void' keeps it out of the
+            // "sibling void hides the issued ticket" list rule and the void reversal
+            // (which would reverse the ISSUE again). See 8M6864 / RFNX 2026-06-21.
+            if ($this->findLine('/^\s*R-\d{3}-\d{10}(?:;|$)/')) {
+                return 'refund_void';
+            }
             return 'void';
         }
 
@@ -445,7 +458,8 @@ class AirFileParser
         if ($match) {
             try {
                 $date = Carbon::createFromFormat('dM', $match[1]);
-                $date->year = Carbon::now()->year; // Assume current year
+                $date->year = Carbon::now()->year;
+                if ($date->isFuture()) { $date->subYear(); } // void is never in the future
                 $date->setTime(0, 0, 0);
                 return $date->format('Y-m-d H:i:s');
             } catch (\Exception $e) {
@@ -454,6 +468,100 @@ class AirFileParser
         }
 
         return null;
+    }
+
+    /**
+     * Reissue money correction. Exchange AIR files often carry the fare only on
+     * KN-/KS- lines with prefix letters the K-line regexes don't know (e.g.
+     * "KS-YEGP6066.00" — Y prefix, EGP fare), so price/total parse as 0 while
+     * Amadeus displays the KS- SELLING total: the amount actually collected
+     * (fare difference + penalty). Ticket 077-9559299991 / task 17840 loaded as
+     * price -21/tax 21/total 0 this way (real collection KWD32.000).
+     *
+     * When status is reissued and the KS- (fallback KN-) line carries an
+     * explicit KWD total, trust it: total = selling total, tax stays as the
+     * newly-collected TAX- items, price = total - tax - surcharge. The result
+     * is self-consistent, which also tells TaskRuleConfiguration to leave the
+     * money alone instead of re-deriving it.
+     */
+    private function applyReissueSellingTotal(array $data): array
+    {
+        if (($data['status'] ?? null) !== 'reissued') {
+            return $data;
+        }
+        $selling = null;
+        foreach (['KS', 'KN'] as $tag) {
+            $m = $this->findLine('/^' . $tag . '-.*?([A-Z]{3})([\d.]+)\s*;\s*[\d.]+\s*;/');
+            if ($m && strtoupper($m[1]) === 'KWD' && (float) $m[2] > 0) {
+                $selling = (float) $m[2];
+                break;
+            }
+        }
+        if ($selling === null) {
+            // Legacy exchange format (K-R lines): the K- line's last KWD amount
+            // (already parsed into 'total') IS the collected amount; the TAX-
+            // line's non-PD items are the collected taxes (PD = paid on the
+            // original ticket). When they agree (0 <= tax <= total), rebuild the
+            // split: price = total - tax. This is what fixes the foreign-fare
+            // reissues (K-RMAD10545 ... KWD209.600) whose raw price would
+            // otherwise be the unconverted foreign fare.
+            $total = (float) ($data['total'] ?? 0);
+            $collected = $this->extractCollectedTax();
+            if ($total == 0.0 && $collected !== null && $collected == 0.0) {
+                // Zero-collection reissue (schedule change / name correction /
+                // even exchange): the K- line explicitly totals KWD0.000 and the
+                // TAX- line carries only PD (already-paid) items. Zero the split
+                // so the cumulative fare doesn't leak into price (100/-100 class).
+                $data['price'] = 0.0;
+                $data['tax'] = 0.0;
+                $data['total'] = 0.0;
+                return $data;
+            }
+            if ($total > 0 && $collected !== null && $collected >= 0 && $collected <= $total + 0.004) {
+                $data['tax'] = round($collected, 3);
+                $data['price'] = round($total - $collected - (float) ($data['surcharge'] ?? 0), 3);
+            }
+            return $data;
+        }
+        $tax = (float) ($data['tax'] ?? 0);
+        $surcharge = (float) ($data['surcharge'] ?? 0);
+        $data['total'] = $selling;
+        $data['price'] = round($selling - $tax - $surcharge, 3);
+        $data['currency'] = 'KWD';
+        $data['exchange_currency'] = 'KWD';
+        // The foreign fare on the same line ("YEGP6066.00" = Y prefix + EGP
+        // 6066.00) is the true original fare — recover it past the prefix.
+        $fm = $this->findLine('/^K[NS]-[A-Z]?([A-Z]{3})([\d.]+)/');
+        if ($fm) {
+            $data['original_currency'] = $fm[1];
+            $data['original_price'] = (float) $fm[2];
+        }
+        return $data;
+    }
+
+    /**
+     * Sum of the NEWLY COLLECTED taxes on the TAX- line — the segments without
+     * the PD prefix (PD = paid on the original ticket in a reissue):
+     *   TAX-KWD10.100   A9 ;KWD6.500    6K ;PD 28.450   XT ;  -> 16.600
+     * Returns null when the file has no TAX- line at all.
+     */
+    private function extractCollectedTax(): ?float
+    {
+        $m = $this->findLine('/^TAX-(.+)/');
+        if (!$m) {
+            return null;
+        }
+        $sum = 0.0;
+        foreach (explode(';', $m[1]) as $seg) {
+            $seg = trim($seg);
+            if ($seg === '' || preg_match('/^PD\b/i', $seg)) {
+                continue;
+            }
+            if (preg_match('/^([A-Z]{3})([\d.]+)/', $seg, $mm)) {
+                $sum += (float) $mm[2];
+            }
+        }
+        return $sum;
     }
 
     /**
@@ -488,14 +596,22 @@ class AirFileParser
                 // 3-pair format: return the final total (6th position)
                 $exchangeMatch = $this->findLine('/^K[NS]-[RFI]?([A-Z]{3})([\d.]+)\s*;([A-Z]{3})([\d.]+)\s*;{5,}([A-Z]{3})([\d.]+)/');
                 if ($exchangeMatch) {
-                    return (float) $exchangeMatch[6];
+                    return (float) $exchangeMatch[4]; /* FIX 2026-07-05: equiv fare (tax-excl), not all-in — was double-counting tax on KN/KS IT-fare issues */
                 }
             }
-            // 2-pair format: return the second amount
-            return (float) $match[4];
+            // 2-pair format: return the base fare (tax-excl), not the all-in
+            return (float) $match[2]; /* FIX2 2026-07-05: same-currency KN/KS issued/reissued -> base fare, was double-counting tax on recompute */
         }
 
-        $match = $this->findLine('/^RFD[MFLAC]?\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
+        // RFD money line: RFDx;date;I;KWD<gross>;<used>;<refunded>;;;<penalty>;;;XT<tax>;<total>
+        // RFDP (partial refund, 2026-08-19 ticket 9559300147) keeps the FULL fare in the
+        // gross slot; the fare actually refunded is the third amount (gross - used).
+        // Full refunds have used=0 so the third amount equals the gross for them.
+        $match = $this->findLine('/^RFD[MFLACP]?\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)\s*;\s*([\d.]+)\s*;\s*([\d.]+)/');
+        if ($match) {
+            return (float) $match[3];
+        }
+        $match = $this->findLine('/^RFD[MFLACP]?\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
         if ($match) {
 
             return (float) $match[1];
@@ -580,7 +696,15 @@ class AirFileParser
             return (float) $match[2]; // First amount (base fare)
         }
 
-        $match = $this->findLine('/^RFD[MFLAC]?\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
+        // RFD money line: RFDx;date;I;KWD<gross>;<used>;<refunded>;;;<penalty>;;;XT<tax>;<total>
+        // RFDP (partial refund, 2026-08-19 ticket 9559300147) keeps the FULL fare in the
+        // gross slot; the fare actually refunded is the third amount (gross - used).
+        // Full refunds have used=0 so the third amount equals the gross for them.
+        $match = $this->findLine('/^RFD[MFLACP]?\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)\s*;\s*([\d.]+)\s*;\s*([\d.]+)/');
+        if ($match) {
+            return (float) $match[3];
+        }
+        $match = $this->findLine('/^RFD[MFLACP]?\s*;[^;]*;[^;]*;[A-Z]{3}([\d.]+)/');
         if ($match) {
 
             return (float) $match[1];
@@ -664,7 +788,7 @@ class AirFileParser
             }
         }
 
-        $match = $this->findLine('/^RFD[MFLAC]?[;\s].*;([\d.]+)\s*$/');
+        $match = $this->findLine('/^RFD[MFLACP]?[;\s].*;([\d.]+)\s*$/');
         if ($match) {
             return (float) $match[1]; // Last value = total
         }
@@ -705,7 +829,7 @@ class AirFileParser
             return (float) $match[1];
         }
 
-        $match = $this->findLine('/^RFD[MFLAC]? *;.*/');
+        $match = $this->findLine('/^RFD[MFLACP]? *;.*/');
         if ($match && isset($match[0])) {
             $fields = explode(';', $match[0]);
             return (float) trim($fields[8]);
@@ -1032,10 +1156,32 @@ class AirFileParser
      */
     private function extractAgentAmadeusId()
     {
-        $match = $this->findLine('/C-\d+\/\s*\d+[A-Z]+-(\d{4}[A-Z]{2})[A-Z]+-/');
-        if ($match) {
-            return $match[1];
+        // Pattern 1 — AMD line carries the actual operator's code at the 4th
+        // semicolon-separated field for VOID and REFUND files. Examples:
+        //   AMD 2500261503;1/1;VOID25APR;MAAS  → MA = Mohammed Alhashimi
+        //   AMDR1300261200;1/1;    13APR;SDSU  → SD = Saeid Shoja
+        // The 4-char field is `<2-letter agent initials><2-letter office>`. We
+        // extract the 2-letter initials and return a `%XX` LIKE pattern so
+        // findAgent matches any agent whose amadeus_id ends with those letters.
+        foreach ($this->lines as $line) {
+            $trimmed = trim($line);
+            if (preg_match('/^AMD\s*R?\d+;\d+\/\d+;[^;]*;([A-Z]{2})[A-Z]{2}$/i', $trimmed, $m)) {
+                return '%' . strtoupper($m[1]);
+            }
         }
+
+        // Pattern 2 — C-line for ISSUE / REISSUE files (AMD line blank).
+        // Format: C-<office>/<slot1code><off>-<slot2code><off>-<status>-<n>
+        // slot 1 = PNR CREATOR, slot 2 = TICKET ISSUER. Attribute to the ISSUER
+        // (the agent who actually ticketed). When only one agent slot is present
+        // creator == issuer, so we fall back to it.
+        if ($match = $this->findLine('/C-\d+\/\s*\d{4}[A-Z]{2}[A-Z]{0,2}-(\d{4}[A-Z]{2})/')) {
+            return $match[1]; // slot 2 = issuer
+        }
+        if ($match = $this->findLine('/C-\d+\/\s*(\d{4}[A-Z]{2})/')) {
+            return $match[1]; // single slot — creator == issuer
+        }
+
         return null;
     }
 
@@ -1099,32 +1245,51 @@ class AirFileParser
      */
     private function extractIssuedDate()
     {
-        // Look for date patterns like TKOK12FEB, but avoid XX patterns
-        $match = $this->findLine('/T[A-Z]{3}(\d{2}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))/');
+        // Primary: D-line format `D-<book>;<issue>;<departure>` in yymmdd. Field 2 is the
+        // actual ticket sale/issue date. (TKOK is the ticketing time limit — a deadline,
+        // not the issue date. They coincide when a booking is ticketed the same day TKOK
+        // was set, but diverge when a held booking is ticketed earlier than the deadline.)
+        $match = $this->findLine('/^D-(\d{6});(\d{6});(\d{6})/');
         if ($match) {
             try {
-                $date = Carbon::createFromFormat('dM', $match[1]);
-                $date->year = Carbon::now()->year; // Assume current year
+                $date = Carbon::createFromFormat('ymd', $match[2]);
                 $date->setTime(0, 0, 0);
                 return $date->format('Y-m-d H:i:s');
             } catch (\Exception $e) {
-                // If parsing fails, return null
+                // fall through to TKOK fallback
             }
         }
 
-        // For refund tasks, if no issued_date found, use refund_date as fallback
-        if ($this->extractStatus() === 'refund') {
+        // Refund/void files: use the action date (NOT the TKOK ticketing deadline).
+        // Done BEFORE the TKOK fallback so voided/refunded tickets aren't dated to a
+        // future deadline. (Past bug: TKOK/VOID dd MMM -> currentYear-mm-dd, future.)
+        $status = $this->extractStatus();
+        if ($status === 'refund') {
             $refundDate = $this->extractRefundDate();
             if ($refundDate) {
                 return $refundDate;
             }
         }
-
-        // For void tasks, if no issued_date found, use void_date as fallback
-        if ($this->extractStatus() === 'void') {
+        if ($status === 'void') {
             $voidDate = $this->extractVoidDate();
             if ($voidDate) {
                 return $voidDate;
+            }
+        }
+
+        // Last-resort: TKOK<dd><MMM>, only for issued files (TKOK is a deadline).
+        if ($status === 'issued') {
+            $match = $this->findLine('/T[A-Z]{3}(\d{2}(?:JAN|FEB|MAR|APR|MAY|JUN|JUL|AUG|SEP|OCT|NOV|DEC))/');
+            if ($match) {
+                try {
+                    $date = Carbon::createFromFormat('dM', $match[1]);
+                    $date->year = Carbon::now()->year;
+                    if ($date->isFuture()) { $date->subYear(); } // issue date is never in the future
+                    $date->setTime(0, 0, 0);
+                    return $date->format('Y-m-d H:i:s');
+                } catch (\Exception $e) {
+                    // give up
+                }
             }
         }
 
@@ -1757,6 +1922,28 @@ class AirFileParser
                         'price'            => 0.0,
                     ];
                 }
+            }
+
+            // Mixed-content recovery: when a file has BOTH EMD/TMCD lines AND main
+            // air ticket (T-K) lines, Amadeus has issued tickets and seat-EMDs in the
+            // same workflow. The TMCD pass above covered the seats; here we ALSO emit
+            // one 'issued' entry per passenger block for the main T-K ticket so it
+            // becomes its own task. force_status='issued' tells parseTaskSchema to
+            // override the file-level 'emd' status for these specific entries.
+            // Priority index 1 in $ticketPatternsByPriority is the T-[KE] pattern.
+            foreach ($passengerBlocks as $block) {
+                $tkTicket = $block['ticket_candidates'][1] ?? null;
+                if ($tkTicket === null) {
+                    continue;
+                }
+                $passengerMatch = $block['passenger_match'];
+                $passengers[] = [
+                    'passenger_number' => $passengerMatch[1],
+                    'client_name'      => trim($passengerMatch[3]),
+                    'ticket_number'    => $tkTicket,
+                    'price'            => 0.0,
+                    'force_status'     => 'issued',
+                ];
             }
         } else {
             // Non-EMD: one entry per passenger block (original behaviour)

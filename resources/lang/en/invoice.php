@@ -14,6 +14,7 @@
         'invoice_id' => 'Invoice ID',
         'invoice_reference' => 'Invoice Reference',
         'payment_gateway' => 'Payment Gateway',
+        'payment_date' => 'Payment Date',
 
         'select_payment_method_alert' => 'Please select a payment method before proceeding.',
         'choose_payment_method' => 'Choose Payment Method',

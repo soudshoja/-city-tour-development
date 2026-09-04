@@ -1,4 +1,18 @@
 <x-app-layout>
+    @php
+        // The credit balance number itself is CRM data (Client::totalCredit is
+        // computed directly by ClientController via Credit::getTotalCreditsByClient(),
+        // not through any gated route) and stays visible per ruling R1 ("CRM owns
+        // the READ ... balance display"). The drill-down click below fetches
+        // /credits/filter, which is gated on module:crm (routes/web.php) — not
+        // accounting — so the click-through only needs to check that module.
+        // Mirrors resources/views/layouts/menu.blade.php's self-contained @php
+        // pattern (same helper), just against a different module key.
+        $clientsIndexUser = auth()->user();
+        $clientsIndexCompanyId = $clientsIndexUser ? getCompanyId($clientsIndexUser) : null;
+        $clientsIndexCompany = $clientsIndexCompanyId ? \App\Models\Company::find($clientsIndexCompanyId) : null;
+        $hasCrmModule = $clientsIndexCompany && $clientsIndexCompany->hasModule(\App\Support\Modules::CRM);
+    @endphp
     <div class="flex justify-between items-center gap-5 my-3 ">
         <div class="flex items-center gap-5 ">
             <h2 class="text-3xl font-bold">Clients List</h2>
@@ -72,11 +86,17 @@
                                 <td>{{ $client->civil_no ?? 'Not Set' }}</td>
                                 <td>{{ date('d M Y', strtotime($client->created_at)) }}</td>
                                 <td>
+                                    @if($hasCrmModule)
                                     <a href="javascript:void(0);"
                                         class="clientCreditLink font-bold {{ ($client->totalCredit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}"
                                         data-client-id="{{ $client->id }}">
                                         {{ number_format($client->totalCredit ?? 0, 2) }}
                                     </a>
+                                    @else
+                                    <span class="font-bold {{ ($client->totalCredit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        {{ number_format($client->totalCredit ?? 0, 2) }}
+                                    </span>
+                                    @endif
                                 </td>
                                 <td>{{ $client->email ? $client->email : 'Not Set' }}</td>
                                 <td>{{ $client->phone_number ?: 'Not Set' }}</td>

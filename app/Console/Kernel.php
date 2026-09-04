@@ -20,7 +20,26 @@ class Kernel extends ConsoleKernel
         $schedule->command('app:update-hotel-status')->everyFifteenMinutes();
         $schedule->command('app:calculate-agent-commission')->monthlyOn(1, '00:10');
         $schedule->command('autobill:run')->everyMinute();
-        
+
+        // Once-an-hour reminder check for TaskActionRequests pending >2 days.
+        // Each request is escalated at most once (escalated_at column).
+        $schedule->command('task-action-request:notify-stale')
+            ->hourly()
+            ->withoutOverlapping();
+
+        // Twice-daily reminder for paid payment links not yet invoiced (12:00 + 19:00 KW).
+        $schedule->command('reminder:uninvoiced-payment-links')
+            ->twiceDailyAt(12, 19, 0)
+            ->timezone('Asia/Kuwait')
+            ->withoutOverlapping();
+
+        // KWIKT2843-creator reminder fires synchronously inside the Task::created
+        // observer (TaskObserver::created → SendKwikt2843CreatorReminderJob::handle).
+        // The artisan command 'reminders:kwikt2843-creator' is kept for manual
+        // catch-up sweeps but not scheduled. The monthly summary command
+        // 'reminders:kwikt2843-monthly-report' is also kept but not scheduled —
+        // invoke manually if a per-agent month count is wanted.
+
         // Process expired confirmed tasks every 5 minutes
         $schedule->command('tasks:process-expired-confirmed')
             ->everyFiveMinutes()

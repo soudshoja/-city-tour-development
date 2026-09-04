@@ -75,7 +75,7 @@ class MyFatoorahController extends Controller
      */
     private function getPayLoadData($orderId = null)
     {
-        $callbackURL = route('myfatoorah.callback');
+        $callbackURL = route('app.myfatoorah.callback');
 
         $order = $this->getTestOrderData($orderId);
 
@@ -289,7 +289,7 @@ class MyFatoorahController extends Controller
         }
 
         return [
-            'total' => $invoice->amount,
+            'total'    => number_format((float) $invoice->amount, 3, '.', ''),
             'currency' => $invoice->currency ?? 'KWD',
             'client_name' => $invoice->client->full_name ?? 'Guest',
             'client_email' => $invoice->client->email ?? 'guest@example.com',

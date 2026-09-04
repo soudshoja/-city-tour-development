@@ -37,6 +37,59 @@ class IncomingMediaController extends Controller
             'phone' => $phone
         ]);
 
+        // Ignore GROUP-chat messages entirely. The bot's number sits inside agent
+        // group chats, so the webhook fires for every message posted there. The
+        // client-creation flow is DIRECT-chat only — without this guard, normal
+        // group chatter from an agent was treated as passport-flow input and the
+        // bot spammed the agent's DM with "send a document / phone number" prompts.
+        $chatType = strtolower((string) $request->input('data.chat.type'));
+        $fromWid  = (string) ($request->input('data.from') ?? $request->input('data.chat.id') ?? '');
+        if ($chatType === 'group' || str_ends_with($fromWid, '@g.us')) {
+            // Supplier-group PDF ingestion: a PDF posted in a group configured on
+            // a supplier (Suppliers > "WhatsApp Group") is loaded through the
+            // WhatsApp PDF pipeline. ALL other group traffic stays ignored — no
+            // prompts, no replies into groups.
+            if ($type === 'document') {
+                $groupWid  = strtolower(trim((string) ($request->input('data.chat.id') ?? $fromWid)));
+                $groupName = strtolower(trim((string) $request->input('data.chat.name')));
+                $groupSupplier = \App\Models\Supplier::whereNotNull('whatsapp_group')
+                    ->where('whatsapp_group', '!=', '')
+                    ->get()
+                    ->first(function ($s) use ($groupWid, $groupName) {
+                        $g = strtolower(trim((string) $s->whatsapp_group));
+                        return $g !== '' && ($g === $groupWid || ($groupName !== '' && $g === $groupName));
+                    });
+                if ($groupSupplier) {
+                    $posterAgent = Agent::where('phone_number', $phone)->first(); // null when a supplier posts
+                    $mediaArr = (array) $request->input('data.media', []);
+                    $doc = [
+                        'message_id' => $request->input('data.id'),
+                        'mime'       => strtolower((string) ($mediaArr['mimeType'] ?? $mediaArr['mime'] ?? '')),
+                        // Real Resayil payloads carry no media.url — the file is
+                        // fetched via links.download (relative API path).
+                        'url'        => $mediaArr['links']['download'] ?? $mediaArr['url'] ?? null,
+                        'filename'   => $mediaArr['filename'] ?? null,
+                    ];
+                    $res = app(\App\Services\WhatsappPdfIngestService::class)
+                        ->handleDocument($doc, $posterAgent, $phone);
+                    Log::info("Group supplier PDF ingested", [
+                        'webhook_id' => $webhookId,
+                        'group' => $groupWid,
+                        'group_supplier' => $groupSupplier->name,
+                        'poster_agent' => $posterAgent?->id,
+                        'result' => $res['status'] ?? null,
+                    ]);
+                    return response()->json(['message' => 'Group document processed'], 200);
+                }
+            }
+            Log::info("Group message ignored (client flow is direct-chat only)", [
+                'webhook_id' => $webhookId,
+                'phone' => $phone,
+                'from' => $fromWid,
+            ]);
+            return response()->json(['message' => 'Group message ignored'], 200);
+        }
+
         // Check if sender is an agent - if not, ignore the webhook completely
         $agent = Agent::where('phone_number', $phone)->first();
         if (!$agent) {
@@ -46,6 +99,33 @@ class IncomingMediaController extends Controller
             ]);
             return response()->json(['message' => 'Webhook ignored - agents only'], 200);
         }
+
+        // --- Price-request reply: if this agent has an open price ask, the message IS the price ---
+        // (skip when the agent is mid media-flow answering the client-phone prompt)
+        if (!Cache::get('agent_waiting_for_client_phone_' . $phone)
+            && \App\Models\PriceRequest::where('agent_id', $agent->id)->where('status', 'asked')->exists()) {
+            $priceBody = $request->input('data.text')
+                ?? $request->input('data.body')
+                ?? $request->input('messages.0.body')
+                ?? $request->input('messages.0.text')
+                ?? '';
+            try {
+                $priceRes = app(\App\Services\PriceRequestService::class)->applyReply($agent, (string) $priceBody);
+            } catch (\Throwable $e) {
+                // Never 500 the webhook (Resayil retries + disables on repeated
+                // failures) — log and swallow; the ask stays open for a retry.
+                Log::error('Price-request reply failed', ['agent_id' => $agent->id, 'body' => (string) $priceBody, 'err' => $e->getMessage()]);
+                return response()->json(['message' => 'price reply failed'], 200);
+            }
+            if ($priceRes) {
+                $priceReply = $priceRes['ok']
+                    ? "\u{2713} {$priceRes['pnr']} updated to " . number_format($priceRes['amount'], 3) . " KWD"
+                    : "Couldn't read that — send just the cost price, e.g. 125.5";
+                (new \App\Http\Controllers\ResayilController())->message($agent->phone_number, $agent->country_code, $priceReply, null, null, null, false);
+                return response()->json(['message' => 'price reply handled'], 200);
+            }
+        }
+        // --- end price-request reply ---
 
         $deviceId = $request->input('device.id');
         $chatWid = $request->input('data.chat.id') ?? $request->input('data.from');
@@ -76,7 +156,7 @@ class IncomingMediaController extends Controller
                 Cache::forget('agent_client_phone_' . $phone);
                 Cache::forget('agent_waiting_for_client_phone_' . $phone);
                 
-                $to = $request->input('data.from') ?? $request->input('from');
+                $to = $agent->phone_number;
                 $this->sendWhatsAppMessage($to, "Okay, let's start fresh. Please send your client's media document again.", 'agent_restart');
                 return response()->json(['message' => 'Restart triggered'], 200);
             }
@@ -94,7 +174,7 @@ class IncomingMediaController extends Controller
                 Cache::put('pending_media_' . $phone, $mediaData, now()->addMinutes(30));
                 Log::info("Media cached for agent {$phone} until client phone is received.");
                 
-                $to = $request->input('data.from') ?? $request->input('from');
+                $to = $agent->phone_number;
                 $this->sendWhatsAppMessage($to, "Hello {$agent->name}, please reply with your client's phone number to proceed.\n(eg: +96522210017)", 'agent_phone_request');
 
                 Cache::put('agent_waiting_for_client_phone_' . $phone, true, now()->addMinutes(30));
@@ -107,7 +187,7 @@ class IncomingMediaController extends Controller
                     Cache::put('agent_client_phone_' . $phone, $clientPhoneReply, now()->addHour());
                     Cache::forget('agent_waiting_for_client_phone_' . $phone);
 
-                    $to = $request->input('data.from') ?? $request->input('from');
+                    $to = $agent->phone_number;
                     $this->sendWhatsAppMessage($to, "Your client's phone number {$clientPhoneReply} received.\nPlease hold while we process the data...", 'agent_phone_confirmed');
                     
                     // Continue to process cached media
@@ -116,7 +196,7 @@ class IncomingMediaController extends Controller
                         'client_phone' => $clientPhoneReply
                     ]);
                 } else {
-                    $to = $request->input('data.from') ?? $request->input('from');
+                    $to = $agent->phone_number;
                     $this->sendWhatsAppMessage($to, "The phone number you sent seems invalid. Please send a valid phone number including country code.", 'agent_phone_invalid');
                     Cache::forget('pending_media_' . $phone);
                     return response()->json(['message' => 'Invalid client phone number received.'], 200);
@@ -130,7 +210,7 @@ class IncomingMediaController extends Controller
 
             // NEW: If agent sends text but no media exists and we're not in any process
             if (!$mediaData && !$waitingForClientPhone && !Cache::has('pending_media_' . $phone) && $clientPhoneReply) {
-                $to = $request->input('data.from') ?? $request->input('from');
+                $to = $agent->phone_number;
                 $this->sendWhatsAppMessage($to, "Hello {$agent->name}! To create a client profile, please send your client's identification document (Civil ID or Passport) first.", 'agent_no_media_instruction');
                 return response()->json(['message' => 'Agent instructed to send media first.'], 200);
             }
@@ -158,7 +238,7 @@ class IncomingMediaController extends Controller
         ]);
 
         if (!$mediaData) {
-            $to = $request->input('data.from') ?? $request->input('from');
+            $to = $agent->phone_number;
             
             // Check if there was a previous session that expired
             $hadPreviousSession = Cache::has('agent_waiting_for_client_phone_' . $phone) || 
@@ -223,7 +303,7 @@ class IncomingMediaController extends Controller
                     'file_size' => strlen($response->body())
                 ]);
             } else {
-                $to = $request->input('data.from') ?? $request->input('from');
+                $to = $agent->phone_number;
                 Log::error("Media download failed", [
                     'media_url' => $mediaUrl,
                     'status_code' => $response->status(),
@@ -233,7 +313,7 @@ class IncomingMediaController extends Controller
                 return response()->json(['message' => 'Media download failed.'], 200);
             }
         } catch (Exception $e) {
-            $to = $request->input('data.from') ?? $request->input('from');
+            $to = $agent->phone_number;
             Log::error("Media download exception", [
                 'media_url' => $mediaUrl,
                 'error' => $e->getMessage(),
@@ -253,7 +333,7 @@ class IncomingMediaController extends Controller
                 'agent_phone' => $phone,
                 'media_id' => $mediaId
             ]);
-            $to = $request->input('data.from') ?? $request->input('from');
+            $to = $agent->phone_number;
             $this->sendWhatsAppMessage($to, "Session expired. Please send the document and client phone number again.", 'session_expired');
             return response()->json(['message' => 'Session expired - client phone missing.'], 200);
         }
@@ -293,12 +373,31 @@ class IncomingMediaController extends Controller
         }
 
         $autoReplyText = null;
+        $ssrDocsText = null;
 
         if ($localPath && Storage::exists("public/{$localPath}")) {
             try {
                 $fullPath = storage_path("app/public/{$localPath}");
 
+                // Vision extraction can take ~35s+ on large models, and usage_logs
+                // shows 40-121s tails several times a day (one live passport
+                // extraction hit 120.8s on 2026-08-10). At the old 120s this outer
+                // call was AMPUTATING the inner fallback chain: a single tail
+                // consumed the whole budget, so no fallback hop ever ran and the
+                // agent got "couldn't read the document" for a model that was fine.
+                //
+                // 240s, deliberately NOT the >=300s the chain's theoretical worst
+                // case would need: BOTH this webhook and the inner /api/chat/upload
+                // request run under LiteSpeed PHP with max_execution_time = 300
+                // (public/.user.ini), so a client timeout at or above 300s only
+                // guarantees the inner request is killed before it can answer.
+                // 240s buys two full primary attempts, lets every fast-failing hop
+                // (HTTP 4xx/5xx, empty or unparseable response) reach the fallbacks,
+                // and still leaves ~60s inside this request's own 300s budget for
+                // the DB transaction and the WhatsApp reply.
                 $uploadResponse = Http::asMultipart()
+                    ->connectTimeout(15)
+                    ->timeout(240)
                     ->attach('file', file_get_contents($fullPath), basename($fullPath))
                     ->post(config('app.url') . '/api/chat/upload');
 
@@ -309,6 +408,33 @@ class IncomingMediaController extends Controller
                     ]);
 
                     if ($data && isset($data['first_name'])) {
+                        // Defense-in-depth: strip any leaked MRZ filler/separator
+                        // ('<') the vision model may have left in the name fields
+                        // (e.g. first_name "DOAA<<ABDELMONEM"). Done here so every
+                        // downstream use - dedup, persistence, the success reply and
+                        // the SSR DOCS line - sees clean names regardless of model.
+                        $data['first_name']  = \App\Services\ClientNameSanitizer::clean($data['first_name'] ?? null);
+                        $data['middle_name'] = \App\Services\ClientNameSanitizer::clean($data['middle_name'] ?? null);
+                        $data['last_name']   = \App\Services\ClientNameSanitizer::clean($data['last_name'] ?? null);
+                        if (isset($data['name'])) {
+                            $data['name'] = \App\Services\ClientNameSanitizer::clean($data['name']);
+                        }
+
+                        // If sanitization emptied the first name (filler-only input),
+                        // treat as an unreadable document rather than storing a blank.
+                        if (empty($data['first_name'])) {
+                            Log::warning("first_name empty after MRZ sanitization", ['phone' => $phone]);
+                            $to = $agent->phone_number;
+                            $this->sendWhatsAppMessage($to, "Sorry, I couldn't read the name clearly from the document. Please resend a clearer photo.", 'ai_extraction_failed');
+                            return response()->json(['message' => 'Name unreadable after sanitization'], 400);
+                        }
+
+                        // Deterministic corrections of AI misreads: adopt the
+                        // MRZ surname/given split when it provably matches the
+                        // printed name, and un-swap civil_no/passport_no when
+                        // the civil-number date encoding proves them reversed.
+                        $data = \App\Services\PassportDataNormalizer::normalize($data);
+
                         // Start transaction for all database operations
                         DB::beginTransaction();
 
@@ -322,7 +448,7 @@ class IncomingMediaController extends Controller
                                 'data' => $data
                             ]);
 
-                            $to = $request->input('data.from') ?? $request->input('from');
+                            $to = $agent->phone_number;
                             $this->sendWhatsAppMessage(
                                 $to,
                                 "Sorry, Civil ID is required for Kuwait nationals. Please resend with Civil ID.",
@@ -394,7 +520,7 @@ class IncomingMediaController extends Controller
                                         ? "You already have a client with Civil ID: {$existingClient->civil_no}" 
                                         : "You already have a client with this name and phone number: {$existingClient->first_name} {$existingClient->last_name}";
                                     
-                                    $to = $request->input('data.from') ?? $request->input('from');
+                                    $to = $agent->phone_number;
                                     $this->sendWhatsAppMessage($to, $message, 'duplicate_client_same_agent');
                                     
                                     // Still process the media record but don't create/update client
@@ -411,7 +537,7 @@ class IncomingMediaController extends Controller
                                 if ($existingClient->agents()->where('agent_id', $currentAgent->id)->exists()) {
                                     $message = "You are already assigned to this client: {$existingClient->first_name} {$existingClient->last_name}\nYou can find them in your client list.";
                                     
-                                    $to = $request->input('data.from') ?? $request->input('from');
+                                    $to = $agent->phone_number;
                                     $this->sendWhatsAppMessage($to, $message, 'duplicate_client_already_assigned');
                                     
                                     // Still process the media record
@@ -436,7 +562,7 @@ class IncomingMediaController extends Controller
                                     "They will be notified and can approve or deny your request to work with this client.\n\n" .
                                     "You will be notified once they respond.";
 
-                                $to = $request->input('data.from') ?? $request->input('from');
+                                $to = $agent->phone_number;
                                 $this->sendWhatsAppMessage($to, $message, 'assignment_request_sent');
 
                                 // Create assignment request
@@ -454,6 +580,11 @@ class IncomingMediaController extends Controller
 
                             // No duplicates found - create new client
                             $client = Client::create([
+                                'name' => $data['name'] ?? trim(implode(' ', array_filter([
+                                    $data['first_name'],
+                                    $data['middle_name'] ?? null,
+                                    $data['last_name'] ?? null,
+                                ]))) ?: null,
                                 'first_name' => $data['first_name'],
                                 'middle_name' => $data['middle_name'] ?? null,
                                 'last_name' => $data['last_name'] ?? null,
@@ -470,7 +601,25 @@ class IncomingMediaController extends Controller
                                 'company_id' => $companyId
                             ]);
 
-                            $autoReplyText = "Thank you, {$autoReplyAdd} profile has been created successfully.\n\nClient: {$data['first_name']} {$data['last_name']}\nCivil ID: {$data['civil_no']}";
+                            // Show the Civil ID line for Kuwaiti nationals always; for
+                            // non-Kuwaitis only when a civil number was actually extracted
+                            // (avoids a dangling empty "Civil ID:" line on foreign passports).
+                            $isKuwaiti = stripos((string) ($data['nationality'] ?? ''), 'KUWAIT') !== false;
+                            $civilLine = ($isKuwaiti || !empty($data['civil_no']))
+                                ? "\nCivil ID: " . ($data['civil_no'] ?? '')
+                                : '';
+                            $autoReplyText = "Thank you, {$autoReplyAdd} profile has been created successfully.\n\nClient: {$data['first_name']} {$data['last_name']}{$civilLine}";
+
+                            // Build the Amadeus SSR DOCS line from the extracted passport data
+                            // (sent as a separate, copy-paste-ready WhatsApp message below).
+                            $ssrDocsText = \App\Services\AmadeusSsrDocs::build($data, 1);
+                            if (!$ssrDocsText) {
+                                Log::debug('[IncomingMedia] SSR DOCS skipped (incomplete data)', [
+                                    'has_gender' => !empty($data['gender']),
+                                    'has_nat_code' => !empty($data['nationality_code']),
+                                    'has_dob' => !empty($data['date_of_birth']),
+                                ]);
+                            }
                             
                             Log::info("New client created via WhatsApp", [
                                 'client_id' => $client->id,
@@ -506,7 +655,7 @@ class IncomingMediaController extends Controller
                                 'phone' => $phone
                             ]);
 
-                            $to = $request->input('data.from') ?? $request->input('from');
+                            $to = $agent->phone_number;
                             $this->sendWhatsAppMessage($to, "Sorry, there was an error creating the client profile. Please try again or contact support.", 'client_creation_failed');
                             return response()->json(['message' => 'Client creation failed'], 500);
                         }
@@ -515,7 +664,7 @@ class IncomingMediaController extends Controller
                             'response_data' => $data
                         ]);
                         
-                        $to = $request->input('data.from') ?? $request->input('from');
+                        $to = $agent->phone_number;
                         $this->sendWhatsAppMessage($to, "Sorry, I couldn't read the information from the document. Please ensure the document is clear and try again.", 'ai_extraction_failed');
                         return response()->json(['message' => 'AI extraction failed'], 400);
                     }
@@ -524,9 +673,10 @@ class IncomingMediaController extends Controller
                         'status' => $uploadResponse->status(),
                         'body' => $uploadResponse->body()
                     ]);
-                    
-                    $to = $request->input('data.from') ?? $request->input('from');
-                    $this->sendWhatsAppMessage($to, "Sorry, there was an issue processing your document. Please try again.", 'upload_processing_failed');
+
+                    $this->alertAdminsAiDown('AI extraction HTTP ' . $uploadResponse->status() . ': ' . substr($uploadResponse->body(), 0, 150), $agent);
+                    $to = $agent->phone_number;
+                    $this->sendWhatsAppMessage($to, "Sorry — I couldn't read your document because the AI reading service appears to be down. I've informed the admin to take action; they will advise you when to try again.", 'upload_processing_failed');
                     return response()->json(['message' => 'Upload processing failed'], 500);
                 }
             } catch (Exception $e) {
@@ -535,9 +685,10 @@ class IncomingMediaController extends Controller
                     'media_id' => $mediaId,
                     'phone' => $phone
                 ]);
-                
-                $to = $request->input('data.from') ?? $request->input('from');
-                $this->sendWhatsAppMessage($to, "Sorry, there was an unexpected error processing your request. Please try again.", 'unexpected_error');
+
+                $this->alertAdminsAiDown($e->getMessage(), $agent);
+                $to = $agent->phone_number;
+                $this->sendWhatsAppMessage($to, "Sorry, there was an unexpected error processing your request. I've informed the admin to take action; they will advise you when to try again.", 'unexpected_error');
             }
         } else {
             Log::warning("File not found for processing", [
@@ -545,16 +696,20 @@ class IncomingMediaController extends Controller
                 'media_id' => $mediaId
             ]);
             
-            $to = $request->input('data.from') ?? $request->input('from');
+            $to = $agent->phone_number;
             $this->sendWhatsAppMessage($to, "The uploaded file could not be found. Please try uploading again.", 'file_not_found');
         }
 
         // Auto-reply
         try {
-            $to = $request->input('data.from') ?? $request->input('from');
+            $to = $agent->phone_number;
             if ($to && $autoReplyText) {
                 sleep(4);
                 $this->sendWhatsAppMessage($to, $autoReplyText, 'auto_reply_success');
+                if ($ssrDocsText) {
+                    sleep(2);
+                    $this->sendWhatsAppMessage($to, $ssrDocsText, 'amadeus_ssr_docs');
+                }
             } else {
                 Log::warning("Missing recipient or message for auto-reply.", [
                     'to' => $to,
@@ -571,6 +726,40 @@ class IncomingMediaController extends Controller
     /**
      * Send WhatsApp message via Resayil
      */
+    /**
+     * WhatsApp the AI-down admins (config ai.alert_agent_emails — Saeid + Soud)
+     * when document extraction hard-fails, so they can check/switch the model.
+     * Throttled (ai.alert_throttle_minutes) so an outage sends one alert, not one
+     * per failed attempt.
+     */
+    private function alertAdminsAiDown(string $error, $agent): void
+    {
+        try {
+            if (Cache::has('ai_down_admin_alerted')) {
+                return;
+            }
+            Cache::put('ai_down_admin_alerted', 1, now()->addMinutes((int) config('ai.alert_throttle_minutes', 30)));
+
+            $emails = array_map('strtolower', (array) config('ai.alert_agent_emails', []));
+            if (empty($emails)) {
+                return;
+            }
+            $admins = Agent::whereIn(DB::raw('LOWER(email)'), $emails)->get();
+
+            $msg = "⚠️ *AI document reading may be DOWN*\n\n"
+                . "Agent " . ($agent->name ?? 'unknown') . " tried to create a client via WhatsApp passport and the AI extraction failed.\n\n"
+                . "Error: " . mb_substr($error, 0, 160) . "\n\n"
+                . "Please check / switch the AI model (RESAYIL_MODEL_PASSPORT) and inform the agent.";
+
+            foreach ($admins as $admin) {
+                $this->sendWhatsAppMessage($admin->phone_number, $msg, 'ai_down_admin_alert');
+            }
+            Log::warning('AI-down admin alert sent', ['admins' => $admins->pluck('id'), 'error' => substr($error, 0, 200)]);
+        } catch (Exception $e) {
+            Log::error('AI-down admin alert failed: ' . $e->getMessage());
+        }
+    }
+
     private function sendWhatsAppMessage($to, $message, $context = '')
     {
         try {
@@ -580,7 +769,8 @@ class IncomingMediaController extends Controller
             }
 
             $wa = new WhatsappController();
-            $wa->sendToResayil($to, $message);
+            $__res = $wa->sendToResayil($to, $message);
+            if (!is_array($__res) || empty($__res['success'])) { Log::error('WhatsApp NOT delivered by Resayil', ['to' => $to, 'context' => $context, 'resayil_response' => (is_array($__res) ? ($__res['response'] ?? $__res) : $__res)]); }
             Log::info("WhatsApp message sent", [
                 'to' => $to,
                 'context' => $context,
@@ -718,7 +908,7 @@ class IncomingMediaController extends Controller
             $parts = explode(' ', $message);
             
             if (count($parts) !== 2) {
-                $to = $request->input('data.from') ?? $request->input('from');
+                $to = $agent->phone_number;
                 $this->sendWhatsAppMessage($to, "Invalid command format. Use: APPROVE [TOKEN] or DENY [TOKEN]", 'invalid_command_format');
                 return response()->json(['message' => 'Invalid command format'], 200);
             }
@@ -733,21 +923,21 @@ class IncomingMediaController extends Controller
                 ->first();
 
             if (!$assignmentRequest) {
-                $to = $request->input('data.from') ?? $request->input('from');
+                $to = $agent->phone_number;
                 $this->sendWhatsAppMessage($to, "Assignment request not found or already processed. Please check the token or use the web dashboard.", 'request_not_found');
                 return response()->json(['message' => 'Request not found'], 200);
             }
 
             // Check if request is expired
             if ($assignmentRequest->isExpired()) {
-                $to = $request->input('data.from') ?? $request->input('from');
+                $to = $agent->phone_number;
                 $this->sendWhatsAppMessage($to, "This assignment request has expired. Please use the web dashboard for further actions.", 'request_expired');
                 return response()->json(['message' => 'Request expired'], 200);
             }
 
             $client = $assignmentRequest->client;
             $requestingAgent = $assignmentRequest->requestingAgent;
-            $to = $request->input('data.from') ?? $request->input('from');
+            $to = $agent->phone_number;
 
             if ($command === 'APPROVE') {
                 // Process approval
@@ -852,7 +1042,7 @@ class IncomingMediaController extends Controller
                 'agent_id' => $agent->id
             ]);
             
-            $to = $request->input('data.from') ?? $request->input('from');
+            $to = $agent->phone_number;
             $this->sendWhatsAppMessage($to, "Sorry, there was an error processing your command. Please try again or use the web dashboard.", 'command_processing_error');
             
             return response()->json(['message' => 'Command processing error'], 500);

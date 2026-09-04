@@ -237,6 +237,22 @@ class Task extends Model
         return $this->original_currency !== null && $this->original_price !== 'KWD';
     }
 
+    public function getGdsReferenceAttribute(): ?string
+    {
+        $own = $this->attributes['gds_reference'] ?? null;
+        if (!empty($own)) return $own;
+        if (empty($this->original_task_id)) return $own;
+        return $this->originalTask?->getRawOriginal('gds_reference');
+    }
+
+    public function getAirlineReferenceAttribute(): ?string
+    {
+        $own = $this->attributes['airline_reference'] ?? null;
+        if (!empty($own)) return $own;
+        if (empty($this->original_task_id)) return $own;
+        return $this->originalTask?->getRawOriginal('airline_reference');
+    }
+
     protected function cancellationDeadline(): Attribute
     {
         return Attribute::make(

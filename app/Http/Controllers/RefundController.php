@@ -2024,6 +2024,100 @@ class RefundController extends Controller
     }
 
     /**
+     * Void a completed/processed refund. Admin + accountant only.
+     */
+    public function void(Refund $refund): RedirectResponse
+    {
+        $user = Auth::user();
+        if (!$user || !$user->hasAnyRole(['admin', 'accountant'])) {
+            abort(403, 'Only admin or accountant can void refunds.');
+        }
+
+        // Tenant isolation (merge 2026-09-04): route-model binding on {refund} carries no company
+        // scope. Same-company or unscoped admin, mirroring PaymentController::assertSameCompanyOrUnscopedAdmin().
+        $actingCompanyId = getCompanyId($user);
+        abort_unless(
+            ((int) $user->role_id === Role::ADMIN && ! $actingCompanyId)
+                || (int) $refund->company_id === (int) $actingCompanyId,
+            403,
+            'Unauthorized action.'
+        );
+
+        // Engine guard (merge 2026-09-04): this method hard-deletes LEGACY journal rows. Once the
+        // posting engine owns this company's ledger, a void must be a reversal document
+        // (RefundPostingService), never a delete — refuse rather than corrupt.
+        abort_if(
+            app(\App\Services\Accounting\PostingSeam::class)->isEnabledFor((int) $refund->company_id),
+            409,
+            'Void is not available for a company on the posting engine; use Reject or a reversal.'
+        );
+
+        if ($refund->status === 'voided') {
+            return back()->with('error', 'Refund is already voided.');
+        }
+
+        $totalUsed = abs((float) Credit::where('refund_id', $refund->id)
+            ->where('type', Credit::INVOICE)
+            ->sum('amount'));
+
+        if ($totalUsed > 0) {
+            return back()->with(
+                'error',
+                "Cannot void: KWD " . number_format($totalUsed, 3) .
+                " of this refund's credit has been applied to invoices. " .
+                "Detach the credit from those invoices first, then retry."
+            );
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $jeCount = JournalEntry::where('type', 'refund')
+                ->where('voucher_number', (string) $refund->id)
+                ->delete();
+
+            $creditCount = Credit::where('refund_id', $refund->id)->delete();
+
+            $invoice = $refund->originalInvoice;
+            if ($invoice && in_array($invoice->status, [InvoiceStatus::REFUNDED->value, InvoiceStatus::PARTIAL_REFUND->value])) {
+                $otherActiveRefunds = Refund::where('invoice_id', $invoice->id)
+                    ->where('id', '!=', $refund->id)
+                    ->where('status', '!=', 'voided')
+                    ->count();
+                if ($otherActiveRefunds === 0) {
+                    $invoice->update(['status' => InvoiceStatus::PAID->value]);
+                }
+            }
+
+            $refund->refundDetails()->delete();
+            $refund->update(['status' => 'voided', 'updated_by' => $user->id]);
+            $refund->delete();
+
+            DB::commit();
+
+            Log::info('Refund voided', [
+                'refund_id' => $refund->id,
+                'refund_number' => $refund->refund_number,
+                'voided_by' => $user->id,
+                'journal_entries_reversed' => $jeCount,
+                'credits_removed' => $creditCount,
+            ]);
+
+            return redirect()->route('refunds.index')->with(
+                'status',
+                "Refund {$refund->refund_number} voided. Reversed {$jeCount} journal entries and {$creditCount} credit row(s)."
+            );
+        } catch (Throwable $e) {
+            DB::rollBack();
+            Log::error('Refund void failed', [
+                'refund_id' => $refund->id,
+                'error' => $e->getMessage(),
+            ]);
+            return back()->with('error', 'Void failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * W4.R (w4-brief.md §4 "posted" step + §5 bundled fix "duplicate profit JE in completeProcess()
      * ... do NOT carry"). Gated by RefundPolicy::complete() first — this method was entirely
      * unauthorized before this fix (ct-refund-map.md §6). Engine ON: every posting this method

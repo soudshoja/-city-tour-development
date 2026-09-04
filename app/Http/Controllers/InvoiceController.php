@@ -962,6 +962,11 @@ class InvoiceController extends Controller
 
             // Recalculate profit for all details since gateway fee changed
             $this->recalculateInvoiceCOA($invoice);
+
+            // Re-read DB-rounded DECIMAL values so the JSON response below doesn't
+            // serialize the raw computed ChargeService floats (under serialize_precision=100
+            // a value like 894.8 would leak its binary tail 894.79999999...).
+            $invoicePartial->refresh();
         } else {
             return response()->json(['message' => 'Invoice partial not found.'], 404);
         }
@@ -986,6 +991,22 @@ class InvoiceController extends Controller
             'partial_invoice_charge' => 'nullable|numeric|min:0',
             'companyId' => 'required',
         ]);
+
+        // Tenant isolation (SECURITY): companyId above is client-supplied and
+        // was previously trusted with no auth check at all — it only scoped
+        // WHICH invoice got loaded (whereHas('agent.branch.company', ...)
+        // below), never whether the acting user is actually a member of
+        // that company. Any authenticated user could submit another
+        // company's companyId + a guessed invoiceNumber and act on that
+        // invoice (mark it paid, change its gateway, post a credit/payment
+        // application against it). Require the acting user's own resolved
+        // company to match what was submitted, same guard shape as
+        // PaymentApplicationService's tenant checks.
+        abort_unless(
+            getCompanyId(Auth::user()) == $request->input('companyId'),
+            403,
+            'Unauthorized: this invoice does not belong to your company.'
+        );
 
         $client = Client::find($request->input('clientId'));
         $balanceCredit = Credit::getTotalCreditsByClient($client->id);
@@ -6470,17 +6491,30 @@ class InvoiceController extends Controller
         }
         $company = Company::find($companyId);
 
-        $taskIds = $invoice->invoiceDetails->pluck('task_id')->filter()->toArray();
+        // invoice.details carries no module gate at all (it's an invoice
+        // page, and invoices belong to the package) — but it used to render
+        // a "Financial Ledger" table of real JournalEntry rows unconditionally,
+        // leaking accounting content to a company without the module. Only
+        // build the ledger data when accounting is actually on; the blade
+        // also checks this flag before rendering the section, matching the
+        // $hasAccountingModule pattern used by menu/sidebar/dashboard/edit.
+        $hasAccountingModule = $company && $company->hasModule(\App\Support\Modules::ACCOUNTING);
 
-        $journalEntries = JournalEntry::where(function ($q) use ($invoice, $taskIds) {
-            $q->where('invoice_id', $invoice->id)
-                ->orWhereIn('task_id', $taskIds);
-        })
-            ->get();
+        if ($hasAccountingModule) {
+            $taskIds = $invoice->invoiceDetails->pluck('task_id')->filter()->toArray();
 
-        $journalEntries = app(JournalEntryController::class)->getJournalEntries($journalEntries);
+            $journalEntries = JournalEntry::where(function ($q) use ($invoice, $taskIds) {
+                $q->where('invoice_id', $invoice->id)
+                    ->orWhereIn('task_id', $taskIds);
+            })
+                ->get();
 
-        return view('invoice.details', compact('invoice', 'company', 'journalEntries'));
+            $journalEntries = app(JournalEntryController::class)->getJournalEntries($journalEntries);
+        } else {
+            $journalEntries = collect();
+        }
+
+        return view('invoice.details', compact('invoice', 'company', 'journalEntries', 'hasAccountingModule'));
     }
 
     public function getTaskInvoiceStatus($taskId)
@@ -9403,16 +9437,20 @@ class InvoiceController extends Controller
             ], 404);
         }
 
-        $recipients = [];
+        // Staff recipients (agent/accountant) receive the detailed version (PNR, issued date,
+        // net price, payment method, payment summary); the client receives the plain version.
+        $staffRecipients = [];
+        $clientRecipients = [];
         $sentTo = [];
+        $clientEmail = strtolower(trim($invoice->client->email ?? ''));
 
         if ($request->boolean('send_to_agent') && $invoice->agent && $invoice->agent->email) {
-            $recipients[] = $invoice->agent->email;
+            $staffRecipients[] = $invoice->agent->email;
             $sentTo[] = "Agent ({$invoice->agent->name})";
         }
 
         if ($request->boolean('send_to_client') && $invoice->client && $invoice->client->email) {
-            $recipients[] = $invoice->client->email;
+            $clientRecipients[] = $invoice->client->email;
             $sentTo[] = "Client ({$invoice->client->full_name})";
         }
 
@@ -9420,13 +9458,19 @@ class InvoiceController extends Controller
             $customEmails = array_map('trim', explode(',', $request->custom_emails));
             foreach ($customEmails as $email) {
                 if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
-                    $recipients[] = $email;
+                    if ($clientEmail !== '' && strtolower($email) === $clientEmail) {
+                        $clientRecipients[] = $email;
+                    } else {
+                        $staffRecipients[] = $email;
+                    }
                     $sentTo[] = $email;
                 }
             }
         }
 
-        $recipients = array_unique($recipients);
+        $clientRecipients = array_unique(array_map('strtolower', $clientRecipients));
+        $staffRecipients = array_diff(array_unique(array_map('strtolower', $staffRecipients)), $clientRecipients);
+        $recipients = array_merge($staffRecipients, $clientRecipients);
 
         if (empty($recipients)) {
             return response()->json([
@@ -9436,7 +9480,8 @@ class InvoiceController extends Controller
         }
 
         try {
-            $mailable = new \App\Mail\InvoiceMail($invoice->id);
+            $staffMailable = new \App\Mail\InvoiceMail($invoice->id, true);
+            $clientMailable = new \App\Mail\InvoiceMail($invoice->id, false);
 
             // if (app()->environment('local')) {
             //     $localEmail = env('EMAIL_LOCAL', 'it@alphia.net');
@@ -9457,8 +9502,12 @@ class InvoiceController extends Controller
             //     ]);
             // }
 
-            foreach ($recipients as $recipient) {
-                \Illuminate\Support\Facades\Mail::to($recipient)->send($mailable);
+            foreach ($staffRecipients as $recipient) {
+                \Illuminate\Support\Facades\Mail::to($recipient)->send($staffMailable);
+            }
+
+            foreach ($clientRecipients as $recipient) {
+                \Illuminate\Support\Facades\Mail::to($recipient)->send($clientMailable);
             }
 
             Log::info('Invoice email sent successfully', [

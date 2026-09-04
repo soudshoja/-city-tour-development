@@ -122,6 +122,18 @@
                                         @if($task && $task->ticket_number)
                                             <br><span style="font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};color:#666;">Ticket: {{ $task->ticket_number }}</span>
                                         @endif
+                                        @if(($staffView ?? false) && $task && $task->gds_reference)
+                                            <br><span style="font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};color:#666;">PNR: {{ $task->gds_reference }}</span>
+                                        @endif
+                                        @if(($staffView ?? false) && $task && $task->issued_date)
+                                            <br><span style="font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};color:#666;">Issued: {{ \Carbon\Carbon::parse($task->issued_date)->format('d M Y') }}</span>
+                                        @endif
+                                        @if(($staffView ?? false) && $detail->supplier_price !== null)
+                                            <br><span style="font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};color:#666;">Net Price: {{ number_format($detail->supplier_price, 2) }} {{ $invoice->currency ?? 'KWD' }}</span>
+                                        @endif
+                                        @if(($staffView ?? false) && $task && $task->paymentMethod)
+                                            <br><span style="font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};color:#666;">Payment Method: {{ $task->paymentMethod->name }}</span>
+                                        @endif
                                         @if($task && $task->type === 'flight' && $task->flightDetails)
                                             <br><span style="font-size:{{ ($isPdf ?? false) ? '9px' : '12px' }};color:#004c9e;">
                                                 {{ ($isPdf ?? false) ? '' : '✈ ' }}{{ $task->flightDetails->airport_from ?? '' }} {{ ($isPdf ?? false) ? '-' : '→' }} {{ $task->flightDetails->airport_to ?? '' }}
@@ -162,69 +174,20 @@
                             <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                                 <tr>
                                     <td width="50%" valign="top">
-                                        @if($invoice->invoicePartials && $invoice->invoicePartials->count() > 0)
-                                            <p style="margin:0 0 {{ ($isPdf ?? false) ? '6px' : '10px' }} 0;font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};font-weight:bold;color:#004c9e;text-transform:uppercase;letter-spacing:1px;">Payment Information</p>
-
-                                            @php
-                                                $clientIds = $invoice->invoicePartials->pluck('client_id')->unique();
-                                                $isSplitPayment = $clientIds->count() > 1;
-                                            @endphp
-
-                                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;">
-                                                <tr>
-                                                    <td style="padding:3px {{ ($isPdf ?? false) ? '10px' : '15px' }} 3px 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;">Payment Type:</td>
-                                                    <td style="padding:3px 0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;">
-                                                        @if($isSplitPayment)
-                                                            Split Payment
-                                                        @elseif($invoice->invoicePartials->count() > 1)
-                                                            Partial Payment
-                                                        @else
-                                                            {{ ucfirst(($invoice->payment_type ?? 'Full') . ' Payment') }}
-                                                        @endif
-                                                    </td>
-                                                </tr>
-                                            </table>
-                                            <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="width:100%;margin-top:{{ ($isPdf ?? false) ? '8px' : '12px' }};border:1px solid #e0e0e0;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;' }}">
-                                                <tr style="background-color:#f9fafb;">
-                                                    @if($isSplitPayment)
-                                                        <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:left;border-bottom:1px solid #e0e0e0;">Payer</th>
-                                                    @endif
-                                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:left;border-bottom:1px solid #e0e0e0;">Gateway</th>
-                                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:left;border-bottom:1px solid #e0e0e0;">Method</th>
-                                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:right;border-bottom:1px solid #e0e0e0;">Amount</th>
-                                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:center;border-bottom:1px solid #e0e0e0;">Status</th>
-                                                </tr>
-                                                @foreach($invoice->invoicePartials as $partial)
-                                                    <tr>
-                                                        @if($isSplitPayment)
-                                                            <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;">
-                                                                {{ $partial->client->full_name ?? 'N/A' }}
-                                                            </td>
-                                                        @endif
-                                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;">
-                                                            {{ $partial->payment_gateway ?? '-' }}
-                                                        </td>
-                                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;">
-                                                            {{ $partial->paymentMethod->english_name ?? '-' }}
-                                                        </td>
-                                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:right;font-weight:bold;">
-                                                            {{ number_format($partial->amount, 2) }} {{ $invoice->currency ?? 'KWD' }}
-                                                        </td>
-                                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};border-bottom:1px solid #e0e0e0;text-align:center;">
-                                                            @if($partial->status === 'paid')
-                                                                <span style="display:inline-block;padding:2px {{ ($isPdf ?? false) ? '6px' : '8px' }};background-color:#d4edda;color:#155724;font-size:{{ ($isPdf ?? false) ? '8px' : '9px' }};font-weight:bold;border-radius:8px;text-transform:uppercase;">Paid</span>
-                                                            @else
-                                                                <span style="display:inline-block;padding:2px {{ ($isPdf ?? false) ? '6px' : '8px' }};background-color:#f8d7da;color:#721c24;font-size:{{ ($isPdf ?? false) ? '8px' : '9px' }};font-weight:bold;border-radius:8px;text-transform:uppercase;">Unpaid</span>
-                                                            @endif
-                                                        </td>
-                                                    </tr>
-                                                @endforeach
-                                            </table>
-                                        @else
-                                            @if($invoice->payment_type)
-                                                <p style="margin:0 0 {{ ($isPdf ?? false) ? '6px' : '10px' }} 0;font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};font-weight:bold;color:#004c9e;text-transform:uppercase;letter-spacing:1px;">Payment Type</p>
-                                                <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;">{{ ucfirst($invoice->payment_type) }}</p>
-                                            @endif
+                                        @if($invoice->payment_type)
+                                            <p style="margin:0 0 {{ ($isPdf ?? false) ? '6px' : '10px' }} 0;font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};font-weight:bold;color:#004c9e;text-transform:uppercase;letter-spacing:1px;">Payment Type</p>
+                                            <p style="margin:0;font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;">
+                                                @php
+                                                    $psClientIds = $invoice->invoicePartials ? $invoice->invoicePartials->pluck('client_id')->unique() : collect();
+                                                @endphp
+                                                @if($psClientIds->count() > 1)
+                                                    Split Payment
+                                                @elseif($invoice->invoicePartials && $invoice->invoicePartials->count() > 1)
+                                                    Partial Payment
+                                                @else
+                                                    {{ ucfirst(($invoice->payment_type ?? 'Full') . ' Payment') }}
+                                                @endif
+                                            </p>
                                         @endif
                                     </td>
                                     <td width="50%" valign="top">
@@ -258,6 +221,83 @@
                             </table>
                         </td>
                     </tr>
+                    @if(($staffView ?? false) && $invoice->invoicePartials && $invoice->invoicePartials->count() > 0)
+                    <tr>
+                        <td style="padding:0 {{ ($isPdf ?? false) ? '25px 20px 25px' : '40px 30px 40px' }};">
+                            <p style="margin:0 0 {{ ($isPdf ?? false) ? '6px' : '10px' }} 0;font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};font-weight:bold;color:#004c9e;text-transform:uppercase;letter-spacing:1px;">Payment Summary</p>
+                            @php
+                                $isSplitPayment = $invoice->invoicePartials->pluck('client_id')->unique()->count() > 1;
+                            @endphp
+                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border:1px solid #e0e0e0;{{ ($isPdf ?? false) ? '' : 'border-radius:4px;' }}">
+                                <tr style="background-color:#f9fafb;">
+                                    @if($isSplitPayment)
+                                        <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:left;border-bottom:1px solid #e0e0e0;">Payer</th>
+                                    @endif
+                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:left;border-bottom:1px solid #e0e0e0;">Date</th>
+                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:left;border-bottom:1px solid #e0e0e0;">Gateway</th>
+                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:left;border-bottom:1px solid #e0e0e0;">Reference</th>
+                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:right;border-bottom:1px solid #e0e0e0;">Amount</th>
+                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:right;border-bottom:1px solid #e0e0e0;">Service Charge</th>
+                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:right;border-bottom:1px solid #e0e0e0;">Invoice Charge</th>
+                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:right;border-bottom:1px solid #e0e0e0;">Total</th>
+                                    <th style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '8px' : '10px' }};font-weight:bold;color:#666;text-align:center;border-bottom:1px solid #e0e0e0;">Status</th>
+                                </tr>
+                                @foreach($invoice->invoicePartials as $partial)
+                                    @php
+                                        $psVoucher = trim(optional($partial->payment)->voucher_number ?? '');
+                                        $psIsCredit = (stripos($partial->payment_gateway ?? '', 'credit') !== false);
+                                        $psApps = $partial->paymentApplications()->with(['payment', 'credit.refund'])->get();
+                                        $psTopupApps = $psApps->filter(fn($app) => $app->payment_id !== null);
+                                        $psRefundApps = $psApps->filter(fn($app) => $app->payment_id === null && $app->credit?->refund_id !== null);
+                                        $psFundingPayment = $partial->payment ?: optional($psTopupApps->first())->payment;
+                                        $psPaidOn = $psFundingPayment->payment_date ?? null;
+                                        $psSourceGw = $psTopupApps->isNotEmpty() ? optional($psTopupApps->first()->payment)->payment_gateway : null;
+                                    @endphp
+                                    <tr>
+                                        @if($isSplitPayment)
+                                            <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;">{{ $partial->client->full_name ?? 'N/A' }}</td>
+                                        @endif
+                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;">
+                                            {{ $psPaidOn ? \Illuminate\Support\Carbon::parse($psPaidOn)->format('d M Y') : optional($partial->created_at)->format('d M Y') }}
+                                        </td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;">
+                                            {{ $psIsCredit ? 'Client Credit' : ($partial->payment_gateway ?? '-') }}{{ $psIsCredit && $psSourceGw ? ' ('.$psSourceGw.')' : '' }}
+                                        </td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;">
+                                            @if($psApps->isNotEmpty())
+                                                @foreach($psTopupApps as $app)
+                                                    @if($app->payment)
+                                                        {{ $app->payment->voucher_number }} ({{ number_format($app->amount, 3) }})@if($app->payment->invoice_reference) &middot; {{ $app->payment->payment_gateway }} Ref: {{ $app->payment->invoice_reference }}@endif
+                                                        @if(!$loop->last || $psRefundApps->isNotEmpty())<br>@endif
+                                                    @endif
+                                                @endforeach
+                                                @foreach($psRefundApps as $app)
+                                                    @if($app->credit?->refund){{ $app->credit->refund->refund_number }} ({{ number_format($app->amount, 3) }})@else - @endif
+                                                    @if(!$loop->last)<br>@endif
+                                                @endforeach
+                                            @elseif($psVoucher)
+                                                {{ $psVoucher }}@if(optional($partial->payment)->invoice_reference) &middot; {{ $partial->payment->payment_gateway }} Ref: {{ $partial->payment->invoice_reference }}@endif
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:right;">{{ number_format($partial->amount, 3) }} {{ $invoice->currency ?? 'KWD' }}</td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:right;">{{ number_format($partial->service_charge ?? 0, 3) }} {{ $invoice->currency ?? 'KWD' }}</td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:right;">{{ number_format($partial->invoice_charge ?? 0, 3) }} {{ $invoice->currency ?? 'KWD' }}</td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};color:#333;border-bottom:1px solid #e0e0e0;text-align:right;font-weight:bold;">{{ number_format($partial->amount + ($partial->invoice_charge ?? 0) + ($partial->service_charge ?? 0), 3) }} {{ $invoice->currency ?? 'KWD' }}</td>
+                                        <td style="padding:{{ ($isPdf ?? false) ? '6px 8px' : '8px 10px' }};font-size:{{ ($isPdf ?? false) ? '9px' : '11px' }};border-bottom:1px solid #e0e0e0;text-align:center;">
+                                            @if($partial->status === 'paid')
+                                                <span style="display:inline-block;padding:2px {{ ($isPdf ?? false) ? '6px' : '8px' }};background-color:#d4edda;color:#155724;font-size:{{ ($isPdf ?? false) ? '8px' : '9px' }};font-weight:bold;border-radius:8px;text-transform:uppercase;">Paid</span>
+                                            @else
+                                                <span style="display:inline-block;padding:2px {{ ($isPdf ?? false) ? '6px' : '8px' }};background-color:#f8d7da;color:#721c24;font-size:{{ ($isPdf ?? false) ? '8px' : '9px' }};font-weight:bold;border-radius:8px;text-transform:uppercase;">Unpaid</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </table>
+                        </td>
+                    </tr>
+                    @endif
                     @if($invoice->status !== 'paid' && !($isPdf ?? false) && $invoice->payment_type)
                         <tr>
                             <td align="center" style="padding:0 40px 30px 40px;">

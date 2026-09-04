@@ -634,6 +634,33 @@ class ReportController extends Controller
             ];
         }
 
+        // P&L-2: also include profit-loss accounts the level-3 walk never reaches
+        // (e.g. a P&L account sitting ABOVE level 3, or off any level-3 branch).
+        // Each such account's OWN entries are counted once; its covered
+        // descendants, if any, were already summed above, so nothing is
+        // double-counted (the missed set is disjoint from the covered set).
+        $coveredIds = [];
+        foreach ($level3Accounts as $parent) {
+            $coveredIds[$parent->id] = true;
+            foreach ($descendantsCache[$parent->id] as $desc) {
+                $coveredIds[$desc->id] = true;
+            }
+        }
+        $missedPlAccounts = $allAccounts->filter(fn($a) =>
+            $a->report_type === Account::REPORT_TYPES['PROFIT_LOSS'] && !isset($coveredIds[$a->id]));
+        foreach ($missedPlAccounts as $acct) {
+            $ownAmount = $entriesByAccount->get($acct->id, collect())
+                ->sum(fn($j) => $j->credit - $j->debit);
+            if ($ownAmount == 0) {
+                continue;
+            }
+            $grouped[$acct->id] = [
+                'account' => $acct,
+                'amount' => $ownAmount,
+                'children' => [],
+            ];
+        }
+
         $incomeAccounts = collect($grouped)->filter(fn($item) => str_starts_with($item['account']->code, '4'));
         $expenseAccounts = collect($grouped)->filter(fn($item) => str_starts_with($item['account']->code, '5'));
 
@@ -643,6 +670,10 @@ class ReportController extends Controller
             foreach ($descendantsCache[$parent->id] as $desc) {
                 $relevantAccountIds->push($desc->id);
             }
+        }
+        // P&L-2: include the missed profit-loss accounts in the yearly chart too.
+        foreach ($missedPlAccounts as $acct) {
+            $relevantAccountIds->push($acct->id);
         }
         $relevantAccountIds = $relevantAccountIds->unique()->values();
 
@@ -696,6 +727,14 @@ class ReportController extends Controller
 
                 if (str_starts_with($parent->code, '4')) $income += $total;
                 if (str_starts_with($parent->code, '5')) $expense += abs($total);
+            }
+
+            // P&L-2: add the missed profit-loss accounts' own monthly contribution.
+            foreach ($missedPlAccounts as $acct) {
+                $amount = ($monthEntries[$acct->id] ?? collect())
+                    ->sum(fn($j) => $j->credit - $j->debit);
+                if (str_starts_with($acct->code, '4')) $income += $amount;
+                if (str_starts_with($acct->code, '5')) $expense += abs($amount);
             }
 
             $monthlyLabels[] = \Carbon\Carbon::createFromDate($year, $m, 1)->format('M');
@@ -1386,9 +1425,18 @@ class ReportController extends Controller
 
         $profitAgent = $this->getProfitAgent();
 
+        // Ruling R8 (PACKAGE-OVERVIEW.md): the ledger-derived profit figure
+        // itself is allowed here as an opaque number even without the
+        // accounting module — but the view's drill-down link into
+        // journal-entries.index must not exist for a company without it.
+        $companyId = getCompanyId(Auth::user());
+        $company = $companyId ? Company::find($companyId) : null;
+        $hasAccountingModule = $company && $company->hasModule(\App\Support\Modules::ACCOUNTING);
+
         return view('reports.profit-agent', [
             'agents' => $profitAgent['agents'],
             'sumProfitAgent' => $profitAgent['sumProfitAgent'],
+            'hasAccountingModule' => $hasAccountingModule,
         ]);
     }
 

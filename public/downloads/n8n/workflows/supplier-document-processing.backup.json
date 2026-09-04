@@ -1,0 +1,576 @@
+{
+  "name": "Supplier Document Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "supplier-document-processing",
+        "responseMode": "onReceived",
+        "responseCode": 202,
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "responseData": "={{ { \"status\": \"accepted\", \"document_id\": $json.body.document_id } }}"
+        }
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        250,
+        300
+      ],
+      "webhookId": "supplier-document-processing"
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\n// Extract request data\nconst body = JSON.stringify($input.all()[0].json.body);\nconst providedSignature = $input.all()[0].json.headers['x-signature'];\nconst timestamp = parseInt($input.all()[0].json.headers['x-timestamp']);\nconst documentId = $input.all()[0].json.body.document_id;\n\n// Check timestamp (replay attack protection - max 5 minutes old)\nconst now = Math.floor(Date.now() / 1000);\nif (Math.abs(now - timestamp) > 300) {\n  throw new Error('ERR_HMAC_INVALID: Timestamp outside acceptable range (replay attack)');\n}\n\n// Get webhook secret from credentials\nconst webhookSecret = $credentials.laravelWebhookSecret.secret;\n\n// Compute HMAC\nconst computedSignature = crypto\n  .createHmac('sha256', webhookSecret)\n  .update(body)\n  .digest('hex');\n\n// Timing-safe comparison\nif (crypto.timingSafeEqual(Buffer.from(providedSignature), Buffer.from(computedSignature))) {\n  // Valid signature - pass through\n  return $input.all()[0].json.body;\n} else {\n  throw new Error(`ERR_HMAC_INVALID: Signature mismatch for document ${documentId}`);\n}"
+      },
+      "name": "Validate HMAC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "laravelWebhookSecret": {
+          "id": "1",
+          "name": "Laravel Webhook Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 1,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Jazeera Airways (AIR)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 2,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "FlyDubai (AIR)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ETA UK (PDF)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 4,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "The Skyrooms (PDF)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 5,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Air Arabia (AIR)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 6,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Indigo (AIR)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 7,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cham Wings (AIR)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 8,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "VFS Global (PDF)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 9,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Emirates NDC"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 10,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Oman NDC"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 11,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Gmail (Email)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 12,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Image Upload"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 3
+        }
+      },
+      "name": "Route by Supplier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const supplerId = $json.supplier_id;\nconst documentId = $json.document_id;\n\nthrow new Error(`ERR_SUPPLIER_NOT_CONFIG: Supplier ID ${supplerId} not configured in N8n workflow (document: ${documentId})`);"
+      },
+      "name": "Error Handler - Unmapped Supplier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Placeholder for AIR processor (Plan 02-03)\nreturn [{\n  ...items[0].json,\n  extraction_status: 'success',\n  extraction_result: {\n    supplier_type: 'AIR',\n    message: 'AIR extraction will be implemented in Plan 02-03'\n  }\n}];"
+      },
+      "name": "AIR Processor Placeholder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Placeholder for PDF processor (Plan 02-03)\nreturn [{\n  ...items[0].json,\n  extraction_status: 'success',\n  extraction_result: {\n    supplier_type: 'PDF',\n    message: 'PDF extraction will be implemented in Plan 02-03'\n  }\n}];"
+      },
+      "name": "PDF Processor Placeholder",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        850,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\n// Build callback payload\nconst callbackPayload = {\n  document_id: $json.document_id,\n  status: $json.extraction_status || 'error',\n  execution_id: $execution.id,\n  workflow_id: $workflow.id,\n  execution_time_ms: Math.floor($execution.resumeTime ? ($execution.resumeTime - $execution.startTime) : 0),\n  extraction_result: $json.extraction_result || null,\n  error: $json.error || null\n};\n\n// Serialize and sign\nconst body = JSON.stringify(callbackPayload);\nconst webhookSecret = $credentials.laravelWebhookSecret.secret;\nconst hmac = crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');\n\nreturn {\n  json: {\n    ...callbackPayload,\n    hmac: hmac\n  }\n};"
+      },
+      "name": "Compute Callback HMAC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1050,
+        300
+      ],
+      "credentials": {
+        "laravelWebhookSecret": {
+          "id": "1",
+          "name": "Laravel Webhook Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Signature",
+              "value": "={{ $json.hmac }}"
+            },
+            {
+              "name": "X-Timestamp",
+              "value": "={{ Math.floor(Date.now() / 1000) }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {
+          "timeout": 10000,
+          "retry": {
+            "maxRetries": 3,
+            "retryInterval": 5000,
+            "retryOn": [
+              "408",
+              "429",
+              "500",
+              "502",
+              "503",
+              "504"
+            ]
+          }
+        }
+      },
+      "name": "Send to Laravel Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1250,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate HMAC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate HMAC": {
+      "main": [
+        [
+          {
+            "node": "Route by Supplier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Supplier": {
+      "main": [
+        [
+          {
+            "node": "AIR Processor Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AIR Processor Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PDF Processor Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PDF Processor Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AIR Processor Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AIR Processor Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AIR Processor Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "PDF Processor Placeholder",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [],
+        [],
+        [],
+        [],
+        [
+          {
+            "node": "Error Handler - Unmapped Supplier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AIR Processor Placeholder": {
+      "main": [
+        [
+          {
+            "node": "Compute Callback HMAC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF Processor Placeholder": {
+      "main": [
+        [
+          {
+            "node": "Compute Callback HMAC",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Callback HMAC": {
+      "main": [
+        [
+          {
+            "node": "Send to Laravel Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "soud-laravel-phase2"
+  },
+  "id": "supplier-document-processing",
+  "tags": []
+}

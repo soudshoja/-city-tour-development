@@ -946,7 +946,13 @@
                                                 agent_id: @js($task->agent_id),
                                                 agent_name: @js($task->agent->name ?? null),
                                                 supplier_id: @js($task->supplier_id),
-                                                payment_method_account_id: @js($task->payment_method_account_id),
+                                                payment_method_account_id: @js($task->payment_method_account_id ?? (
+                                                    $task->issued_by && ($defaultAccountName = config('gds_payment_defaults.' . $task->issued_by))
+                                                        ? \App\Models\Account::where('name', $defaultAccountName)
+                                                            ->where('company_id', $task->company_id)
+                                                            ->value('id')
+                                                        : null
+                                                )),
                                                 supplier_pay_date: @js($task->supplier_pay_date ? \Carbon\Carbon::parse($task->supplier_pay_date)->format('Y-m-d') : ''),
                                                 price: @js(number_format($task->price ?? 0, 3, '.', '')),
                                                 tax: @js(number_format($task->tax ?? 0, 3, '.', '')),
@@ -956,13 +962,13 @@
                                                 original_task_name: @js($task->original_task_id),
                                                 @if($task->type === 'hotel' && $task->hotelDetails)
                                                 hotelDetails: {
-                                                    hotel_id: @js($task->hotelDetails->hotel_id),
-                                                    hotel_name: @js($task->hotelDetails->hotel->name ?? 'N/A'),
-                                                    room_type: @js($task->hotelDetails->room_type),
-                                                    check_in: @js($task->hotelDetails->check_in),
-                                                    check_out: @js($task->hotelDetails->check_out),
-                                                    room_number: @js($task->hotelDetails->room_number),
-                                                    meal_type: @js($task->hotelDetails->meal_type),
+                                                    hotel_id: @js($task->hotelDetails?->hotel_id),
+                                                    hotel_name: @js($task->hotelDetails?->hotel?->name ?? 'N/A'),
+                                                    room_type: @js($task->hotelDetails?->room_type),
+                                                    check_in: @js($task->hotelDetails?->check_in),
+                                                    check_out: @js($task->hotelDetails?->check_out),
+                                                    room_number: @js($task->hotelDetails?->room_number),
+                                                    meal_type: @js($task->hotelDetails?->meal_type),
                                                 },
                                                 @elseif($task->type === 'insurance' && $task->insuranceDetails)
                                                 insuranceDetails: {
@@ -980,6 +986,7 @@
                                                     expiry_date: @js($task->visaDetails->expiry_date),
                                                     number_of_entries: @js($task->visaDetails->number_of_entries),
                                                     stay_duration: @js($task->visaDetails->stay_duration),
+                                                    appointment_date: @js($task->visaDetails->appointment_date),
                                                 },
                                                 @elseif($task->type === 'flight' && $task->flightDetail->isNotEmpty())
                                                 flightDetails: @js($task->flightDetail->map(function($flight) {
@@ -1313,59 +1320,59 @@
                                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                                                     <div class="sm:col-span-3">
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Hotel Name</p>
-                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->name ?? 'N/A' }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails?->hotel?->name ?? 'N/A' }}</p>
                                                     </div>
 
-                                                    @if($task->hotelDetails->hotel)
+                                                    @if($task->hotelDetails?->hotel)
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Address</p>
-                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->address ?? 'N/A' }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails?->hotel?->address ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">City</p>
-                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->city ?? 'N/A' }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails?->hotel?->city ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Country</p>
-                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails->hotel->country ?? 'N/A' }}</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails?->hotel?->country ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Phone</p>
-                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->phone ?? 'N/A' }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails?->hotel?->phone ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Zip Code</p>
-                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->zip_code ?? 'N/A' }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails?->hotel?->zip_code ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Email</p>
-                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails->hotel->email ?? 'N/A' }}</p>
+                                                        <p class="text-sm font-medium text-gray-900">{{ $task->hotelDetails?->hotel?->email ?? 'N/A' }}</p>
                                                     </div>
                                                     @endif
 
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Room Type</p>
-                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails->room_type ?? 'N/A' }}</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails?->room_type ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Room Number</p>
-                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails->room_number ?? 'N/A' }}</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails?->room_number ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Meal Type</p>
-                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails->meal_type ?? 'N/A' }}</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->hotelDetails?->meal_type ?? 'N/A' }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Check In</p>
-                                                        <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->format('D, d M Y') }}</p>
+                                                        <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails?->check_in)->format('D, d M Y') }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Check Out</p>
-                                                        <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails->check_out)->format('D, d M Y') }}</p>
+                                                        <p class="text-sm text-gray-900">{{ \Carbon\Carbon::parse($task->hotelDetails?->check_out)->format('D, d M Y') }}</p>
                                                     </div>
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Duration</p>
-                                                        <p class="text-sm text-gray-900 font-semibold">{{ \Carbon\Carbon::parse($task->hotelDetails->check_in)->diffInDays($task->hotelDetails->check_out) }} Nights</p>
+                                                        <p class="text-sm text-gray-900 font-semibold">{{ \Carbon\Carbon::parse($task->hotelDetails?->check_in)->diffInDays($task->hotelDetails?->check_out) }} Nights</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1395,6 +1402,10 @@
                                                     <div>
                                                         <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Stay Duration</p>
                                                         <p class="text-sm text-gray-900">{{ $task->visaDetails->stay_duration ?? 'N/A' }}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p class="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Appointment Date</p>
+                                                        <p class="text-sm text-gray-900">{{ $task->visaDetails->appointment_date ?? 'N/A' }}</p>
                                                     </div>
                                                 </div>
                                             </div>

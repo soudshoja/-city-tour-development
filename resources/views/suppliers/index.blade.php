@@ -74,6 +74,8 @@
                                             placeholder="Select Country" />
                                     </div>
 
+                                    @include('suppliers.partials.whatsapp-group-field', ['supplier' => null])
+
                                     @include('suppliers.partials.service-toggles', ['supplier' => new \App\Models\Supplier()])
 
                                     <div class="mt-5 flex items-center justify-between">
@@ -351,6 +353,8 @@
                                                                             :selectedId="$supplier->country->id"
                                                                             :selectedName="$supplier->country->name" />
                                                                     </div>
+
+                                                                    @include('suppliers.partials.whatsapp-group-field', ['supplier' => $supplier])
 
                                                                     @include('suppliers.partials.service-toggles', ['supplier' => $supplier])
 
@@ -715,6 +719,8 @@
                                                                     :selectedId="$supplier->country->id ?? null"
                                                                     :selectedName="$supplier->country->name ?? ''" />
                                                             </div>
+
+                                                            @include('suppliers.partials.whatsapp-group-field', ['supplier' => $supplier])
 
                                                             @include('suppliers.partials.service-toggles', ['supplier' => $supplier])
 

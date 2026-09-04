@@ -26,6 +26,7 @@ use App\Exceptions\Accounting\PostingException;
 use App\Services\Accounting\DocumentDraft;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PostingSeam;
+use App\Models\Country;
 use DateTimeImmutable;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -95,7 +96,8 @@ class AgentController extends Controller
 
     public function show($id)
     {
-        $agent = Agent::with('agentType', 'branch.company', 'tasks', 'invoices', 'clients')->findOrFail($id);
+        $agent = Agent::with('agentType', 'branch.company', 'tasks', 'invoices', 'clients', 'nationality')->findOrFail($id);
+        $countries = Country::orderBy('name')->get(['id', 'name', 'nationality']);
 
         Gate::authorize('view', $agent);
 
@@ -215,6 +217,13 @@ class AgentController extends Controller
 
         $clientCount = Client::where('agent_id', $agent->id)->count();
 
+        // Clients belonging to THIS agent (direct agent_id OR client_agents
+        // pivot) for the "Auto-assign client" dropdown in the Edit Agent modal.
+        // Scoped to the agent's own clients only — not all company clients.
+        $assignableClients = $agent->clientQuery()
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
         return view('agents.agentsShow', compact(
             'agent',
             'agentType',
@@ -234,6 +243,8 @@ class AgentController extends Controller
             'bonuses',
             'clientCount',
             'filterBonus',
+            'countries',
+            'assignableClients',
         ));
     }
 
@@ -366,11 +377,16 @@ class AgentController extends Controller
             // being rolled back for any other reason) undoes the user AND agent updates too,
             // leaving state exactly as it was before the request — not just the salary write.
             DB::transaction(function () use ($agent, $user, $request, $salaryChanged, $idempotencyKey) {
-                $user->update([
-                    'name' => $request->name,
-                    'email' => $request->email,
-                    'password' => Hash::make($request->password),
-                ]);
+                // Only touch user fields that were actually submitted. The Edit Agent modal
+                // (agentsShow.blade.php) has no password field, so a blanket update wiped the
+                // user's login on every save (Hash::make(null) -> real hash of empty string).
+                $userPayload = [];
+                if ($request->filled('name'))     $userPayload['name'] = $request->name;
+                if ($request->filled('email'))    $userPayload['email'] = $request->email;
+                if ($request->filled('password')) $userPayload['password'] = Hash::make($request->password);
+                if (! empty($userPayload)) {
+                    $user->update($userPayload);
+                }
 
                 $agent->update($request->all());
 

@@ -9,6 +9,10 @@
     $menuCompanyId = $menuUser ? getCompanyId($menuUser) : null;
     $menuCompany = $menuCompanyId ? \App\Models\Company::find($menuCompanyId) : null;
     $hasAccountingModule = $menuCompany && $menuCompany->hasModule(\App\Support\Modules::ACCOUNTING);
+    // Module 5 — Resayil WhatsApp CRM. Same fail-open-by-absence semantics
+    // as every other module flag (Company::hasModule()) — a company with no
+    // module.resayil row shows the item; module.resayil=false hides it.
+    $hasResayilModule = $menuCompany && $menuCompany->hasModule(\App\Support\Modules::RESAYIL);
 @endphp
 <nav class="w-full">
     <menu class="flex flex-wrap gap-8 mx-4">
@@ -83,12 +87,10 @@
             </menuitem>
             @endif
             @endcan
-            @can('viewAny', 'App\Models\Charge')
-            <menuitem><div
-                data-tooltip="This feature has been relocated to Settings."
-                class="rounded-lg shadow-lg text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow cursor-not-allowed">Manage Charges</div>
-            </menuitem>
-            @endcan
+            {{-- "Manage Charges" moved to Settings (visible, highlighted "Coming soon"
+                 item — see settings/index.blade.php) instead of staying here as a dead
+                 disabled link. Same @can('viewAny', 'App\Models\Charge') gate as before,
+                 just relocated to where it structurally belongs. --}}
             <!-- @can('viewAny', 'App\Models\Account')
             <menuitem><a href="{{ route('accounting.transaction') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Transactions</a>
@@ -98,6 +100,9 @@
             @if($hasAccountingModule)
             <menuitem><a href="{{ route('accounting.index') }}"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Accounting</a>
+            </menuitem>
+            <menuitem><a href="{{ route('journal-entries.all') }}"
+                class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Journal Entries</a>
             </menuitem>
             @endif
             @endcan
@@ -148,6 +153,24 @@
         </menu>
         </menuitem>
 
+        {{-- Module 5 — Resayil WhatsApp CRM full-page view. No @can wrapper:
+             there is no dedicated Policy for this feature yet, so the
+             module flag alone gates it (still fully hides for companies
+             without the module, and the route itself 404s independently). --}}
+        @if($hasResayilModule)
+        <menuitem>
+        <a href="{{ route('resayil.index') }}"
+            class="bg-gray-200 dark:bg-gray-700 dark:text-white p-2 flex justify-center items-center w-full BoxShadow">
+            {{-- Real Resayil brand mark - same asset as the drawer badge and
+                 launcher bubble. Explicit width/height stop the row shifting
+                 on load; h-4 matches the sibling menu icons. --}}
+            <img src="{{ asset('images/ResayilLogoIcon.png') }}" alt=""
+                width="160" height="149" class="h-4 w-auto shrink-0">
+            <span class="px-2 text-sm">Resayil</span>
+        </a>
+        </menuitem>
+        @endif
+
         <menuitem>
         <a class="bg-gray-200 dark:bg-gray-700 dark:text-white p-2 flex justify-center items-center w-full BoxShadow">
             <x-icons.users class="w-4 h-4" />
@@ -157,13 +180,13 @@
         <menu>
             @can('viewAny', 'App\Models\User')
             <menuitem>
-            <a href="{{ route('users.index') }}"
+            <a href="{{ route('users.index') }}" wire:navigate
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Users List</a>
             </menuitem>
             @endcan
             @can('viewAny', 'App\Models\Company')
             <menuitem>
-            <a href="{{ route('companies.list') }}"
+            <a href="{{ route('companies.list') }}" wire:navigate
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Companies List</a>
             </menuitem>
             @endcan
@@ -332,7 +355,7 @@
         </a>
         <menu>
             <menuitem>
-            <a href="{{ route('settings.index') }}"
+            <a href="{{ route('settings.index') }}" wire:navigate
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Settings</a>
             @can('manage-system-settings')
             <menu class="flex px-2">
@@ -383,11 +406,17 @@
                 @endif
             </menu>
             </menuitem>
+            {{-- Help hidden from Settings per product decision. Also appears (same
+                 treatment applied) in layouts/mobile-drawer.blade.php's Settings
+                 submenu — no other occurrences found elsewhere in the app. Left as a
+                 comment rather than deleted so it's trivially restorable. --}}
+            {{--
             <menuitem>
             <a href="#"
                 class="text-xs justify-center text-center p-3 my-3 bg-white text-gray-600 dark:bg-gray-700 dark:text-white BoxShadow">Help
             </a>
             </menuitem>
+            --}}
             <!-- Main Menu Item -->
             <menuitem>
             @can('viewAny', App\Models\CurrencyExchange::class)

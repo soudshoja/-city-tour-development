@@ -1,0 +1,52 @@
+{
+  "name": "Schema Normalizer",
+  "description": "Normalizes extraction results to unified task schema for Laravel",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "name": "Merge Extraction Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Schema Normalizer: Converts extraction results to Laravel task schema\n// Phase 2: Simple heuristic extraction (Phase 3 will use GPT-4o)\n\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const input = item.json;\n  \n  // Initialize normalized task structure\n  const extractionResult = {\n    tasks: [],\n    metadata: {\n      extraction_method: input.extraction_method,\n      document_type: input.document_type,\n      supplier_id: input.supplier_id,\n      company_id: input.company_id,\n      file_path: input.file_path,\n      confidence_score: input.confidence_score || null,\n      text_length: input.text_length || null,\n      processing_timestamp: input.processing_timestamp || new Date().toISOString()\n    }\n  };\n  \n  // Handle deferred AIR processing\n  if (input.document_type === 'air' && input.extraction_status === 'deferred') {\n    extractionResult.deferred = true;\n    extractionResult.message = input.message;\n    extractionResult.deferred_reason = input.deferred_reason || 'AIR processing deferred to Laravel';\n    \n    results.push({\n      json: {\n        document_id: input.document_id,\n        extraction_status: 'deferred',\n        extraction_result: extractionResult,\n        callback_url: input.callback_url\n      }\n    });\n    continue;\n  }\n  \n  // Handle extraction errors\n  if (input.extraction_status === 'error') {\n    results.push({\n      json: {\n        document_id: input.document_id,\n        extraction_status: 'error',\n        error: {\n          code: input.error_code,\n          message: input.error_message,\n          context: {\n            document_type: input.document_type,\n            file_path: input.file_path\n          }\n        },\n        callback_url: input.callback_url\n      }\n    });\n    continue;\n  }\n  \n  // Extract text for processing\n  const text = input.extracted_text || '';\n  \n  // Phase 2 heuristic extraction: Simple keyword matching\n  // Phase 3 will use GPT-4o for complex parsing\n  \n  // Check for flight booking keywords\n  const hasFlightKeywords = /flight|ticket|booking|PNR|passenger|airline|itinerary/i.test(text);\n  \n  if (hasFlightKeywords) {\n    // Extract basic flight task (Phase 2 minimal extraction)\n    const task = {\n      task_type: 'flight',\n      status: 'pending_review',\n      reference_number: extractReferenceNumber(text),\n      passenger_name: extractPassengerName(text),\n      amount: null, // Not extracted in Phase 2\n      currency: null,\n      notes: text.substring(0, 500), // First 500 chars for manual review\n      extracted_at: new Date().toISOString()\n    };\n    extractionResult.tasks.push(task);\n  } else {\n    // Unknown document type - flag for manual review\n    extractionResult.tasks.push({\n      task_type: 'unknown',\n      status: 'pending_manual_classification',\n      notes: text.substring(0, 500),\n      extracted_at: new Date().toISOString()\n    });\n  }\n  \n  // Add email-specific metadata if available\n  if (input.document_type === 'email') {\n    extractionResult.metadata.email_subject = input.email_subject || '';\n    extractionResult.metadata.email_from = input.email_from || '';\n    extractionResult.metadata.email_date = input.email_date || '';\n  }\n  \n  results.push({\n    json: {\n      document_id: input.document_id,\n      extraction_status: input.extraction_status || 'success',\n      extraction_result: extractionResult,\n      callback_url: input.callback_url\n    }\n  });\n}\n\n// Helper function: Extract reference number (PNR)\nfunction extractReferenceNumber(text) {\n  const pnrMatch = text.match(/PNR[:\\s]+([A-Z0-9]{6})/i);\n  if (pnrMatch) return pnrMatch[1];\n  \n  const bookingMatch = text.match(/booking[\\s#:]+([A-Z0-9]{6,10})/i);\n  if (bookingMatch) return bookingMatch[1];\n  \n  const refMatch = text.match(/reference[\\s#:]+([A-Z0-9]{6,10})/i);\n  if (refMatch) return refMatch[1];\n  \n  return null;\n}\n\n// Helper function: Extract passenger name\nfunction extractPassengerName(text) {\n  const nameMatch = text.match(/passenger[:\\s]+([A-Z][A-Z\\s]{2,40})/i);\n  if (nameMatch) return nameMatch[1].trim();\n  \n  const mrMatch = text.match(/(?:MR|MRS|MS|MISS)[\\s.]+([A-Z][A-Z\\s]{2,40})/i);\n  if (mrMatch) return mrMatch[1].trim();\n  \n  return null;\n}\n\nreturn results;"
+      },
+      "name": "Normalize to Task Schema",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Merge Extraction Results": {
+      "main": [
+        [
+          {
+            "node": "Normalize to Task Schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "meta": {
+    "description": "Schema normalization pipeline. Merges extraction results from all processors and converts to unified Laravel task schema.",
+    "extraction_logic": {
+      "phase2": "Simple heuristic keyword matching",
+      "phase3": "GPT-4o integration for complex parsing"
+    },
+    "task_types": [
+      "flight",
+      "visa",
+      "hotel",
+      "unknown"
+    ]
+  }
+}

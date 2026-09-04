@@ -128,13 +128,17 @@
                     <x-icons.chevron-down class="w-4 h-4 transition-transform duration-200" x-bind:class="activeMenu === 'finances' ? 'rotate-180' : ''" />
                 </button>
                 <div x-show="activeMenu === 'finances'" x-collapse class="mobile-drawer-submenu">
+                    @if($hasAccountingModule)
                     <a href="{{ route('coa.index') }}" class="mobile-drawer-subitem">Chart of Account</a>
                     <a href="{{ route('bank-payments.index') }}" class="mobile-drawer-subitem">Payment Voucher</a>
                     <a href="{{ route('receipt-voucher.index') }}" class="mobile-drawer-subitem">Receipt Voucher</a>
                     <a href="{{ route('receivable-details.receivable-create') }}" class="mobile-drawer-subitem">Receivable</a>
                     <a href="{{ route('payable-details.payable-create') }}" class="mobile-drawer-subitem">Payable</a>
+                    @endif
                     @can('viewCompanySummary', 'App\Models\Account')
+                    @if($hasAccountingModule)
                     <a href="{{ route('accounting.index') }}" class="mobile-drawer-subitem">Accounting</a>
+                    @endif
                     @endcan
                 </div>
             </div>
@@ -176,9 +180,9 @@
                     <x-icons.chevron-down class="w-4 h-4 transition-transform duration-200" x-bind:class="activeMenu === 'users' ? 'rotate-180' : ''" />
                 </button>
                 <div x-show="activeMenu === 'users'" x-collapse class="mobile-drawer-submenu">
-                    <a href="{{ route('users.index') }}" class="mobile-drawer-subitem">Users List</a>
+                    <a href="{{ route('users.index') }}" wire:navigate class="mobile-drawer-subitem">Users List</a>
                     @can('viewAny', 'App\Models\Company')
-                    <a href="{{ route('companies.list') }}" class="mobile-drawer-subitem">Companies List</a>
+                    <a href="{{ route('companies.list') }}" wire:navigate class="mobile-drawer-subitem">Companies List</a>
                     @endcan
                     @can('viewAny', App\Models\Branch::class)
                     <a href="{{ route('branches.index') }}" class="mobile-drawer-subitem">Branches List</a>
@@ -193,7 +197,16 @@
             </div>
             @endcan
 
-            @can('viewAny', 'App\Models\Report')
+            {{--
+                No blanket @can('viewAny', 'App\Models\Report') wrapper around
+                this accordion (unlike the Finances one above): ReportPolicy::viewAny
+                is itself gated on the accounting module, so wrapping the whole
+                accordion in it previously hid Task Report and Client Report from
+                package clients who should see them — those abilities
+                (viewTaskReport -> task_uploader, viewClientReport -> crm) don't
+                depend on viewAny. Each item below carries its own @can, mirroring
+                menu.blade.php's Reports section exactly.
+            --}}
             <div class="mobile-drawer-accordion">
                 <button @click="activeMenu = activeMenu === 'reports' ? null : 'reports'" class="mobile-drawer-accordion-btn">
                     <div class="flex items-center gap-3">
@@ -203,22 +216,36 @@
                     <x-icons.chevron-down class="w-4 h-4 transition-transform duration-200" x-bind:class="activeMenu === 'reports' ? 'rotate-180' : ''" />
                 </button>
                 <div x-show="activeMenu === 'reports'" x-collapse class="mobile-drawer-submenu">
+                    @can('viewAny', 'App\Models\Report')
+                    @if($hasAccountingModule)
                     <a href="{{ route('reports.paid-report') }}" class="mobile-drawer-subitem">Paid Acc Pay/Receive</a>
                     <a href="{{ route('reports.unpaid-report') }}" class="mobile-drawer-subitem">Unpaid Acc Pay/Receive</a>
+                    @endif
+                    @endcan
                     @can('viewProfitLoss', 'App\Models\Report')
+                    @if($hasAccountingModule)
                     <a href="{{ route('reports.profit-loss') }}" class="mobile-drawer-subitem">Profit & Loss</a>
+                    @endif
                     @endcan
                     @can('viewSettlement', 'App\Models\Report')
+                    @if($hasAccountingModule)
                     <a href="{{ route('reports.settlements') }}" class="mobile-drawer-subitem">Bank Settlement</a>
+                    @endif
                     @endcan
                     @can('viewAny', 'App\Models\CoaCategory')
+                    @if($hasAccountingModule)
                     <a href="{{ route('coa.transaction') }}" class="mobile-drawer-subitem">Transaction List</a>
+                    @endif
                     @endcan
                     @can('viewCreditors', 'App\Models\Report')
+                    @if($hasAccountingModule)
                     <a href="{{ route('reports.creditors') }}" class="mobile-drawer-subitem">Creditors Report</a>
+                    @endif
                     @endcan
                     @can('viewDailySales', 'App\Models\Report')
+                    @if($hasAccountingModule)
                     <a href="{{ route('reports.daily-sales') }}" class="mobile-drawer-subitem">Daily Sales</a>
+                    @endif
                     @endcan
                     @can('viewTaskReport', 'App\Models\Report')
                     <a href="{{ route('reports.tasks') }}" class="mobile-drawer-subitem">Task Report</a>
@@ -226,9 +253,11 @@
                     @can('viewClientReport', 'App\Models\Report')
                     <a href="{{ route('reports.client') }}" class="mobile-drawer-subitem">Client Report</a>
                     @endcan
+                    @can('viewPaymentGatewaysReport', 'App\Models\Report')
+                    <a href="{{ route('reports.payment-gateways') }}" class="mobile-drawer-subitem">Payment Gateways Report</a>
+                    @endcan
                 </div>
             </div>
-            @endcan
 
             <div class="mobile-drawer-accordion">
                 <button @click="activeMenu = activeMenu === 'settings' ? null : 'settings'" class="mobile-drawer-accordion-btn">
@@ -239,7 +268,7 @@
                     <x-icons.chevron-down class="w-4 h-4 transition-transform duration-200" x-bind:class="activeMenu === 'settings' ? 'rotate-180' : ''" />
                 </button>
                 <div x-show="activeMenu === 'settings'" x-collapse class="mobile-drawer-submenu">
-                    <a href="{{ route('settings.index') }}" class="mobile-drawer-subitem">Settings</a>
+                    <a href="{{ route('settings.index') }}" wire:navigate class="mobile-drawer-subitem">Settings</a>
                     @can('manage-system-settings')
                     <a href="{{ route('system-settings.index') }}" class="mobile-drawer-subitem">System Settings</a>
                     @endcan
@@ -254,10 +283,14 @@
                     @if(in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY]))
                     <a href="{{ route('docs.developer-documentation') }}" class="mobile-drawer-subitem">Developer Docs</a>
                     @endif
-                    <a href="#" class="mobile-drawer-subitem">Help</a>
+                    {{-- Help hidden from Settings per product decision (same treatment as
+                         layouts/menu.blade.php's desktop Settings submenu). --}}
+                    {{-- <a href="#" class="mobile-drawer-subitem">Help</a> --}}
                     @can('viewAny', App\Models\CurrencyExchange::class)
+                    @if($hasAccountingModule)
                     <a href="{{ route('exchange.index') }}" class="mobile-drawer-subitem">Currency Exchange</a>
                     <a href="{{ route('exchange.histories.all') }}" class="mobile-drawer-subitem">Exchange History</a>
+                    @endif
                     @endcan
                 </div>
             </div>
@@ -274,6 +307,7 @@
                 @endif
 
                 @can('viewAny', App\Models\CurrencyExchange::class)
+                @if($hasAccountingModule)
                 <div class="mobile-drawer-currency-exchange"
                     x-data="currencyConverter({ companyId: window.APP_COMPANY_ID, convertUrl: '{{ route('exchange.convert') }}'})">
                     <button @click="showModal = true" class="currency-exchange-btn">
@@ -378,6 +412,7 @@
                         </div>
                     </template>
                 </div>
+                @endif
                 @endcan
 
                 <div class="mobile-drawer-profile-actions">

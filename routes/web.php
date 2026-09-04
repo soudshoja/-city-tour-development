@@ -52,11 +52,19 @@ use App\Livewire\NotificationIndex;
 use App\Models\Role;
 use App\Models\Task;
 use Illuminate\Support\Facades\Route;
+use App\Models\Charge;
+use App\Http\Controllers\ResayilAdminController;
+use App\Http\Controllers\ResayilEmbedController;
+use App\Http\Controllers\VoucherTemplateController;
+use App\Http\Controllers\VoucherController;
+use App\Http\Controllers\PublicVoucherController;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 
 Route::middleware(['auth'])->group(function () {
 
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/ai-health-status', [DashboardController::class, 'aiHealthStatus'])->name('dashboard.ai-health');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -107,10 +115,36 @@ Route::middleware(['auth'])->group(function () {
     // why the P2.5.E upgrade was applied in place rather than as a second, competing endpoint.
 
     // Admin users
+    //
+    // Fix 4 (pre-pilot defect list, spec correction PKG-1) investigation
+    // result, 2026-08-25: the group-level 'role:admin' middleware below is
+    // DELIBERATELY left commented out — restoring it as written would be a
+    // *regression*, not a fix. It resolves via Spatie's RoleMiddleware
+    // (bootstrap/app.php: 'role' => RoleMiddleware::class), which checks
+    // $user->hasRole('admin') — a DIFFERENT authorization system from the
+    // one this app actually uses everywhere else in this file (the
+    // role_id integer column). Verified directly against the dev DB: a
+    // real admin (role_id === Role::ADMIN) exists with no Spatie 'admin'
+    // role assigned at all, and would be locked out by this line as
+    // written. It would also wrongly block company-owner (Role::COMPANY)
+    // access to routes below that intentionally allow it (users.edit,
+    // users.role, users.updateInfo — see their inline checks).
+    //
+    // What actually guards this group today (verified per-route, not
+    // assumed): users.index -> Gate::authorize('viewAny', User::class)
+    // (Spatie permission 'view user'); companies.index, companiesnew.new,
+    // companies.store, users.set-company -> inline
+    // role_id === Role::ADMIN; users.edit, users.role, users.updateInfo ->
+    // inline role_id in [ADMIN, COMPANY] (users.role and users.updateInfo
+    // had NO check at all before this fix — closed here); users.create ->
+    // intentionally open to any authenticated user (linked from
+    // agents/branches/clients/companies views for company-scoped
+    // self-service creation, not an admin-only action); company-invites.*
+    // -> CompanyInviteController::authorizeAdmin() (role_id === ADMIN) on
+    // every action, already correctly gated.
     Route::group([
         'prefix' => 'users',
         // 'as' => 'users.',
-        // 'middleware' => ['role:admin'],
     ], function () {
         Route::get('/adminsList', [AdminUsersController::class, 'index'])->name('users.index');
         Route::get('/companies', [AdminUsersController::class, 'ShowCompanies'])->name('companies.index');
@@ -121,6 +155,13 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/update-role', [AdminUsersController::class, 'storeRole'])->name('users.role');
         Route::put('/{user}/update-info', [AdminUsersController::class, 'updateInfo'])->name('users.updateInfo');
         Route::post('/set-company', [AdminUsersController::class, 'setCompany'])->name('users.set-company');
+
+        // Company invites — admin only. Gate enforced in-controller via
+        // CompanyInviteController::authorizeAdmin() (role_id === Role::ADMIN).
+        Route::get('/company-invites', [\App\Http\Controllers\CompanyInviteController::class, 'index'])->name('company-invites.index');
+        Route::post('/company-invites', [\App\Http\Controllers\CompanyInviteController::class, 'store'])->name('company-invites.store');
+        Route::post('/company-invites/{invite}/cancel', [\App\Http\Controllers\CompanyInviteController::class, 'cancel'])->name('company-invites.cancel');
+        Route::post('/company-invites/{invite}/resend', [\App\Http\Controllers\CompanyInviteController::class, 'resend'])->name('company-invites.resend');
     });
 
     Route::group([
@@ -208,7 +249,13 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/get-tasks', [TaskController::class, 'getTasks'])->name('get-tasks');
         Route::get('/search-original-tasks', [TaskController::class, 'searchOriginalTasks'])->name('search-original-tasks');
         Route::get('/show/{id}', [TaskController::class, 'show'])->name('show');
-        Route::get('/voucher', [TaskController::class, 'voucher'])->name('voucher');
+        // Step 4 (plan section 14.13): removed. GET /tasks/voucher pointed at
+        // TaskController::voucher, a method that never existed -- 500'd on
+        // every hit, zero real usage (grepped: no route('tasks.voucher') call
+        // anywhere in app/resources). The real per-task voucher UI now lives
+        // at GET vouchers/task/{task} (VoucherController::indexForTask), a
+        // fresh name rather than reclaiming this one, since the dead symbol
+        // carried no id and did not fit an issue-a-voucher action shape.
         Route::put('/update/{id}', [TaskController::class, 'update'])->name('update');
         Route::post('/upload', [TaskController::class, 'upload'])->name('upload');
         Route::get('/agents/{agentId}', [TaskController::class, 'getAgentTask'])->name('agent');
@@ -216,8 +263,34 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/supplier-task/{id}', [TaskController::class, 'supplierTask'])->name('supplier');
         Route::post('/agent/upload', [TaskController::class, 'supplierTaskForAgent'])->name('agent.upload');
         Route::get('/get-tbo/{companyId}', [TaskController::class, 'getTboTask'])->name('get-tbo');
-        Route::get('/pdf/flight/{taskId}', [TaskController::class, 'flightPdf'])->name('pdf.flight')->withoutMiddleware(['auth']);
-        Route::get('/pdf/hotel/{taskId}', [TaskController::class, 'hotelPdf'])->name('pdf.hotel')->withoutMiddleware(['auth']);
+        // Step 4 item 5 (plan section 11.3, section 15 V3): CLOSED. No usage of
+        // tasks.pdf.flight found anywhere outside the authenticated admin UI
+        // (resources/views/invoice/index.blade.php's staff-facing links), so
+        // auth is safely required again; flightPdf() below now also scopes
+        // its query by company_id.
+        Route::get('/pdf/flight/{taskId}', [TaskController::class, 'flightPdf'])->name('pdf.flight')->middleware('throttle:60,1');
+        // Step 4 item 5: NOT closed, deliberately, and flagged for the owner.
+        // grep -rn 'tasks/pdf' found TWO live production paths that build this
+        // exact unauthenticated URL and hand it to a real end customer with no
+        // Laravel session -- both inside files this session is forbidden to
+        // edit (accounting boundary, plan section 2):
+        //   - PaymentController::registerTBOBookingAsTask() (lines ~997, ~1096)
+        //     returns 'hotel_voucher_url' => route('tasks.pdf.hotel', ...) in the
+        //     JSON response of the fully public POST /api/payment/register-tbo-booking
+        //     webhook (routes/api.php:55, no auth middleware at all).
+        //   - InvoiceController::autoGenerateInvoice() (line ~6346) posts the same
+        //     URL as 'hotel_voucher' to an n8n webhook alongside the client's own
+        //     phone number and a WhatsApp message -- i.e. this URL is actively
+        //     forwarded to real clients today.
+        // Requiring auth here would break both flows for every real customer
+        // mid-booking. Per this feature's own binding boundary ("If you think
+        // you must change one, STOP and report instead"), this route stays
+        // public+unscoped and only gets a throttle as a partial mitigation. The
+        // real fix is for whoever owns PaymentController/InvoiceController to
+        // repoint those two call sites at the new tokenised travel-voucher.show
+        // route BEFORE this one can safely require auth -- reported to the owner,
+        // not silently worked around.
+        Route::get('/pdf/hotel/{taskId}', [TaskController::class, 'hotelPdf'])->name('pdf.hotel')->withoutMiddleware(['auth'])->middleware('throttle:60,1');
         Route::get('/pdf/receipt/{taskId}', [TaskController::class, 'receiptPdf'])->name('pdf.receipt');
         Route::get('/pdf/receipt/{taskId}/download', [TaskController::class, 'receiptPdfDownload'])->name('pdf.receipt.download');
         Route::post('/upload', [TaskController::class, 'clientPassport'])->name('upload.passport');
@@ -257,6 +330,7 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'suppliers',
         'as' => 'suppliers.',
     ], function () {
+        Route::get('/resolve-whatsapp-group', [SupplierController::class, 'resolveWhatsappGroup'])->name('resolve-wa-group');
         Route::get('/{suppliersId}/export-excel', [SupplierController::class, 'exportExcel'])->name('suppliers.export.excel');
         Route::get('/{suppliersId}/export-pdf', [SupplierController::class, 'exportPdf'])->name('suppliers.export.pdf');
         Route::post('/store', [SupplierController::class, 'store'])->name('store');
@@ -472,7 +546,12 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/chat/upload', [ChatController::class, 'handleFileUpload'])->name('chat.handleFileUpload');
 
     // MyMyFatoorah
-    Route::get('callback', [MyFatoorahController::class, 'callback'])->name('myfatoorah.callback');
+    // Route name deconflicted from the vendor package's own 'myfatoorah.callback'
+    // (vendor/myfatoorah/laravel-package registers GET myfatoorah/callback under that
+    // exact name via its ServiceProvider) — pre-existing on feat/travelerp-launch before
+    // this merge (composer.json is identical both sides; this collision predates it),
+    // but broke `php artisan route:cache`, one of this merge's required gates.
+    Route::get('callback', [MyFatoorahController::class, 'callback'])->name('app.myfatoorah.callback');
     Route::get('/myfatoorah/pay-now', [MyFatoorahController::class, 'index'])->name('myfatoorah.paynow');
     Route::get('checkout', [MyFatoorahController::class, 'checkout'])->name('myfatoorah.checkout');
 
@@ -497,6 +576,7 @@ Route::middleware(['auth'])->group(function () {
         'as' => 'journal-entries.',
         'middleware' => ['module:accounting'],
     ], function () {
+        Route::get('/all', [JournalEntryController::class, 'all'])->name('all');
         Route::get('/{transactionId}', [JournalEntryController::class, 'index'])->name('index');
         Route::get('/{accountId}/account', [JournalEntryController::class, 'show'])->name('show');
         Route::get('/{accountId}/export/pdf', [JournalEntryController::class, 'exportPdf'])->name('export.pdf');
@@ -576,6 +656,11 @@ Route::middleware(['auth'])->group(function () {
             // hitting the former's 404, so each value now has its own
             // route gated to its own module instead of one endpoint gated
             // module:accounting that silently withheld an unrelated value.
+            // (Merge fixup 2026-09-04: the merge's non-conflicting auto-merge
+            // reintroduced a group-level 'module:accounting' middleware here,
+            // silently defeating the split this comment describes and 404ing
+            // dashboard-stats-profit-agent for every package client with
+            // agent_profit but not accounting — removed.)
             Route::get('/dashboard-stats', [ReportController::class, 'getDashboardStats'])->name('dashboard-stats')->middleware('module:accounting');
             Route::get('/dashboard-stats/profit-agent', [ReportController::class, 'getDashboardProfitAgentStat'])->name('dashboard-stats-profit-agent')->middleware('module:agent_profit');
         });
@@ -763,6 +848,7 @@ Route::middleware(['auth'])->group(function () {
             ->name('show.public')
             ->withoutMiddleware(['auth'])
             ->middleware('signed');
+        Route::post('/{refund}/void', [RefundController::class, 'void'])->name('void');
         Route::get('/eligible-tasks', [RefundController::class, 'getEligibleTasks'])->name('eligible-tasks');
     });
 
@@ -896,9 +982,22 @@ Route::middleware(['auth'])->group(function () {
         Route::put('update-manual', [CurrencyExchangeController::class, 'updateManual'])->name('update.manual');
         Route::put('update-auto', [CurrencyExchangeController::class, 'updateAuto'])->name('update.auto');
         Route::put('update-method/{id}', [CurrencyExchangeController::class, 'updateMethod'])->name('update.method');
-        Route::post('convert', [CurrencyExchangeController::class, 'convertFromSidebar'])->name('convert');
         Route::get('histories', [CurrencyExchangeController::class, 'allHistories'])->name('histories.all');
     });
+
+    // exchange/convert is deliberately OUTSIDE the exchange.* group above: it's
+    // a currency-conversion utility (used by tasks/index.blade.php to price a
+    // task in a non-KWD currency) rather than an accounting screen — a Task
+    // Uploader dependency, not an Accounting one. The rest of the exchange.*
+    // group (rate management screen, history, manual/auto rate edits) stays
+    // module:accounting since those really are ledger-FX-rate administration.
+    // The sidebar/mobile-drawer currency-converter WIDGET also posts here, but
+    // stays invisible to a non-accounting company via its own
+    // @if($hasAccountingModule) blade guard — this route-level change only
+    // affects direct/task-price callers.
+    Route::post('exchange/convert', [CurrencyExchangeController::class, 'convertFromSidebar'])
+        ->name('exchange.convert')
+        ->middleware('module:task_uploader');
 
     Route::get('update-rate', [SystemExchangeRateController::class, 'updateExchangeRate'])->name('update-rate');
 
@@ -971,6 +1070,8 @@ Route::middleware(['auth'])->group(function () {
     // while rendering (not just on click), so deleting the route without
     // touching the views would have turned every split-payment invoice page
     // into a 500 (RouteNotFoundException).
+    // useCreditNow() exists on dev as a Credit-row-only write that bypasses
+    // PaymentApplicationService; not merged (see MERGE-PLAN-DEV-INTO-LAUNCH-2026-09-04.md S-2).
     Route::group([
         'prefix' => 'credits',
         'as' => 'credits.',
@@ -984,7 +1085,15 @@ Route::middleware(['auth'])->group(function () {
         'prefix' => 'settings',
         'as' => 'settings.',
     ], function () {
-        Route::get('/', [SettingController::class, 'index'])->name('index');
+        // `resayil.frame` (redesign, 2026-08-26): the WhatsApp tab embedded
+        // on this page (SettingController::index() -> resayil.admin._panel)
+        // can render the same Resayil iframe as the standalone
+        // resayil-admin.index route, so this response needs the matching
+        // CSP frame-src header. Harmless for every user without WhatsApp
+        // access: ResayilFrameHeaders always emits SOME header (a bare
+        // `frame-src 'self'` when there is nothing to allow), it does not
+        // block anything this page did not already avoid framing.
+        Route::get('/', [SettingController::class, 'index'])->name('index')->middleware('resayil.frame');
 
         Route::group([
             'prefix' => 'invoice',
@@ -1004,6 +1113,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/agent-loss', [SettingController::class, 'storeAgentLoss'])->name('agent-loss.store');
         Route::post('/agent-loss/bulk-update', [SettingController::class, 'bulkUpdateAgentLoss'])->name('agent-loss.bulk-update');
         Route::delete('/agent-loss/{id}', [SettingController::class, 'deleteAgentLoss'])->name('agent-loss.delete');
+        Route::get('/ai', [SettingController::class, 'getAiConfig'])->name('ai');
+        Route::post('/ai', [SettingController::class, 'updateAiConfig'])->name('ai.update');
+        Route::get('/ai/models', [SettingController::class, 'aiModels'])->name('ai.models');
+        Route::post('/ai/test', [SettingController::class, 'aiTest'])->name('ai.test');
         Route::get('/notifications', [SettingController::class, 'getNotificationSettings'])->name('notifications');
         Route::post('/notifications', [SettingController::class, 'updateNotificationSetting'])->name('notifications.update');
         Route::get('/agent-notifications', [SettingController::class, 'getAgentNotifications'])->name('agent-notifications');
@@ -1023,6 +1136,106 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/accounting-settings', [SettingController::class, 'getAccountingSettings'])->name('accounting-settings');
             Route::post('/accounting-settings', [SettingController::class, 'storeAccountingSettings'])->name('accounting-settings.store');
         });
+
+        /*
+        | Voucher Templates gallery (.planning/specs/VOUCHER-TEMPLATES.md
+        | §16 step 3, §8). Both routes read-only, both scoped to
+        | getCompanyId(Auth::user()) inside the controller — deliberately
+        | INSIDE this authenticated `settings` group, unlike the `terms`
+        | route group elsewhere in this file, which the plan documents as
+        | a known, unfixed hole (unauthenticated + no company scoping on
+        | its mutations, §11.4). Nothing under this prefix mutates
+        | anything: no create/edit/delete route exists here at all
+        | (plan §14.8 — clients pick among shipped designs, they do not
+        | edit or upload their own).
+        */
+        Route::group([
+            'prefix' => 'voucher-templates',
+            'as' => 'voucher-templates.',
+        ], function () {
+            Route::get('/', [VoucherTemplateController::class, 'gallery'])->name('index');
+            Route::get('/preview/{taskType}/{language}', [VoucherTemplateController::class, 'preview'])->name('preview');
+        });
+    });
+
+    /*
+    | Voucher issue/send actions on a task or a package (Step 4, plan
+    | .planning/specs/VOUCHER-TEMPLATES.md section 10, section 16). A SIBLING
+    | of the settings group above (not nested — same reason as the
+    | Resayil Admin Center group directly below: nesting would prefix
+    | every name with settings.). Inherits 'auth' from the outer wrap;
+    | issuing/sending needs no dedicated permission (plan section 11.5 —
+    | normal authenticated task access is enough), and every method
+    | inside VoucherController still scopes explicitly by
+    | getCompanyId(Auth::user()) rather than trusting route-model-binding
+    | alone (plan section 2.4 discipline).
+    */
+    Route::group([
+        'prefix' => 'vouchers',
+        'as' => 'vouchers.',
+    ], function () {
+        Route::get('/task/{task}', [VoucherController::class, 'indexForTask'])->name('task.index');
+        Route::post('/task/{task}/issue', [VoucherController::class, 'issueForTask'])->name('task.issue');
+        Route::post('/task/{task}/attach-client', [VoucherController::class, 'attachClient'])->name('task.attach-client');
+        Route::post('/package/{package}/issue', [VoucherController::class, 'issueForPackage'])->name('package.issue');
+        Route::get('/{voucher}/download', [VoucherController::class, 'download'])->name('download');
+        Route::post('/{voucher}/send', [VoucherController::class, 'send'])->name('send');
+        Route::post('/{voucher}/cancel', [VoucherController::class, 'cancel'])->name('cancel');
+    });
+
+    /*
+    | Module 5 — Resayil Admin Center (Settings -> WhatsApp).
+    | Plan: .planning/specs/RESAYIL-ADMIN-CENTER.md §4.1 / §9.2.
+    |
+    | A SIBLING of the `settings` group above, deliberately NOT nested
+    | inside it: nesting would prefix every route name with `settings.`
+    | and silently turn `resayil-admin.index` into
+    | `settings.resayil-admin.index`, breaking every route() call.
+    |
+    | It sits inside the outer auth group, so 'auth' is inherited and is
+    | not repeated here. Middleware ORDER MATTERS: `module:resayil` runs
+    | first and 404s a company without the module (EnsureModuleEnabled
+    | aborts 404, never 403, so an un-entitled company cannot even learn
+    | this section exists); `can:manage-resayil` then 403s roles outside
+    | {ADMIN, COMPANY} for companies that DO have the module.
+    |
+    | `resayil.frame` (redesign, 2026-08-26): NOW applied. The Inbox tab
+    | added by the redesign embeds the same <x-resayil-frame> iframe the
+    | drawer and /resayil full page already use, so this route needs the
+    | same CSP frame-src allowlist they carry. ResayilFrameHeaders degrades
+    | gracefully when RESAYIL_EMBED_URL is unset (emits a bare
+    | `frame-src 'self'`, which simply matches "no iframe on this page" —
+    | it does not error and does not block anything that isn't already
+    | absent).
+    */
+    Route::group([
+        'prefix' => 'settings/whatsapp',
+        'as' => 'resayil-admin.',
+        'middleware' => ['module:resayil', 'can:manage-resayil', 'resayil.frame'],
+    ], function () {
+        Route::get('/', [ResayilAdminController::class, 'index'])->name('index');
+
+        // JSON feed for the panel's Alpine poller / manual refresh.
+        // `throttle:resayil-overview-refresh` (registered in
+        // AppServiceProvider) only counts `?refresh=1` requests — the
+        // routine unthrottled 60 s poll is a cache read and does nothing
+        // to the reseller API. A forced refresh does one upstream call and
+        // one DB write per hit, and was unthrottled for every company user
+        // (abuse surface fix, wave 3).
+        Route::get('/overview-data', [ResayilAdminController::class, 'overviewData'])
+            ->middleware('throttle:resayil-overview-refresh')
+            ->name('overview');
+
+        // Panel 4 — Billing. Payment history is a reseller read and needs
+        // no company key; invoice PDFs do, and render the "available once
+        // linked" state until slice 2 captures one.
+        Route::get('/billing/payments', [ResayilAdminController::class, 'payments'])->name('billing.payments');
+
+        // Operator collections lever (§5.5, owner decision D-2). ADMIN
+        // role only — re-checked inside the controller, because this gate
+        // admits COMPANY too. Pausing takes a live WhatsApp number dark.
+        Route::post('/device/pause', [ResayilAdminController::class, 'pauseDevice'])->name('device.pause');
+        Route::post('/device/resume', [ResayilAdminController::class, 'resumeDevice'])->name('device.resume');
     });
 
     Route::group([
@@ -1190,6 +1403,28 @@ Route::group([
     Route::post('/{id}/decline-reconcile', [BankPaymentController::class, 'declineReconcile'])->name('decline-reconcile');
 });
 
+/*
+| Public tokenised voucher route (Step 4 item 2, plan .planning/specs/VOUCHER-TEMPLATES.md
+| section 3.6 / section 11.1). Deliberately in this file region: OUTSIDE the top-level
+| Route::middleware(['auth'])->group(...) wrap, same as receipt-voucher/.show and
+| bank-payments above -- no exemption dance needed here because this whole
+| group carries no 'auth' middleware at all.  is UNTRUSTED URL input
+| (same caution as InvoiceController::generatePdf's own comment) -- every
+| lookup is TravelVoucher::scopeForPublicToken(, ), which
+| double-scopes by company_id AND token AND excludes every
+| TravelVoucher::PUBLICLY_DEAD_STATUSES status. throttle:30,1 because the
+| URL shape (companyId + token) is enumerable-shaped even though the
+| 64-char token itself is not guessable (plan section 11.1).
+*/
+Route::group([
+    'prefix' => 'travel-voucher',
+    'as' => 'travel-voucher.',
+    'middleware' => ['throttle:30,1'],
+], function () {
+    Route::get('/{companyId}/{token}', [PublicVoucherController::class, 'show'])->name('show');
+    Route::get('/{companyId}/{token}/pdf', [PublicVoucherController::class, 'pdf'])->name('pdf');
+});
+
 // EXPORT
 Route::get('/download-company', [ExportController::class, 'downloadCompany'])->name('download.company');
 Route::get('/download-agent', [ExportController::class, 'downloadAgent'])->name('download.agent');
@@ -1206,7 +1441,7 @@ Route::get('export-companies', [CompanyController::class, 'exportCsv'])->name('c
 Route::get('export-agents', [AgentController::class, 'exportCsv'])
     ->middleware(['auth', 'module:agent_profit'])
     ->name('agents.exportCsv');
-Route::get('export-tasks', [TaskController::class, 'exportCsv'])->name('tasks.exportCsv');
+Route::get('export-tasks', [TaskController::class, 'exportCsv'])->name('tasks.exportCsv')->middleware('auth');
 
 Route::get('export-clients', [TaskController::class, 'exportCsv'])->name('clients.exportCsv');
 
@@ -1225,7 +1460,6 @@ Route::match(['get', 'post'], '/payments/callback', [PaymentController::class, '
 Route::match(['get', 'post'], '/payments/error', [PaymentController::class, 'handleMyFatoorahError'])->name('payments.error');
 
 Route::get('docs/magic-webhook', [SupplierController::class, 'magicReserveWebhookDocs'])->name('magic-webhook-docs');
-
 Route::group(['prefix' => 'docs', 'as' => 'docs.'], function () {
     Route::get('/user', fn () => view('docs.user-documentation'))->name('user-documentation')->middleware('auth');
     Route::get('/api', fn () => view('docs.api-documentation'))->name('api-documentation');
@@ -1335,5 +1569,132 @@ Route::middleware(['auth', 'dotw_audit_access'])
         Route::redirect('api-tokens', '/admin/dotw', 301)->name('api-tokens');
     });
 
-require __DIR__.'/auth.php';
+// Task action requests — owner Approve/Deny via tokenized link from
+// in-app notification, email, or WhatsApp. No auth required (token is
+// sufficient entropy: 32 random chars, single-use via status check).
+Route::prefix('task-action-requests')->name('task-action-request.')->group(function () {
+    Route::get('/{token}', [\App\Http\Controllers\TaskActionRequestController::class, 'show'])->name('show');
+    Route::get('/{token}/approve', [\App\Http\Controllers\TaskActionRequestController::class, 'approve'])->name('approve');
+    Route::get('/{token}/deny', [\App\Http\Controllers\TaskActionRequestController::class, 'deny'])->name('deny');
+});
+
+// Public company self-registration (invite-token gated)
+Route::get('/register/company/{token}', [\App\Http\Controllers\CompanyRegistrationController::class, 'show'])
+    ->middleware('throttle:20,1')->name('company-register.show');
+Route::get('/register/company/{token}/agents-template', [\App\Http\Controllers\CompanyRegistrationController::class, 'agentsTemplate'])
+    ->middleware('throttle:20,1')->name('company-register.agents-template');
+Route::post('/register/company/{token}', [\App\Http\Controllers\CompanyRegistrationController::class, 'store'])
+    ->middleware('throttle:5,1')->name('company-register.store');
+
+require __DIR__ . '/auth.php';
+
+// ── AIR uploader dashboard actions (citycomm) — 2026-06-02 ──
+Route::middleware('auth')->prefix('air/uploader')->name('air.uploader.')->group(function () {
+
+    // Remove a stale/dead heartbeat row
+    Route::post('/remove-host', function (\Illuminate\Http\Request $r) {
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        $host = (string) $r->input('host_id', '');
+        if ($host !== '') {
+            \Illuminate\Support\Facades\DB::table('uploader_heartbeats')->where('host_id', $host)->delete();
+        }
+        return back();
+    })->name('remove-host');
+
+    // Review held + errored files with their reasons + the office (PCC) they belong to
+    Route::get('/logs', function () {
+        abort_unless(auth()->user()?->hasRole('admin'), 403);
+        $base = '/home/citycomm/AIR';
+        $rows = [];
+        foreach (['NOT LOADED' => 'error', 'NOT LOADED/unregistered_agent' => 'held'] as $dir => $kind) {
+            foreach (glob("$base/$dir/*.AIR") ?: [] as $f) {
+                $reason = $kind;
+                $sc = $f . '.error.json';
+                if (is_file($sc)) {
+                    $j = json_decode(@file_get_contents($sc), true);
+                    $reason = $j['reason'] ?? $kind;
+                }
+                // Extract the office / PCC code(s) from the file content (cheap — first 800 bytes)
+                $office = '?';
+                $head = @file_get_contents($f, false, null, 0, 800);
+                if ($head && preg_match_all('/\b(KWIKT[0-9A-Z]{3,5})\b/', $head, $mm)) {
+                    $office = implode(', ', array_values(array_unique($mm[1])));
+                }
+                $rows[] = [
+                    'file'   => basename($f),
+                    'kind'   => $kind,
+                    'reason' => $reason,
+                    'office' => $office,
+                    'mtime'  => @filemtime($f) ?: 0,
+                ];
+            }
+        }
+        usort($rows, fn($a, $b) => $b['mtime'] <=> $a['mtime']);
+        $shown = array_slice($rows, 0, 300);
+        // office summary (counts across ALL held/errored, not just shown)
+        $byOffice = [];
+        foreach ($rows as $r) { $byOffice[$r['office']] = ($byOffice[$r['office']] ?? 0) + 1; }
+        arsort($byOffice);
+        $h = '<!doctype html><html><head><meta charset="utf-8"><title>AIR Uploader Logs</title>'
+           . '<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"></head>'
+           . '<body class="p-4" style="background:#f5f7fa"><div class="container-fluid" style="max-width:1050px">'
+           . '<h5 class="mb-3">AIR Uploader — Held &amp; Errored Files '
+           . '<small class="text-muted">(' . count($rows) . ' total, showing ' . count($shown) . ')</small> '
+           . '<a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary float-end">&larr; Back</a></h5>';
+        // office summary chips
+        $h .= '<div class="mb-3">';
+        foreach ($byOffice as $off => $n) {
+            $h .= '<span class="badge bg-secondary-subtle text-secondary me-1">' . e($off) . ' &middot; ' . $n . '</span>';
+        }
+        $h .= '</div>';
+        $h .= '<table class="table table-sm table-hover bg-white"><thead class="table-light"><tr>'
+           . '<th>File</th><th>Office (PCC)</th><th>Type</th><th>Reason</th><th>When</th></tr></thead><tbody>';
+        foreach ($shown as $r) {
+            $badge = $r['kind'] === 'held'
+                ? '<span class="badge bg-warning text-dark">held</span>'
+                : '<span class="badge bg-danger">error</span>';
+            $h .= '<tr><td><code>' . e($r['file']) . '</code></td>'
+                . '<td><span class="badge bg-light text-dark border">' . e($r['office']) . '</span></td>'
+                . '<td>' . $badge . '</td>'
+                . '<td>' . e($r['reason']) . '</td>'
+                . '<td class="text-muted small">' . ($r['mtime'] ? date('Y-m-d H:i', $r['mtime']) : '-') . '</td></tr>';
+        }
+        if (empty($shown)) {
+            $h .= '<tr><td colspan="5" class="text-center text-muted py-4">No held or errored files.</td></tr>';
+        }
+        $h .= '</tbody></table>'
+            . '<p class="text-muted small"><span class="badge bg-warning text-dark">held</span> = withheld by the agent gate (unregistered agent / orphan modification) — recoverable. '
+            . '<span class="badge bg-danger">error</span> = genuine processing failure. '
+            . '<strong>Office (PCC)</strong> = the GDS office code(s) found in the file — lets you see which agency the ticket belongs to.</p>'
+            . '</div></body></html>';
+        return response($h);
+    })->name('logs');
+});
+
+// Module 5 — Resayil WhatsApp CRM full-page view. A TOP-LEVEL statement
+// (sibling to the air/uploader group immediately above, same indentation,
+// same explicit 'auth' pattern) — NOT nested inside it or any other group.
+// Gated by module:resayil (App\Http\Middleware\EnsureModuleEnabled — 404 for
+// companies without the module, never a 403, matching every other
+// module-gated route) and resayil.frame (App\Http\Middleware\ResayilFrameHeaders
+// — CSP so the Resayil iframe is actually allowed to load).
+//
+// The GET below is READ-ONLY on purpose (security fix, 2026-08-26 —
+// blockers 1 & 3): it used to also provision a Resayil workspace/team
+// member as a side effect of the page render, with no role check. Any
+// action that creates or links an external Resayil identity now lives on
+// the POST route in its OWN middleware group directly below, which layers
+// `can:manage-resayil` (ADMIN + COMPANY only) UNDER `module:resayil` —
+// same gate as Settings -> WhatsApp, and CSRF-protected like every other
+// POST route in this app. `resayil.frame` is intentionally NOT applied to
+// the POST: it sets a frame-ancestors CSP for the iframe response, which a
+// redirect-back action has no use for.
+Route::middleware(['auth', 'module:resayil', 'resayil.frame'])->group(function () {
+    Route::get('/resayil', [ResayilEmbedController::class, 'index'])->name('resayil.index');
+});
+
+Route::middleware(['auth', 'module:resayil', 'can:manage-resayil'])->group(function () {
+    Route::post('/resayil/provision', [ResayilEmbedController::class, 'provision'])->name('resayil.provision');
+});
+
 require __DIR__.'/resailai-admin.php';

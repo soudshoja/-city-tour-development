@@ -196,6 +196,54 @@
                                             <path fill="none" stroke="#00ab55" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m4.144 16.735l.493-3.425a.97.97 0 0 1 .293-.587l9.665-9.664a1.03 1.03 0 0 1 .973-.281a5.1 5.1 0 0 1 2.346 1.372a5.1 5.1 0 0 1 1.384 2.346a1.07 1.07 0 0 1-.282.973l-9.664 9.664a1.17 1.17 0 0 1-.598.294l-3.437.492a1.044 1.044 0 0 1-1.173-1.184m8.633-11.846l4.41 4.398M3.79 21.25h16.42" opacity=".5" />
                                         </svg>
                                     </a>
+
+                                    @if(auth()->user()?->hasAnyRole(['admin','accountant']) && $refund->status !== 'voided')
+                                        @php
+                                            $voidTotalCreated = (float) \App\Models\Credit::where('refund_id', $refund->id)->where('type', \App\Models\Credit::REFUND)->sum('amount');
+                                            $voidTotalUsed = abs((float) \App\Models\Credit::where('refund_id', $refund->id)->where('type', \App\Models\Credit::INVOICE)->sum('amount'));
+                                            $voidJeCount = \App\Models\JournalEntry::where('type','refund')->where('voucher_number', (string)$refund->id)->count();
+                                            $voidBlocked = $voidTotalUsed > 0;
+                                        @endphp
+                                        <div x-data="{ open: false }" class="inline-block">
+                                            <button type="button" @click="open = true" data-tooltip-left="Void refund" class="main-action-icon">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <polyline points="3 6 5 6 21 6"/>
+                                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                                    <path d="M10 11v6M14 11v6"/>
+                                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                                </svg>
+                                            </button>
+                                            <div x-cloak x-show="open" class="fixed inset-0 z-50 flex items-center justify-center bg-gray-800 bg-opacity-75">
+                                                <div class="bg-white rounded-lg p-6 max-w-lg w-full mx-4 text-left">
+                                                    <h2 class="text-lg font-bold mb-3">Void Refund {{ $refund->refund_number }}?</h2>
+                                                    <div class="text-sm text-gray-700 space-y-1 mb-4">
+                                                        <p>This will:</p>
+                                                        <ul class="list-disc pl-6">
+                                                            <li>Reverse <strong>{{ $voidJeCount }}</strong> journal {{ Str::plural('entry', $voidJeCount) }}</li>
+                                                            <li>Remove client credit of <strong>KWD {{ number_format($voidTotalCreated, 3) }}</strong></li>
+                                                            <li>Restore original invoice status (currently {{ ucfirst($refund->originalInvoice?->status ?? 'n/a') }})</li>
+                                                            <li>Mark refund as <strong>Voided</strong> (soft-deleted, audit trail preserved)</li>
+                                                        </ul>
+                                                    </div>
+                                                    @if($voidBlocked)
+                                                        <div class="bg-red-100 border border-red-300 text-red-800 text-sm rounded p-3 mb-4">
+                                                            <strong>Blocked.</strong> KWD {{ number_format($voidTotalUsed, 3) }} of this refund's credit has been applied to invoice(s).
+                                                            Detach the credit from those invoices first, then retry the void.
+                                                        </div>
+                                                    @endif
+                                                    <div class="flex justify-end gap-2">
+                                                        <button type="button" @click="open = false" class="px-4 py-2 bg-gray-300 rounded">Cancel</button>
+                                                        @unless($voidBlocked)
+                                                            <form action="{{ route('refunds.void', $refund->id) }}" method="POST">
+                                                                @csrf
+                                                                <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded">Void Refund</button>
+                                                            </form>
+                                                        @endunless
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

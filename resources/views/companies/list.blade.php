@@ -27,6 +27,15 @@
                     </svg>
                 </div>
             </a>
+            <a href="{{ route('company-invites.index') }}">
+                <div data-tooltip-left="Invite new company"
+                    class="relative w-12 h-12 flex items-center justify-center DarkBGcolor rounded-full shadow-sm cursor-pointer">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#fff" d="M2 6a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v6.5a6.5 6.5 0 0 0-9.98 8.5H4a2 2 0 0 1-2-2zm2 .887V8l8 5l8-5V6.887l-8 5l-8-5z" />
+                        <path fill="#fff" d="M19 14a1 1 0 0 1 1 1v2h2a1 1 0 1 1 0 2h-2v2a1 1 0 1 1-2 0v-2h-2a1 1 0 1 1 0-2h2v-2a1 1 0 0 1 1-1" />
+                    </svg>
+                </div>
+            </a>
         </div>
     </div>
 

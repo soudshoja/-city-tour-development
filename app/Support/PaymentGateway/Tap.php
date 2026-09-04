@@ -64,7 +64,7 @@ class Tap
         $paymentMethod = $request->input('payment_method_id') ? PaymentMethod::find($request->input('payment_method_id'))->code : 'src_all';
 
         $data = [
-            'amount' => $request->input('finalAmount'),
+            'amount' => number_format((float) $request->input('finalAmount'), 3, '.', ''),
             'currency' => 'KWD',
             'save_card' => false,
             'customer' => [

@@ -27,6 +27,7 @@
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">Transaction Date</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">Issued Date</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Client Name</th>
+                            <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Passenger</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Reference</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Status</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">Description</th>
@@ -38,7 +39,7 @@
                     </thead>
                     <tbody class="text-gray-900 dark:text-gray-100">
                         <tr>
-                            <td colspan="10" class="text-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">No transactions available</td>
+                            <td colspan="11" class="text-center px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">No transactions available</td>
                         </tr>
                     </tbody>
                 </table>
@@ -51,6 +52,7 @@
                         <tr>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Transaction Date</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Client Name</th>
+                            <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Passenger</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Reference</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/6 text-center">Status</th>
                             <th class="px-4 py-2 border border-gray-300 dark:border-gray-600 w-1/4 text-center">Description</th>
@@ -76,6 +78,13 @@
                             <td class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">
                                 @if ($journalEntry->task && $journalEntry->task->client_name)
                                     {{ $journalEntry->task->client_name }}
+                                @else
+                                    Not Set
+                                @endif
+                            </td>
+                            <td class="px-4 py-2 border border-gray-300 dark:border-gray-600 text-center">
+                                @if ($journalEntry->task && $journalEntry->task->passenger_name)
+                                    {{ $journalEntry->task->passenger_name }}
                                 @else
                                     Not Set
                                 @endif

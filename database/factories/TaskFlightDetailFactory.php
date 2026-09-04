@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Country;
 use App\Models\TaskFlightDetail;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -24,11 +25,15 @@ class TaskFlightDetailFactory extends Factory
             'task_id' => Task::factory(),
             'farebase' => $this->faker->randomFloat(2, 100, 1000),
             'departure_time' => $this->faker->dateTime('now', 'Asia/Kuala_Lumpur'),
-            'country_id_from' => $this->faker->numberBetween(1, 200),
+            // Merge fixup: task_flight_details.country_id_from/_to are constrained() FKs
+            // to countries(id) — countries is normally seeded in a real app DB, but
+            // nothing seeds it for a fresh RefreshDatabase test run, so a random
+            // 1-200 guess always violated the FK there. Real rows via the factory.
+            'country_id_from' => Country::factory(),
             'airport_from' => $this->faker->regexify('[A-Z]{3}'),
             'terminal_from' => $this->faker->optional()->word(),
             'arrival_time' => $this->faker->dateTime('now', 'Asia/Kuala_Lumpur'),
-            'country_id_to' => $this->faker->numberBetween(1, 200),
+            'country_id_to' => Country::factory(),
             'airport_to' => $this->faker->regexify('[A-Z]{3}'),
             'terminal_to' => $this->faker->optional()->word(),
             'airline_id' => $this->faker->numberBetween(1, 50),

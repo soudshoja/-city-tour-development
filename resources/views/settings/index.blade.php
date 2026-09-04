@@ -61,6 +61,41 @@
                         {{ __('settings.terms_regulations') }}
                     </button>
 
+                    {{-- Voucher Templates (plan .planning/specs/VOUCHER-TEMPLATES.md
+                         §16 step 3). A gallery of the shipped designs, next
+                         to Terms as the plan names it. No @can wrapper: same
+                         as the Terms tab above, this page has no dedicated
+                         permission yet (plan §11.5 is explicitly
+                         [USER-DECIDE] and unresolved) — visible to anyone
+                         who reaches Settings, matching the existing Terms
+                         precedent rather than inventing a new gate alone. --}}
+                    <button
+                        @click="saveTab('voucher-templates')"
+                        :class="{'setting-sidebar-btn-active': activeTab === 'voucher-templates'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        Voucher Templates
+                    </button>
+
+                    {{-- "Manage Charges" — relocated here from the Finances menu, where it
+                         was a dead disabled link to the retired charges.index page (see
+                         menu.blade.php history). Kept visible and highlighted per product
+                         decision rather than buried or removed outright: this is a roadmap
+                         item, not a broken link, so it gets an explicit "Coming soon" pill
+                         instead of a greyed-out/disabled look. Same @can gate as before. --}}
+                    @can('viewAny', 'App\Models\Charge')
+                    <button type="button" disabled aria-disabled="true"
+                        class="setting-sidebar-btn setting-sidebar-btn-soon">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="setting-sidebar-item-label">Manage Charges</span>
+                        <span class="main-tab-badge main-tab-badge-amber setting-sidebar-item-badge">Coming soon</span>
+                    </button>
+                    @endcan
+
                     @can('viewAny', 'App\Models\Charge')
                     <button
                         @click="saveTab('charges')"
@@ -133,6 +168,48 @@
                         {{ __('settings.accounting') }}
                     </button>
                     @endcan
+                    @if(auth()->user()->role_id === \App\Models\Role::ADMIN)
+                    <button
+                        @click="saveTab('ai-config')"
+                        :class="{'setting-sidebar-btn-active': activeTab === 'ai-config'}"
+                        class="setting-sidebar-btn">
+                        <svg class="setting-sidebar-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                        </svg>
+                        AI Configuration
+                    </button>
+                    @endif
+
+                    {{-- Module 5 — Resayil Admin Center (Settings -> WhatsApp).
+                         Redesign (2026-08-26): this used to be a plain <a>
+                         that navigated away from Settings to its own page —
+                         the owner's core complaint ("the inbox opens as its
+                         own page and leaves Settings"). It is now a real tab,
+                         matching every other entry in this sidebar: a
+                         saveTab() button plus a matching x-show panel below
+                         that @includes the same partial the standalone
+                         /settings/whatsapp route renders (resayil.admin.index
+                         still works as a direct link; it @includes the
+                         identical partial so the two never drift apart).
+
+                         Gated by BOTH the module flag and the same
+                         manage-resayil gate the route carries, so a user who
+                         would be 404'd or 403'd on the standalone route never
+                         sees the tab at all — SettingController::index()
+                         applies the identical check before it even builds
+                         $resayilOverview. --}}
+                    @if(($currentCompanyId ?? null) && \App\Models\Company::find($currentCompanyId)?->hasModule(\App\Support\Modules::RESAYIL))
+                    @can('manage-resayil')
+                    <button
+                        @click="saveTab('whatsapp')"
+                        :class="{'setting-sidebar-btn-active': activeTab === 'whatsapp'}"
+                        class="setting-sidebar-btn">
+                        <img src="{{ asset('images/ResayilLogoIcon.png') }}" alt="" width="160" height="149"
+                             class="setting-sidebar-icon" style="width:1.25rem;height:auto;object-fit:contain;">
+                        <span class="setting-sidebar-item-label">WhatsApp</span>
+                    </button>
+                    @endcan
+                    @endif
                 </nav>
             </div>
 
@@ -147,6 +224,9 @@
                 </div>
                 <div x-show="activeTab === 'terms'" x-cloak>
                     @include('settings.partial.terms_condition')
+                </div>
+                <div x-show="activeTab === 'voucher-templates'" x-cloak>
+                    @include('settings.partial.voucher_templates')
                 </div>
                 @can('viewAny', 'App\Models\Charge')
                 <div x-show="activeTab === 'charges'" x-cloak x-ref="chargesTab">
@@ -178,6 +258,28 @@
                     @include('settings.partial.accounting')
                 </div>
                 @endcan
+
+                @if(auth()->user()->role_id === \App\Models\Role::ADMIN)
+                <div x-show="activeTab === 'ai-config'" x-cloak>
+                    @include('settings.partial.ai_config')
+                </div>
+                @endif
+
+                @if(($currentCompanyId ?? null) && \App\Models\Company::find($currentCompanyId)?->hasModule(\App\Support\Modules::RESAYIL))
+                @can('manage-resayil')
+                <div x-show="activeTab === 'whatsapp'" x-cloak>
+                    @include('resayil.admin._panel', [
+                        'overview' => $resayilOverview,
+                        'companyId' => $currentCompanyId,
+                        'isOperator' => auth()->user()->role_id === \App\Models\Role::ADMIN,
+                        'activePanel' => $resayilActivePanel ?? 'overview',
+                        'embedUrl' => $resayilEmbedUrl ?? null,
+                        'notConfigured' => $resayilNotConfigured ?? true,
+                        'embedded' => true,
+                    ])
+                </div>
+                @endcan
+                @endif
             </div>
         </div>
     </div>
@@ -215,6 +317,10 @@
                 window.Alpine && Alpine.nextTick(() => {
                     window.dispatchEvent(new CustomEvent('accounting-tab-loaded'));
                 });
+            } else if ("{{ $activeTab }}" === 'ai-config') {
+                window.Alpine && Alpine.nextTick(() => {
+                    window.dispatchEvent(new CustomEvent('ai-config-tab-loaded'));
+                });
             }
         });
 
@@ -226,18 +332,23 @@
                 tabLabels: {
                     'payment': '{{ __('settings.payment') }}',
                     'terms': '{{ __('settings.terms_regulations') }}',
+                    'voucher-templates': 'Voucher Templates',
                     'charges': '{{ __('settings.payment_gateways') }}',
                     'payment-methods': '{{ __('settings.payment_methods') }}',
                     'agent-charges': '{{ __('settings.agent_charges') }}',
                     'agent-loss': '{{ __('settings.agent_loss') }}',
                     'notifications': '{{ __('settings.notifications') }}',
                     'accounting': '{{ __('settings.accounting') }}',
+                    'ai-config': 'AI Configuration',
+                    'whatsapp': 'WhatsApp',
                 },
 
                 init() {
                     // Load data for the active tab on page load
                     if (this.activeTab === 'terms') {
                         this.loadTemplates();
+                    } else if (this.activeTab === 'voucher-templates') {
+                        this.loadVoucherCards();
                     }
                 },
 
@@ -258,6 +369,8 @@
 
                     if (tab === 'terms') {
                         this.loadTemplates();
+                    } else if (tab === 'voucher-templates') {
+                        this.loadVoucherCards();
                     } else if (tab === 'charges') {
                         window.dispatchEvent(new CustomEvent('charges-tab-loaded'));
                     } else if (tab === 'payment') {
@@ -272,6 +385,8 @@
                         window.dispatchEvent(new CustomEvent('notifications-tab-loaded'));
                     } else if (tab === 'accounting') {
                         window.dispatchEvent(new CustomEvent('accounting-tab-loaded'));
+                    } else if (tab === 'ai-config') {
+                        window.dispatchEvent(new CustomEvent('ai-config-tab-loaded'));
                     }
                 },
 
@@ -333,6 +448,41 @@
                         console.error('Error loading templates:', error);
                     } finally {
                         this.loadingTemplates = false;
+                    }
+                },
+
+                // Voucher Templates (plan §16 step 3, §8) — read-only
+                // gallery, no create/edit/delete state to track: each card
+                // just needs its preview URLs and whether it is showing a
+                // real booking or a labelled sample.
+                voucherCards: [],
+                loadingVoucherCards: false,
+                voucherCardsError: null,
+
+                async loadVoucherCards() {
+                    if (this.voucherCards.length > 0) return;
+
+                    this.loadingVoucherCards = true;
+                    this.voucherCardsError = null;
+
+                    try {
+                        const response = await fetch('{{ route("settings.voucher-templates.index") }}', {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                            }
+                        });
+                        const data = await response.json();
+                        if (data.success) {
+                            this.voucherCards = data.cards;
+                        } else {
+                            this.voucherCardsError = data.message || 'Could not load voucher templates.';
+                        }
+                    } catch (error) {
+                        console.error('Error loading voucher templates:', error);
+                        this.voucherCardsError = 'Could not load voucher templates.';
+                    } finally {
+                        this.loadingVoucherCards = false;
                     }
                 },
 

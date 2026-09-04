@@ -44,6 +44,12 @@ class TaskVisaSchema
                 'example'     => 'Kuwait',
                 'default' => '',
             ],
+            'appointment_date' => [
+                'type' => 'date',
+                'description' => 'Visa-appointment date (Y-m-d), e.g. VFS appointment.',
+                'example'     => '2026-07-30',
+                'default' => null,
+            ],
         ];
     }
   

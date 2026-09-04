@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 
-<head>
-    <meta charset="utf-8">
+<head><meta charset="utf-8">
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>{{ config('app.name', 'Laravel') }}</title>
@@ -440,10 +440,24 @@
                             @endphp
                             <tr>
                                 <td class="px-6 py-3 text-gray-700 dark:text-slate-200">
-                                    {{ optional($partial->created_at)->format('d M Y') }}
+                                    @php
+                                        $fundingPayment = $partial->payment ?: optional($topupApps->first())->payment;
+                                        $paidOn = $fundingPayment->payment_date ?? null;
+                                    @endphp
+                                    {{ $paidOn ? \Illuminate\Support\Carbon::parse($paidOn)->format('d M Y') : optional($partial->created_at)->format('d M Y') }}
                                 </td>
                                 <td class="px-6 py-3 text-gray-800 dark:text-slate-100">
-                                    {{ $partial->payment_gateway ?? '—' }}
+                                    @php
+                                        $isStaffGw = auth()->user() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::BRANCH, \App\Models\Role::ACCOUNTANT], true);
+                                        $sourceGwForCol = $hasPaymentApplications && $topupApps->isNotEmpty()
+                                            ? optional($topupApps->first()->payment)->payment_gateway
+                                            : null;
+                                    @endphp
+                                    @if($isStaffGw)
+                                        {{ $isCredit ? 'Client Credit' : ($partial->payment_gateway ?? '—') }}{{ $sourceGwForCol ? ' ('.$sourceGwForCol.')' : '' }}
+                                    @else
+                                        —
+                                    @endif
                                 </td>
                                 <td class="px-6 py-3 text-gray-700 dark:text-slate-300">
                                     @if($hasPaymentApplications)
@@ -452,6 +466,9 @@
                                                 <a href="{{ route('payment.link.show', ['companyId' => $company->id, 'voucherNumber' => $app->payment->voucher_number]) }}"
                                                     class="text-blue-500 hover:text-blue-700" target="_blank">{{ $app->payment->voucher_number }}</a>
                                                 <span class="text-xs text-gray-500">({{ number_format($app->amount, 3) }})</span>
+                                                @if($isStaffGw && $app->payment->invoice_reference)
+                                                    <span class="text-xs text-gray-500">&middot; {{ $app->payment->payment_gateway }} Ref: {{ $app->payment->invoice_reference }}</span>
+                                                @endif
                                                 @if(!$loop->last || $refundApps->isNotEmpty())<br>@endif
                                             @endif
                                         @endforeach
@@ -468,6 +485,9 @@
                                     @elseif($voucher)
                                         <a href="{{ route('payment.link.show', ['companyId' => $company->id, 'voucherNumber' => $voucher]) }}"
                                             class="text-blue-500 hover:text-blue-700" target="_blank">{{ $voucher }}</a>
+                                        @if($isStaffGw && optional($partial->payment)->invoice_reference)
+                                            <span class="text-xs text-gray-500">&middot; {{ $partial->payment->payment_gateway }} Ref: {{ $partial->payment->invoice_reference }}</span>
+                                        @endif
                                     @elseif($partial->charge && !$partial->charge->is_system_default)
                                         @if($partial->invoiceReceipt?->transaction?->reference_number)
                                             <a href="{{ route('receipt-voucher.show', ['companyId' => $company->id, 'voucherNumber' => $partial->invoiceReceipt->transaction->reference_number]) }}" class="text-blue-500 hover:text-blue-700" target="_blank">
@@ -477,7 +497,13 @@
                                             <span class="text-gray-600 italic">TBA</span>
                                         @endif
                                     @else
-                                        {{ $isCredit ? 'Client Credit' : 'TBA' }}
+                                        @php
+                                            $isStaff = auth()->user() && in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::BRANCH, \App\Models\Role::ACCOUNTANT], true);
+                                            $sourceGw = $hasPaymentApplications && $topupApps->isNotEmpty()
+                                                ? optional($topupApps->first()->payment)->payment_gateway
+                                                : null;
+                                        @endphp
+                                        {{ $isCredit ? ('Client Credit'.($isStaff && $sourceGw ? ' ('.$sourceGw.')' : '')) : 'TBA' }}
                                     @endif
                                 </td>
                                 <td class="px-6 py-3 text-right font-medium text-gray-900 dark:text-white">
@@ -507,7 +533,12 @@
                 </p>
                 @endif
             </section>
-            @if($journalEntries->isNotEmpty())
+            {{-- $hasAccountingModule gates this section for a company without the
+                 accounting module — the controller also skips building
+                 $journalEntries entirely in that case, this is belt-and-suspenders
+                 (mirrors the $hasAccountingModule pattern used elsewhere: menu,
+                 sidebar, dashboard, invoice/edit). --}}
+            @if(($hasAccountingModule ?? false) && $journalEntries->isNotEmpty())
             <section class="px-8 pt-2 pb-6">
                 <h2 class="text-lg font-semibold text-gray-800 dark:text-white mb-4">Financial Ledger</h2>
                 <div class="overflow-x-auto border border-gray-200 dark:border-slate-700 rounded-lg">

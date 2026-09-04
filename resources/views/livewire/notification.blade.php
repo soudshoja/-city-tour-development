@@ -113,8 +113,47 @@
             @endif
         @endif
 
+        <!-- Action Buttons for Task Action Requests (refund/void/reissue acknowledgment) -->
+        @if($notification->type === 'task_action_request' && $notification->data)
+            @php
+                $tarData = is_array($notification->data) ? $notification->data : json_decode($notification->data, true);
+                $tarToken = $tarData['request_token'] ?? null;
+            @endphp
+
+            @if($tarToken && $this->isTaskActionRequestPending($tarToken))
+                <div class="flex space-x-2 mt-3">
+                    <a href="{{ $tarData['actions']['approve_url'] ?? '#' }}"
+                       class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition-colors">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Approve
+                    </a>
+                    <a href="{{ $tarData['actions']['deny_url'] ?? '#' }}"
+                       class="flex-1 inline-flex justify-center items-center px-3 py-2 border border-gray-300 text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                        Deny
+                    </a>
+                </div>
+            @elseif($tarToken)
+                @php $tarStatus = $this->getTaskActionRequestStatus($tarToken); @endphp
+                @if($tarStatus)
+                    <div class="mt-3 p-2 rounded-md {{ in_array($tarStatus->status, ['approved','auto_approved']) ? 'bg-green-100 text-green-800' : ($tarStatus->status === 'denied' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800') }}">
+                        <span class="text-sm font-medium">
+                            Status: {{ ucfirst(str_replace('_', ' ', $tarStatus->status)) }}
+                            @if($tarStatus->processed_at)
+                                — {{ \Carbon\Carbon::parse($tarStatus->processed_at)->diffForHumans() }}
+                            @endif
+                        </span>
+                    </div>
+                @endif
+            @endif
+        @endif
+
         <!-- Action Buttons for Other Notification Types -->
-        @if($notification->type !== 'client_assignment_request' && $notification->data)
+        @if($notification->type !== 'client_assignment_request' && $notification->type !== 'task_action_request' && $notification->data)
             @php
                 $notificationData = is_array($notification->data) ? $notification->data : json_decode($notification->data, true);
             @endphp

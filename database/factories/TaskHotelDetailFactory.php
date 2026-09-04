@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Models\Hotel;
 use App\Models\TaskHotelDetail;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -21,8 +22,10 @@ class TaskHotelDetailFactory extends Factory
     public function definition(): array
     {
         return [
-            'task_id' => 1, // Will be overridden in tests
-            'hotel_id' => $this->faker->numberBetween(1, 100),
+            'task_id' => Task::factory(), // Will be overridden in tests
+            // Merge fixup: hotel_id is a constrained() FK; a random 1-100 guess
+            // always violated it against a fresh, unseeded hotels table.
+            'hotel_id' => Hotel::factory(),
             'booking_time' => $this->faker->dateTimeBetween('now', '+6 months'),
             'check_in' => $this->faker->dateTimeBetween('now', '+6 months'),
             'check_out' => $this->faker->dateTimeBetween('+1 day', '+1 year'),

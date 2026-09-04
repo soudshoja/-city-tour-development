@@ -21,6 +21,26 @@ use Illuminate\Support\Facades\Log;
 
 class DashboardController extends Controller
 {
+    /**
+     * AI model status for the dashboard card. Returns the cached result of the
+     * scheduled ai:health-check; ?fresh=1 (admin/company) runs the probes live.
+     */
+    public function aiHealthStatus(Request $request)
+    {
+        $user = Auth::user();
+        if (!in_array($user->role_id, [Role::ADMIN, Role::COMPANY, Role::ACCOUNTANT])) {
+            abort(403);
+        }
+
+        if ($request->boolean('fresh') && in_array($user->role_id, [Role::ADMIN, Role::COMPANY])) {
+            $status = \App\Services\AiHealthCheck::run();
+        } else {
+            $status = \App\Services\AiHealthCheck::current();
+        }
+
+        return response()->json(['success' => true, 'status' => $status]);
+    }
+
     public function index(Request $request)
     {
         $serializedData = [];

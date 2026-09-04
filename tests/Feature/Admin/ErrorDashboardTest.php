@@ -130,16 +130,24 @@ class ErrorDashboardTest extends TestCase
     /** @test */
     public function it_shows_per_supplier_error_rates()
     {
+        // Pre-existing bug (present verbatim on both merge parents, not merge-introduced):
+        // document_processing_logs.supplier_id is unsignedBigInteger (FK id), but this test
+        // wrote the string 'supplier_a' — passes silently on SQLite's loose typing but always
+        // fatals as a QueryException on the real MySQL connection this suite actually runs
+        // against (mysql_testing, strict mode). ErrorDashboardController groups by supplier_id
+        // generically (no cast to a Supplier), so a plain int id preserves the test's intent.
+        $supplierAId = 12345;
+
         // Supplier A: 2 failed, 8 completed = 20% error rate
         DocumentProcessingLog::factory()->count(2)->create([
             'company_id' => $this->company->id,
-            'supplier_id' => 'supplier_a',
+            'supplier_id' => $supplierAId,
             'status' => 'failed',
         ]);
 
         DocumentProcessingLog::factory()->count(8)->create([
             'company_id' => $this->company->id,
-            'supplier_id' => 'supplier_a',
+            'supplier_id' => $supplierAId,
             'status' => 'completed',
         ]);
 
@@ -150,7 +158,7 @@ class ErrorDashboardTest extends TestCase
         $supplierErrors = collect($data['supplier_errors']);
 
         $this->assertGreaterThan(0, $supplierErrors->count());
-        $supplierA = $supplierErrors->firstWhere('supplier_id', 'supplier_a');
+        $supplierA = $supplierErrors->firstWhere('supplier_id', $supplierAId);
         $this->assertEquals(10, $supplierA['total']);
         $this->assertEquals(2, $supplierA['failed']);
         $this->assertEquals(20.0, $supplierA['error_rate']);

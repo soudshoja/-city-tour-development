@@ -98,6 +98,7 @@ class BulkInvoicesMail extends Mailable
                 'invoiceDetails.task.hotelDetails.hotel',
                 'invoiceDetails.task.visaDetails',
                 'invoiceDetails.task.insuranceDetails',
+                'invoiceDetails.task.paymentMethod',
             ])
             ->get();
 
@@ -114,6 +115,7 @@ class BulkInvoicesMail extends Mailable
                 'company' => $company,
                 'invoiceDetails' => $invoiceDetails,
                 'isPdf' => true,
+                'staffView' => true,
             ];
 
             // Generate PDF in memory

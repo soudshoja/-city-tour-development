@@ -141,6 +141,10 @@
                 </tr>
                 @endif
                 @endif
+                <tr>
+                    <td class="py-3 px-4">{{ __('invoice.payment_date') }}</td>
+                    <td class="py-3 px-4 {{ $textAlignReverse }}">{{ \Carbon\Carbon::parse($payment->payment_date ?? $payment->created_at)->format('d M Y, H:i') }}</td>
+                </tr>
             </tbody>
         </table>
 

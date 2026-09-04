@@ -20,6 +20,7 @@ class Company extends Model
         'gds_office_id',
         'status',
         'code',
+        'currency',
         'email',
         'logo',
         'iata_code',

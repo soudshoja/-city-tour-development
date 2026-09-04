@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 
 class DocumentProcessingController extends Controller
@@ -56,7 +57,11 @@ class DocumentProcessingController extends Controller
                 'file_path' => $validated['file_path'],
                 'file_size_bytes' => $validated['file_size_bytes'] ?? 0,
                 'file_hash' => $validated['file_hash'] ?? '',
-                'callback_url' => route('api.webhooks.n8n.callback'),
+                // Pre-existing gap (both merge parents, not merge-introduced): see the
+                // identical fixup + comment in ManualInterventionController::queueToN8n().
+                'callback_url' => Route::has('api.webhooks.n8n.callback')
+                    ? route('api.webhooks.n8n.callback')
+                    : url('/api/webhooks/n8n/callback'),
                 'timestamp' => $timestamp,
             ];
 

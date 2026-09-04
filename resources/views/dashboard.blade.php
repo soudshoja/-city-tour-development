@@ -12,11 +12,12 @@
     </style>
     <div class="">
         @php
-            // Same check as resources/views/layouts/menu.blade.php (its @php
-            // block, ~line 11) — computed the identical way so the accounting
-            // stat cards below never render for a company without the
-            // accounting module (they link to routes gated by
-            // App\Http\Middleware\EnsureModuleEnabled / module:accounting).
+            // Computed once per render so accounting-only dashboard widgets
+            // (ledger-derived KPI cards, the AJAX stats fetch) can be hidden
+            // for companies without the accounting module. Mirrors
+            // resources/views/layouts/menu.blade.php exactly (same helper,
+            // same module key) — the same check the route layer enforces via
+            // App\Http\Middleware\EnsureModuleEnabled (module:accounting).
             $dashboardUser = auth()->user();
             $dashboardCompanyId = $dashboardUser ? getCompanyId($dashboardUser) : null;
             $dashboardCompany = $dashboardCompanyId ? \App\Models\Company::find($dashboardCompanyId) : null;
@@ -36,6 +37,103 @@
                 $gridCols = 'sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-1';
             }
         @endphp
+
+        @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('company') || auth()->user()->hasRole('accountant'))
+        <div class="mt-3 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-md" x-data="aiStatusCard()" x-init="load()">
+            <div class="flex items-center justify-between mb-2">
+                <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-200">AI Models Status</h2>
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-400" x-text="checkedAt ? ('Last checked: ' + checkedAt) : ''"></span>
+                    @if(auth()->user()->hasRole('admin') || auth()->user()->hasRole('company'))
+                    <button @click="load(true)" :disabled="loading"
+                        class="text-xs px-2 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50">
+                        <span x-show="!loading">Check now</span>
+                        <span x-show="loading">Checking…</span>
+                    </button>
+                    @endif
+                </div>
+            </div>
+            <div x-show="!probes.length && !loading" class="text-xs text-gray-400">No health check has run yet.</div>
+            <div x-show="stale && probes.length"
+                 class="mb-2 text-[11px] px-2 py-1 rounded border border-amber-200 bg-amber-50 text-amber-700 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-300">
+                Status unknown &mdash; this result is older than {{ \App\Services\AiHealthCheck::STALE_AFTER_MINUTES }} minutes,
+                so the scheduled check may not be running. Press &ldquo;Check now&rdquo; for a live result.
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <template x-for="p in probes" :key="p.label">
+                    <div class="flex items-center gap-2 p-2 rounded border" :class="tone(p).box">
+                        <span class="inline-block w-2.5 h-2.5 rounded-full shrink-0" :class="tone(p).dot"></span>
+                        <div class="min-w-0">
+                            <p class="text-xs font-semibold text-gray-800 dark:text-gray-100">
+                                <span x-text="p.label"></span>
+                                <span class="font-normal" :class="tone(p).text" x-text="' · ' + tone(p).word"></span>
+                            </p>
+                            <p class="text-[11px] text-gray-500 dark:text-gray-400 truncate"
+                               x-text="p.model + (p.seconds ? (' · ' + p.seconds + 's') : '')"></p>
+                            <p x-show="p.message" class="text-[11px] truncate" :class="tone(p).text" x-text="p.message" :title="p.message"></p>
+                        </div>
+                    </div>
+                </template>
+            </div>
+        </div>
+        <script>
+            function aiStatusCard() {
+                return {
+                    probes: [],
+                    checkedAt: '',
+                    stale: false,
+                    loading: false,
+                    // Probe states (set server-side by App\Services\AiHealthCheck):
+                    //   ok        - responded
+                    //   degraded  - ONE failed probe. The models routinely show 40-120s
+                    //               tail latency, so a single miss is slow, not down.
+                    //   down      - failed two consecutive checks; admins were paged.
+                    //   disabled  - provider is not in the active fallback chain.
+                    // `stale` overrides all of them: the cached status is older than the
+                    // staleness window, so nothing on this card can be trusted.
+                    tone(p) {
+                        let s = p.state || (p.ok ? 'ok' : 'down');
+                        if (this.stale) s = 'stale';
+                        const map = {
+                            ok:       { box: 'border-emerald-200 bg-emerald-50 dark:bg-emerald-900/20 dark:border-emerald-800', dot: 'bg-emerald-500', text: 'text-gray-500 dark:text-gray-400',   word: 'OK' },
+                            degraded: { box: 'border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800',         dot: 'bg-amber-500',   text: 'text-amber-600 dark:text-amber-400', word: 'degraded / slow' },
+                            down:     { box: 'border-red-200 bg-red-50 dark:bg-red-900/20 dark:border-red-800',                 dot: 'bg-red-500',     text: 'text-red-600 dark:text-red-400',     word: 'DOWN' },
+                            disabled: { box: 'border-gray-200 bg-gray-50 dark:bg-gray-900 dark:border-gray-700',                dot: 'bg-gray-400',    text: 'text-gray-500 dark:text-gray-400',   word: 'not in use' },
+                            stale:    { box: 'border-gray-200 bg-gray-50 dark:bg-gray-900 dark:border-gray-700',                dot: 'bg-gray-400',    text: 'text-gray-500 dark:text-gray-400',   word: 'status unknown (stale)' },
+                        };
+                        return map[s] || map.down;
+                    },
+                    async load(fresh = false) {
+                        this.loading = true;
+                        try {
+                            const r = await fetch('{{ route('dashboard.ai-health') }}' + (fresh ? '?fresh=1' : ''), {
+                                headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                            });
+                            const d = await r.json();
+                            if (d.success && d.status) {
+                                this.probes = Object.values(d.status.probes || {});
+                                this.checkedAt = d.status.checked_at ? new Date(d.status.checked_at).toLocaleString() : '';
+                                this.stale = !!d.status.stale;
+                            } else {
+                                this.probes = [];
+                                this.checkedAt = '';
+                                this.stale = false;
+                            }
+                        } catch (e) {
+                            console.error('AI status load failed', e);
+                        } finally {
+                            this.loading = false;
+                        }
+                    }
+                }
+            }
+        </script>
+        @endif
+
+        
+        @if(auth()->user()->hasRole('admin'))
+            @include('uploader-status')
+        @endif
 
         <div class="grid {{ $gridCols }} gap-3 mt-3">
             @can('viewAny', App\Models\Company::class && auth()->user()->hasRole('admin') || auth()->user()->hasRole('accountant'))
@@ -137,6 +235,9 @@
                     </div>
                 @endif
 
+                {{-- $jazeeraCredit is a JournalEntry query result (ledger data) — gated
+                     on accounting per ruling R8 exception aside, this card is not the
+                     documented exception, so it stays accounting-only. --}}
                 @if ($hasAccountingModule && !empty($jazeeraCredit) && count($jazeeraCredit) > 0)
                     <div class="flex-1 min-w-[45%] ml-0 md:ml-8">
                         <div class="mb-3">
@@ -257,7 +358,20 @@
                 </div>
             </div>
             <div class="my-5 w-full p-10 pt-5 bg-white dark:bg-gray-900 rounded-md shadow-md flex flex-col w-full" id="dashboard-stats-container">
-                @if ($hasAccountingModule)
+                {{--
+                    Payable Supplier / Total Receivable / Total Bank / Gateway
+                    Receivable all link to reports.* routes carrying
+                    EnsureModuleEnabled:accounting — hidden entirely when the
+                    company has no accounting module so a package client never
+                    sees a card that 404s.
+
+                    Profit Agent Wise is the agent_profit module (a package client
+                    pays for it separately) and per ruling R8 the "Total Loss" tile
+                    on that report is a deliberate ledger-derived exception, so this
+                    tile stays visible regardless of $hasAccountingModule — moved
+                    out of the accounting-only grids below.
+                --}}
+                @if($hasAccountingModule)
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
                     <a href="{{ route('reports.payable-supplier') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
@@ -279,17 +393,31 @@
                     </a>
                 </div>
                 @endif
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                <div class="grid grid-cols-1 {{ $hasAccountingModule ? 'md:grid-cols-3' : 'md:grid-cols-1' }} gap-3 mt-3">
                     <a href="{{ route('reports.profit-agent') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
                         <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Profit Agent Wise</p>
                         <p class="text-xs text-koromiko-400 dark:text-koromiko-200">Profit earned by agents</p>
                         <p id="stat-profit-agent" class="text-koromiko-600 dark:text-koromiko-300 text-lg font-semibold">
+                            @if($hasAccountingModule)
                             <span class="stat-loading animate-pulse bg-gray-200 dark:bg-gray-700 rounded h-6 w-20 inline-block"></span>
+                            @else
+                            {{--
+                                reports.ajax.dashboard-stats (the only source for this
+                                figure) also carries EnsureModuleEnabled:accounting, so
+                                there is no gated-safe endpoint left to populate this
+                                tile's value from when accounting is off. Skipping the
+                                fetch (see script below) rather than showing "Error";
+                                a real fix needs a non-accounting-gated endpoint for
+                                just this agent_profit figure — flagged for backend
+                                follow-up, out of scope for a views-only change.
+                            --}}
+                            <span class="text-sm text-gray-400 dark:text-gray-500">—</span>
+                            @endif
                         </p>
                         <span class="absolute top-2 right-2 text-koromiko-400 dark:text-koromiko-200 opacity-0 group-hover:opacity-100 transition-all duration-300 ease-in-out text-sm">↗</span>
                     </a>
-                    @if ($hasAccountingModule)
+                    @if($hasAccountingModule)
                     <a href="{{ route('reports.total-bank') }}"
                         class="relative group flex flex-col gap-1 p-4 border-l-4 border-koromiko-500 bg-koromiko-50 dark:bg-koromiko-700 dark:border-koromiko-300 rounded-md transition-all duration-300 ease-in-out hover:shadow-lg hover:scale-[1.01] cursor-pointer">
                         <p class="text-sm text-koromiko-500 dark:text-koromiko-400 font-medium">Total Bank</p>
@@ -533,13 +661,24 @@
         // }, ];
     } // end if (earningsEl)
 
+        // reports.ajax.dashboard-stats (and the JournalEntry-derived ledger
+        // wallet figures below) carry EnsureModuleEnabled:accounting, so a
+        // company without the accounting module gets a 404 from both — never
+        // fetch either in that case.
+        const hasAccountingModule = @json($hasAccountingModule);
+
         document.addEventListener('DOMContentLoaded', () => {
 @if ($hasAccountingModule)
             // Ledger-derived credit data (and the call reading it) only
             // exists for a company with the accounting module — this whole
             // block is Blade-guarded (not just JS-guarded) so neither the
             // data nor the function-call text ever reaches the response
-            // body for a company without it.
+            // body for a company without it. displayJazeeraData() writes
+            // into every .jazeera-info element on the page, including the
+            // one inside the shared wallet dropdown
+            // (layouts/mobile-drawer.blade.php via layouts/profile.blade.php),
+            // so skipping it here also keeps ledger figures out of that
+            // shared widget, not just this page's own card.
             const jazeeraData = @json($jazeeraCredit ?? []);
 
             displayJazeeraData({

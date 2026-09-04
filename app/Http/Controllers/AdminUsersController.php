@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use App\Models\Branch;
 use App\Models\Account;
 use App\Models\Agent;
@@ -186,6 +187,7 @@ class AdminUsersController extends Controller
         // SECURITY: no authorization check (found while auditing this controller for the
         // storeRole()/updateInfo() fixes above). Gated with the same CompanyPolicy::create()
         // ability ('create company' permission) as store() below, which this form posts to.
+        abort_unless((int) Auth::user()->role_id === Role::ADMIN, 403);
         Gate::authorize('create', Company::class);
 
         $countries = Country::all(); // Fetch all countries from the `countries` table
@@ -229,6 +231,7 @@ class AdminUsersController extends Controller
         // pre-existing CompanyPolicy::create() ability ('create company' permission,
         // registered in AppServiceProvider), same as newCompany() above (the display form for
         // this same action).
+        abort_unless((int) Auth::user()->role_id === Role::ADMIN, 403);
         Gate::authorize('create', Company::class);
 
         Log::info('Store function called with request data:', $request->all());
@@ -247,26 +250,60 @@ class AdminUsersController extends Controller
 
         $companyController = new CompanyController();
 
-        $response = $companyController->store($request);
-
-        $response = json_decode($response->getContent(), true);
-
-        if ($response['status'] !== 'success') {
-            return redirect()->route('companies.index')->with('error', 'Error creating company.');
-        }
-
-        $company = Company::find($response['data']['id']);
-
-        if (!$company) {
-            logger('Company not found after creation.');
-            return redirect()->route('companies.index')->with('error', 'Company not found.');
-        }
+        // Fix 3 (pre-pilot defect list): CoaSeeder::run() used to run in its
+        // own try/catch AFTER CompanyController::store() had already
+        // committed the company/user rows. A seeding failure left a company
+        // that exists with no chart of accounts — and since the ledger
+        // auto-posts for every company, that company's books have nowhere
+        // to write. CompanyController::store() below opens its own
+        // DB::beginTransaction()/commit() internally; nesting it inside
+        // THIS transaction turns its inner commit into a savepoint release
+        // rather than a real commit, so a CoaSeeder failure here rolls the
+        // company back too — the same guarantee CompanyProvisioner::
+        // provision() already gives Path B (company creation + COA seeding
+        // inside one DB::transaction()).
+        DB::beginTransaction();
 
         try {
+            $response = $companyController->store($request);
+
+            $response = json_decode($response->getContent(), true);
+
+            if ($response['status'] !== 'success') {
+                DB::rollBack();
+                return redirect()->route('companies.index')->with('error', 'Error creating company.');
+            }
+
+            $company = Company::find($response['data']['id']);
+
+            if (!$company) {
+                DB::rollBack();
+                logger('Company not found after creation.');
+                return redirect()->route('companies.index')->with('error', 'Company not found.');
+            }
+
             CoaSeeder::run($company->id);
+
+            DB::commit();
         } catch (Exception $e) {
+            DB::rollBack();
             Log::error('Error seeding COA:', ['error' => $e->getMessage()]);
             return redirect()->route('companies.index')->with('error', 'Error creating COA accounts.');
+        }
+
+        // Path A (operator manual entry) is a real package-client provisioning
+        // path, not internal/demo company creation — see
+        // .planning/specs/PACKAGE-OVERVIEW.md §3.1/§3.2, correction PKG-2.
+        // Company::create() above always inserts a brand-new row (unlike Path
+        // B's CompanyProvisioner, there is no --repair variant of this method
+        // that revisits an existing company), so this always applies to a
+        // genuinely new company.
+        try {
+            app(\App\Support\Entitlements\ApplyCompanyModulePreset::class)->apply($company);
+        } catch (Exception $e) {
+            Log::error('Error applying module preset:', ['error' => $e->getMessage()]);
+
+            return redirect()->route('companies.index')->with('error', 'Error applying module entitlements.');
         }
 
         $branchName = $company->name . ' - Main Branch';
@@ -287,6 +324,19 @@ class AdminUsersController extends Controller
 
         $branchResponse = json_decode($branchResponse->getContent(), true);
 
+        // Module 5 (plan .planning/specs/RESAYIL-ADMIN-CENTER.md section 3.1):
+        // Path A creates a real package client, so it gets the same silent
+        // Resayil workspace provisioning Path B (CompanyProvisioner) does.
+        // Queued, and after every commit above, so a Resayil outage can never
+        // affect a company that has already been created. Idempotent and
+        // re-runnable via php artisan resayil:provision-company.
+        try {
+            \App\Jobs\ProvisionResayilWorkspace::dispatch($company->id, $company->user_id);
+        } catch (\Throwable $e) {
+            Log::warning('AdminUsersController: could not queue Resayil workspace provisioning', [
+                'company_id' => $company->id, 'error' => $e->getMessage(),
+            ]);
+        }
 
         return redirect()->route('companies.index')->with($branchResponse['status'], $branchResponse['message']);
     }
@@ -302,6 +352,7 @@ class AdminUsersController extends Controller
         // precedent in THIS controller for a cross-company capability is setCompany()'s
         // Role::ADMIN-only check below, but 'view company' already exists as the purpose-built
         // permission for "list companies" and is reused instead of inventing a role_id check.
+        abort_unless((int) Auth::user()->role_id === Role::ADMIN, 403);
         Gate::authorize('viewAny', Company::class);
 
         // Retrieve all companies with their related nationality

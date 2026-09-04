@@ -37,7 +37,13 @@ class AppLayout extends Component
         // $walletData = $this->getCompanyWallets($user->company);
         // extract($walletData);
 
-        $companyName = $companyId ? Company::find($companyId)->name : env('APP_NAME', 'City Tour');
+        // Pre-existing bug (present on both merge parents independently, not
+        // merge-introduced): an ADMIN with no explicit session('company_id')
+        // falls back to company id 1 (see getCompanyId()), which does not
+        // exist in a fresh/test database — Company::find() then returns null
+        // and ->name fatals. Null-safe + fallback, same default used for the
+        // no-companyId branch.
+        $companyName = $companyId ? (Company::find($companyId)?->name ?? env('APP_NAME', 'City Tour')) : env('APP_NAME', 'City Tour');
 
         return view('components.layouts.app', [
             'color' => $color,

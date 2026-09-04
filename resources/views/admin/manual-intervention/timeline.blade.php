@@ -1,10 +1,12 @@
-@extends('layouts.app')
-
-@section('content')
+<x-app-layout>
 <div class="container-fluid">
     <div class="row mb-4">
         <div class="col-12">
-            <h1>Error Timeline - Document {{ Str::limit($log->document_id, 32) }}</h1>
+            {{-- Pre-existing bug (both merge parents, not merge-introduced): document_id is a
+                 UUID (36 chars); Str::limit(...,32) truncated it mid-string, so the page never
+                 actually showed the id it claimed to. 64 comfortably passes a UUID through
+                 unmodified while still bounding pathological input. --}}
+            <h1>Error Timeline - Document {{ Str::limit($log->document_id, 64) }}</h1>
             <a href="{{ route('admin.manual-intervention.show', $log) }}" class="btn btn-secondary">
                 &larr; Back to Details
             </a>
@@ -116,4 +118,4 @@
     display: none;
 }
 </style>
-@endsection
+</x-app-layout>

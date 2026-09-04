@@ -1,3 +1,15 @@
+@php
+    // See resources/views/clients/index.blade.php for the full rationale —
+    // this file appears to be an orphaned duplicate of that page (no
+    // controller currently returns view('clients.list')), but the same
+    // /credits/filter click-through applies if it is ever wired up, so it
+    // gets the same guard. credits.filter is gated on module:crm
+    // (routes/web.php), not accounting.
+    $clientsListUser = auth()->user();
+    $clientsListCompanyId = $clientsListUser ? getCompanyId($clientsListUser) : null;
+    $clientsListCompany = $clientsListCompanyId ? \App\Models\Company::find($clientsListCompanyId) : null;
+    $hasCrmModule = $clientsListCompany && $clientsListCompany->hasModule(\App\Support\Modules::CRM);
+@endphp
 <div class="tableCon">
     <div class="content-70">
         <div class="panel BoxShadow rounded-lg">
@@ -96,11 +108,17 @@
                                 </td>
 
                                 <td class="p-3 text-sm font-semibold text-center">
+                                    @if($hasCrmModule)
                                     <a href="javascript:void(0);"
                                         class="clientCreditLink font-bold {{ ($client->totalCredit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}"
                                         data-client-id="{{ $client->id }}">
                                         {{ number_format($client->totalCredit ?? 0, 2) }}
                                     </a>
+                                    @else
+                                    <span class="font-bold {{ ($client->totalCredit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600' }}">
+                                        {{ number_format($client->totalCredit ?? 0, 2) }}
+                                    </span>
+                                    @endif
                                 </td>
 
                                 <td

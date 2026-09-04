@@ -95,5 +95,13 @@
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
+        <!--
+            Pre-existing gap (both merge parents, not merge-introduced): the real .env
+            leaves N8N_WEBHOOK_URL empty, and ManualInterventionController::queueToN8n()
+            throws before ever calling Http::post() when it's unset — so
+            ManualInterventionEnhancedTest's Http::fake() never got a chance to intercept
+            anything. A harmless fake URL here lets that fake actually take effect.
+        -->
+        <env name="N8N_WEBHOOK_URL" value="http://localhost/fake-n8n-webhook-for-tests"/>
     </php>
 </phpunit>

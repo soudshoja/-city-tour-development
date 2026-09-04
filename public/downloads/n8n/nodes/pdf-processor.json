@@ -1,0 +1,91 @@
+{
+  "name": "PDF Extraction Pipeline",
+  "description": "Extracts text from PDF files using Apache Tika server",
+  "nodes": [
+    {
+      "parameters": {
+        "filePath": "={{ '/var/www/storage/app/' + $json.file_path }}",
+        "options": {}
+      },
+      "name": "Read PDF File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [850, 350]
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://tika-server:9998/tika",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "text/plain"
+            },
+            {
+              "name": "X-Tika-PDFextractInlineImages",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/pdf",
+        "body": "={{ $binary.data }}",
+        "options": {
+          "timeout": 60000,
+          "redirect": {
+            "redirect": {}
+          }
+        }
+      },
+      "name": "Extract PDF with Tika",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 350],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Tika response and extract text\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  try {\n    // Tika returns plain text in response body\n    let extractedText = '';\n    \n    if (item.binary && item.binary.data) {\n      // If Tika returned binary data, convert to string\n      extractedText = item.binary.data.toString('utf-8');\n    } else if (item.json && item.json.data) {\n      // If response is JSON wrapped\n      extractedText = item.json.data;\n    } else if (typeof item.json === 'string') {\n      // If response is plain string\n      extractedText = item.json;\n    }\n    \n    // Validate extracted text\n    if (!extractedText || extractedText.trim().length === 0) {\n      throw new Error('ERR_INSUFFICIENT_DATA: Tika extracted no text from PDF');\n    }\n    \n    // Build normalized output\n    results.push({\n      json: {\n        document_id: $('Read PDF File').item.json.document_id,\n        document_type: 'pdf',\n        extracted_text: extractedText.trim(),\n        extraction_method: 'tika',\n        file_path: $('Read PDF File').item.json.file_path,\n        company_id: $('Read PDF File').item.json.company_id,\n        supplier_id: $('Read PDF File').item.json.supplier_id,\n        callback_url: $('Read PDF File').item.json.callback_url,\n        text_length: extractedText.trim().length,\n        processing_timestamp: new Date().toISOString()\n      }\n    });\n  } catch (error) {\n    // Handle extraction errors\n    results.push({\n      json: {\n        document_id: $('Read PDF File').item.json.document_id,\n        document_type: 'pdf',\n        extraction_status: 'error',\n        error_code: error.message.includes('ERR_') ? error.message.split(':')[0] : 'ERR_EXTRACTION_FAILED',\n        error_message: error.message,\n        file_path: $('Read PDF File').item.json.file_path,\n        company_id: $('Read PDF File').item.json.company_id,\n        supplier_id: $('Read PDF File').item.json.supplier_id,\n        callback_url: $('Read PDF File').item.json.callback_url\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "name": "Parse Tika Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 350]
+    }
+  ],
+  "connections": {
+    "Read PDF File": {
+      "main": [
+        [
+          {
+            "node": "Extract PDF with Tika",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract PDF with Tika": {
+      "main": [
+        [
+          {
+            "node": "Parse Tika Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "meta": {
+    "description": "PDF extraction using Apache Tika server. Reads PDF from Laravel storage, sends to Tika for text extraction, parses response.",
+    "requirements": {
+      "tika_server": "http://tika-server:9998",
+      "docker_volume": "/var/www/storage/app mounted to N8n container"
+    }
+  }
+}

@@ -80,6 +80,10 @@
                         <span class="text-right text-white dark:text-gray-100">{{ $agent->branch->name }}</span>
                         <span class="text-gray-300 dark:text-gray-400">Type</span>
                         <span class="text-right text-white dark:text-gray-100">{{ $agent->agentType->name }}</span>
+                        <span class="text-gray-300 dark:text-gray-400">Reminder Language</span>
+                        <span class="text-right text-white dark:text-gray-100">{{ ($agent->language ?? 'en') === 'ar' ? 'العربية' : 'English' }}</span>
+                        <span class="text-gray-300 dark:text-gray-400">Nationality</span>
+                        <span class="text-right text-white dark:text-gray-100">{{ $agent->nationality?->nationality ?? $agent->nationality?->name ?? '—' }}</span>
                     </div>
                 </div>
             </div>
@@ -215,10 +219,11 @@
         <div x-show="showModal" x-cloak @click.self="showModal = false"
             class="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm">
             <div class="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col mx-4"
-                @click.away="showCreateModal = false">
+                @click.away="showModal = false">
 
-                <form action="{{ route('agents.update', $agent->id) }}" id="agentForm" method="POST">
+                <form action="{{ route('agents.update', $agent->id) }}" id="agentForm" method="POST" class="flex flex-col" style="min-height:0;max-height:100%;">
                     @csrf
+                    @method('PUT')
 
                     <!-- Modal Header -->
                     <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
@@ -294,6 +299,49 @@
                                 </div>
                             </div>
 
+                            {{-- Language + Nationality --}}
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="space-y-1">
+                                    <label for="language" class="block text-sm font-semibold text-gray-700 dark:text-gray-200">Reminder Language</label>
+                                    <select name="language" id="language"
+                                        class="w-full p-2 border rounded-md text-gray-700 dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                        <option value="en" {{ ($agent->language ?? 'en') === 'en' ? 'selected' : '' }}>English</option>
+                                        <option value="ar" {{ ($agent->language ?? 'en') === 'ar' ? 'selected' : '' }}>العربية (Arabic)</option>
+                                    </select>
+                                    <p class="text-xs text-gray-500 italic">Used for WhatsApp + email reminders only (not site UI).</p>
+                                </div>
+
+                                <div class="space-y-1">
+                                    <label for="nationality_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-200">Nationality</label>
+                                    <select name="nationality_id" id="nationality_id"
+                                        class="w-full p-2 border rounded-md text-gray-700 dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                        <option value="">— Not Set —</option>
+                                        @foreach($countries as $country)
+                                        <option value="{{ $country->id }}" {{ $agent->nationality_id == $country->id ? 'selected' : '' }}>
+                                            {{ $country->nationality ?: $country->name }}{{ $country->nationality && $country->nationality !== $country->name ? ' (' . $country->name . ')' : '' }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            {{-- Auto-assign client --}}
+                            <div class="grid grid-cols-1 gap-4">
+                                <div class="space-y-1">
+                                    <label for="auto_assign_client_id" class="block text-sm font-semibold text-gray-700 dark:text-gray-200">Auto-assign Client</label>
+                                    <select name="auto_assign_client_id" id="auto_assign_client_id"
+                                        class="w-full p-2 border rounded-md text-gray-700 dark:bg-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                                        <option value="">— None (off) —</option>
+                                        @foreach($assignableClients as $assignClient)
+                                        <option value="{{ $assignClient->id }}" {{ $agent->auto_assign_client_id == $assignClient->id ? 'selected' : '' }}>
+                                            {{ $assignClient->name }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                    <p class="text-xs text-gray-500 italic">Any task assigned to this agent that has no client will be auto-assigned to this client (makes it auto-bill eligible). Leave as "None" to disable.</p>
+                                </div>
+                            </div>
+
                             {{-- Amadeus + TBO --}}
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 @if(in_array('Amadeus', $supplierCompany))
@@ -323,7 +371,7 @@
                         </button>
                         <button type="submit"
                             class="px-5 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
-                            Create Template
+                            Save Changes
                         </button>
                     </div>
                 </form>
@@ -711,38 +759,4 @@
 
     </div>
 
-    <script>
-        let agentFormOriginalClone = null;
-
-        window.addEventListener('DOMContentLoaded', () => {
-            const form = document.getElementById('agentForm');
-            if (form) {
-                agentFormOriginalClone = form.cloneNode(true);
-            }
-        });
-
-        // edit company details modal
-        function EditAgentDetails() {
-            const modal = document.getElementById('editAgentModal');
-            const formContainer = modal.querySelector('#agentForm');
-            if (formContainer && agentFormOriginalClone) {
-                formContainer.replaceWith(agentFormOriginalClone.cloneNode(true));
-            }
-
-            modal.classList.remove('hidden');
-        }
-
-        function closeAgentModal() {
-            // Hide the modal when "Cancel" is clicked
-            document.getElementById('editAgentModal').classList.add('hidden');
-        }
-
-        function closemodalContentAgentIfClickedOutside(event) {
-            // Close the modal if the user clicks outside of the modal content
-            const modalContentAgent = document.querySelector('#editAgentModal > div');
-            if (!modalContentAgent.contains(event.target)) {
-                closeAgentModal();
-            }
-        }
-    </script>
 </x-app-layout>

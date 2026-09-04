@@ -97,10 +97,11 @@ Route::get('/version', function () {
     ]);
 });
 
-Route::get('pin', function () {
-    return view('auth.pin');
-})->name('pin');
-
+// Duplicate of routes/web.php's own 'pin' route (identical body, same name) — pre-existing on
+// feat/travelerp-launch before this merge (confirmed via git show), unrelated to the 46 conflicts
+// resolved here. Broke `php artisan route:cache` (Laravel refuses two routes with the same name),
+// one of this merge's required gates, so removed here; a Blade view() route belongs in web.php
+// (an "api" route returning HTML was never right anyway), which keeps the working copy.
 Route::post('/webhook/resayil/media', [IncomingMediaController::class, 'handleResayilWebhook'])
     ->name('webhook.resayil.media');
 Route::post('/chat/upload', [ChatController::class, 'handleFileUpload']);
@@ -212,4 +213,10 @@ Route::group([
     Route::post('/convert', [CurrencyExchangeController::class, 'convertCurrency'])->name('convert');
 });
 
-require __DIR__ . '/auth.php';
+// (routes/auth.php — Breeze's web-session login/register/password routes — is NOT required
+// here. It was previously required from BOTH web.php and api.php, registering every one of
+// its named routes twice ('register', 'login', 'logout', 'password.*', 'verification.*') and
+// breaking `php artisan route:cache` ("Another route has already been assigned name
+// [register]"). Pre-existing on feat/travelerp-launch before this merge (confirmed via git
+// show), unrelated to the 46 conflicts resolved here, but broke a required merge gate. web.php
+// already requires it (session-auth routes belong on the web middleware group, not api).

@@ -52,4 +52,15 @@
                 class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
         </div>
     </div>
+
+    <!-- Appointment Date -->
+    <div class="grid grid-cols-2 gap-4">
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Appointment Date</label>
+            <input type="date"
+                name="appointment_date"
+                value="{{ $task->visaDetails->appointment_date ?? '' }}"
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none">
+        </div>
+    </div>
 </div>

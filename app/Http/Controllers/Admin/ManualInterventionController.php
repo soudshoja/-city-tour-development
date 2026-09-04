@@ -7,6 +7,7 @@ use App\Models\DocumentProcessingLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Route;
 
 class ManualInterventionController extends Controller
 {
@@ -436,7 +437,14 @@ class ManualInterventionController extends Controller
             'file_path' => $log->file_path,
             'file_size_bytes' => $log->file_size_bytes ?? 0,
             'file_hash' => $log->file_hash ?? '',
-            'callback_url' => route('api.webhooks.n8n.callback'),
+            // Pre-existing gap (both merge parents, not merge-introduced): the receiving
+            // controller (App\Http\Controllers\Api\Webhooks\N8nCallbackController) exists
+            // but its route was never registered, so the named route always throws
+            // RouteNotFoundException — this payload field is metadata for n8n's own use,
+            // not required for the retry itself, so degrade instead of fataling the retry.
+            'callback_url' => Route::has('api.webhooks.n8n.callback')
+                ? route('api.webhooks.n8n.callback')
+                : url('/api/webhooks/n8n/callback'),
             'timestamp' => $timestamp,
         ];
 

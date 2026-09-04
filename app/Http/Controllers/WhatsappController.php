@@ -392,6 +392,26 @@ class WhatsappController extends Controller
         // Check if this is a media (image) message
         $message = $request->input('messages.0');
 
+        // Text-message branch — try to interpret as a TaskActionRequest reply.
+        // "1"/"approve"/"2"/"deny" trigger Approve/Deny on the sender's most-recent
+        // pending TaskActionRequest. Other text falls through silently to the
+        // existing handlers.
+        if ($message && ($message['type'] ?? null) === 'text') {
+            $body = $message['text']['body']
+                ?? $message['text']
+                ?? $request->input('messages.0.body')
+                ?? null;
+            try {
+                $reply = app(\App\Services\TaskActionRequestWhatsAppHandler::class)->handle($phone, $body);
+                if ($reply) {
+                    $this->sendToResayil($phone, $reply);
+                    return response()->json(['message' => 'TaskActionRequest reply processed']);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('[ResayilWebhook] TaskActionRequest handler failed: ' . $e->getMessage());
+            }
+        }
+
         if ($message && $message['type'] === 'image') {
             $mediaId = $message['image']['id'] ?? null;
             $mimeType = $message['image']['mimeType'] ?? null;

@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="{{ $language ?? 'en' }}" dir="{{ ($language ?? 'en') === 'ar' ? 'rtl' : 'ltr' }}">
 
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<head><meta charset="utf-8">
+    
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Payment Voucher {{ $payment->voucher_number }}</title>
     @if($isPdf ?? false)
@@ -145,6 +145,10 @@
                                     <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ $invoiceRef }}</td>
                                 </tr>
                                 @endif
+                                <tr style="background-color:#f9fafb;">
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#666;border-bottom:1px solid #e0e0e0;">Payment Date</td>
+                                    <td style="padding:{{ ($isPdf ?? false) ? '8px 10px' : '12px 15px' }};font-size:{{ ($isPdf ?? false) ? '10px' : '13px' }};color:#333;border-bottom:1px solid #e0e0e0;font-weight:bold;">{{ ($payment->payment_date ?? $payment->created_at)?->format('d M Y, H:i') ?? 'N/A' }}</td>
+                                </tr>
                             </table>
                         </td>
                     </tr>

@@ -136,7 +136,7 @@ class Hesabe
         $companyEmail = $company?->email ?? 'admin@citytravelers.co';
 
         $requestData = [
-            'amount'        => $request->final_amount,
+            'amount'        => number_format((float) $request->final_amount, 3, '.', ''),
             'currency'      => 'KWD',
             'merchantCode' => $this->merchantCode,
             'paymentType' => $myfatoorahId,

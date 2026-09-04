@@ -400,7 +400,7 @@
                     Create Payment Link
                 </a>
             </div>
-            <div id="paymentsContainer" class="overflow-x-auto">
+            <div id="paymentsContainer">
                 <div class="client-show-loading">
                     <div class="client-show-spinner"></div>
                     <p class="client-show-loading-text">Loading payment links...</p>
@@ -608,6 +608,7 @@
         const CLIENT_ID = {{ $client->id }};
         const CSRF_TOKEN = '{{ csrf_token() }}';
         const IS_ADMIN_OR_COMPANY = {{ (auth()->user()->role?->name === 'admin' || auth()->user()->role?->name === 'company') ? 'true' : 'false' }};
+        const CAN_VIEW_INVOICE_DETAILS = {{ in_array(auth()->user()->role_id, [\App\Models\Role::ADMIN, \App\Models\Role::COMPANY, \App\Models\Role::ACCOUNTANT]) ? 'true' : 'false' }};
         const AGENTS_JSON = @json($agents->map(fn($a) => ['id' => $a->id, 'name' => $a->name]));
 
         function copyToClipboard(text) {
@@ -833,7 +834,7 @@
                         return;
                     }
 
-                    let html = `<div class="max-h-[500px] overflow-y-auto"><table class="w-full text-sm"><thead class="bg-gray-50 sticky top-0"><tr>
+                    let html = `<div class="overflow-visible"><table class="w-full text-sm"><thead class="bg-gray-50 sticky top-0"><tr>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Voucher</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Agent</th>
                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Gateway</th>
@@ -873,8 +874,29 @@
                             </button>
                             <a href="${payUrl}" target="_blank" class="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors">
                                 <svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                                View Invoice
+                                View Voucher
                             </a>`;
+
+                        const appliedInvoices = Array.isArray(p.applied_invoices) ? p.applied_invoices : [];
+                        if (appliedInvoices.length > 0) {
+                            actionsHtml += `<div class="border-t border-gray-100"></div>
+                                <div class="px-4 py-1.5 text-[10px] uppercase tracking-wide text-gray-400 bg-gray-50">Linked Invoices (${appliedInvoices.length})</div>
+                                <div class="max-h-48 overflow-y-auto">`;
+                            appliedInvoices.forEach(inv => {
+                                const invNum = esc(inv.invoice_number || '');
+                                const coId = inv.company_id || '';
+                                const showUrl = `/invoice/${coId}/${encodeURIComponent(inv.invoice_number || '')}`;
+                                const detailsUrl = `/invoice/details/${coId}/${encodeURIComponent(inv.invoice_number || '')}`;
+                                const detailsBtn = CAN_VIEW_INVOICE_DETAILS
+                                    ? `<a href="${detailsUrl}" target="_blank" class="inline-flex items-center text-gray-500 hover:text-blue-600 px-1" title="Details"><svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg></a>`
+                                    : '';
+                                actionsHtml += `<div class="flex items-center justify-between px-4 py-2 hover:bg-gray-50 transition-colors">
+                                    <a href="${showUrl}" target="_blank" class="text-sm text-blue-600 hover:underline font-medium">${invNum}</a>
+                                    ${detailsBtn}
+                                </div>`;
+                            });
+                            actionsHtml += `</div>`;
+                        }
 
                         if (isPending) {
                             actionsHtml += `
@@ -900,13 +922,20 @@
                             <td class="px-4 py-3"><span class="text-gray-700 font-medium" title="${ref}">${refDisplay}</span></td>
                             <td class="px-4 py-3 text-center">${statusBadge(p.status || 'pending', paymentStatusMap)}</td>
                             <td class="px-4 py-3 text-center">
-                                <div x-data="{ open: false }" class="relative inline-block text-left">
-                                    <button @click="open = !open" @click.outside="open = false" class="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
+                                <div x-data="{ open: false, posTop: 0, posLeft: 0, toggle(btn) { if (this.open) { this.open = false; return; } const r = btn.getBoundingClientRect(); this.posTop = window.scrollY + r.bottom + 8; this.posLeft = window.scrollX + Math.max(8, r.right - 192); this.open = true; } }" class="relative inline-block text-left">
+                                    <button @click="toggle($el)" class="p-1.5 rounded-lg hover:bg-gray-100 transition-colors">
                                         <svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M10 6a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM10 13a1.5 1.5 0 110-3 1.5 1.5 0 010 3zM10 20a1.5 1.5 0 110-3 1.5 1.5 0 010 3z" /></svg>
                                     </button>
-                                    <div x-cloak x-show="open" x-transition class="absolute right-0 mt-2 z-50 w-48 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-                                        ${actionsHtml}
-                                    </div>
+                                    <template x-teleport="body">
+                                        <div x-cloak x-show="open" x-transition
+                                            @click.outside="open = false"
+                                            @keydown.escape.window="open = false"
+                                            @resize.window="open = false"
+                                            :style="'position:absolute;top:'+posTop+'px;left:'+posLeft+'px;z-index:9999;max-height:80vh;'"
+                                            class="w-48 bg-white border border-gray-200 rounded-xl shadow-lg overflow-y-auto overflow-x-hidden">
+                                            ${actionsHtml}
+                                        </div>
+                                    </template>
                                 </div>
                             </td></tr>`;
                     });

@@ -1,0 +1,160 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | Resayil WhatsApp CRM — Embed, Drawer & Account Provisioning (Module 5)
+    |--------------------------------------------------------------------------
+    |
+    | This config powers the in-app Resayil drawer + full-page view, and the
+    | reseller-side account provisioning that backs "no second password".
+    | Pattern ported from the aircon project's config/resayil.php.
+    |
+    | IMPORTANT — this is a SEPARATE config surface from:
+    |   - config('services.resayil.*')   (base_url/version/api_token)
+    |   - config('services.whatsapp.token')
+    | which App\Http\Controllers\ResayilController already uses to send
+    | outbound WhatsApp MESSAGES via the Resayil messaging API. That code and
+    | its config are untouched by this file. This file is for:
+    |   1. The EMBED iframe (drawer + full-page view), and
+    |   2. The RESELLER (admin) API — api.resayil.io/v1/resellers — used to
+    |      provision a company's Resayil "customer" account and, once wired,
+    |      per-user team-member accounts. A different Resayil API surface
+    |      with its own token, documented in the resayil-admin skill.
+    |
+    | SECURITY (ported verbatim from aircon's rules — do not weaken):
+    |  - All values come from server env/config ONLY.
+    |  - The reseller API token is injected server-side by ResayilClient and
+    |    is NEVER sent to the front-end.
+    |  - embed_url is a fixed configured URL, NEVER a user-supplied parameter
+    |    (SSRF guard) — App\Http\Middleware\ResayilFrameHeaders derives the
+    |    allowed CSP frame-src origin from this value, not from any request
+    |    input.
+    |
+    */
+
+    // Reseller (admin) API — used server-side only, to provision a company's
+    // Resayil "customer" account (POST /v1/resellers/customers). See the
+    // resayil-admin skill for the full contract.
+    'reseller_base_url' => env('RESAYIL_RESELLER_BASE_URL', 'https://api.resayil.io/v1/resellers'),
+    'reseller_token' => env('RESAYIL_RESELLER_TOKEN'),
+
+    // Account-level (non-reseller) API — needed for POST /devices/{id}/team
+    // (per-user team-member creation). Each company has its OWN token here
+    // (stored per company on resayil_accounts.resayil_account_token), so
+    // there is no single global token config for this surface — only the
+    // base URL is global.
+    'account_base_url' => env('RESAYIL_ACCOUNT_BASE_URL', 'https://api.resayil.io/v1'),
+
+    'timeout' => (int) env('RESAYIL_TIMEOUT', 15),
+    'retries' => (int) env('RESAYIL_RETRIES', 3),
+
+    // Kuwait defaults for this deployment (aircon's equivalent defaults to
+    // Malaysia/+60 — do NOT reuse those values here).
+    'default_country_code' => (string) env('RESAYIL_DEFAULT_COUNTRY_CODE', '965'),
+    'default_country' => (string) env('RESAYIL_DEFAULT_COUNTRY', 'KW'),
+
+    // When true, provisioning short-circuits and logs instead of hitting the
+    // reseller API — handy for local/dev so no real Resayil customer is
+    // created while testing.
+    'test_mode' => (bool) env('RESAYIL_TEST_MODE', false),
+
+    // The iframe src for both the drawer and the full-page view. Server
+    // configured ONLY. On dev this is currently unset — the UI must render
+    // the graceful "not configured" state, never a broken iframe.
+    'embed_url' => env('RESAYIL_EMBED_URL'),
+
+    // Inbound-webhook signing, ported from aircon's shape for parity. Not
+    // wired to a route by this module — kept so the shape is ready if/when
+    // a Resayil -> TravelERP webhook is added later.
+    'webhook_secret' => env('RESAYIL_WEBHOOK_SECRET', ''),
+    'webhook_signature_header' => env('RESAYIL_WEBHOOK_SIGNATURE_HEADER', 'X-Resayil-Signature'),
+    'webhook_timestamp_header' => env('RESAYIL_WEBHOOK_TIMESTAMP_HEADER', 'X-Resayil-Timestamp'),
+    'webhook_tolerance_seconds' => (int) env('RESAYIL_WEBHOOK_TOLERANCE_SECONDS', 0),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Account provisioning model (owner spec, 2026-08-24)
+    |--------------------------------------------------------------------------
+    |
+    | The first TravelERP user who needs Resayil access for a company becomes
+    | that company's Resayil "admin" account (a reseller customer, created via
+    | POST /v1/resellers/customers with a server-generated secret — never the
+    | user's TravelERP password). Every subsequent user of that company is
+    | auto-provisioned up to max_auto_users. Beyond the cap, Resayil bills
+    | extra per seat, so auto-creation stops and the UI shows a "contact
+    | support" state instead of silently over-billing the company.
+    |
+    | A config value (not a hardcoded 9) so it can change without a deploy.
+    |
+    */
+    'max_auto_users' => (int) env('RESAYIL_MAX_AUTO_USERS', 9),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Center — offered plans and the number-creation kill switch
+    |--------------------------------------------------------------------------
+    |
+    | offered_plans: the ONLY billing plan codes this platform resells
+    | (owner decision D-3, plan §5.4 — Platform Enterprise). There is no
+    | client-facing plan picker; this list exists so the other gateway and
+    | io plan codes the Resayil API accepts are scoped away rather than
+    | offered, and so Panel 1 can label a plan code it did not sell.
+    |
+    | NEVER put a price here. No Resayil price is rendered to a client in
+    | any surface, ever (owner decision D-1, §5.2) — the owner invoices
+    | clients on their own combined billing, outside Resayil.
+    |
+    | device_creation_enabled: the V-4 kill switch (§5.4). POST /devices is
+    | documented to start a PAID subscription the moment it is called, and
+    | whether it succeeds against the reseller's prepaid credit pool (vs
+    | erroring for a missing card) has deliberately NOT been probed live —
+    | it spends real money. Until V-4 is answered, slice 3's Create button
+    | ships disabled behind this flag and the panel shows a support CTA
+    | instead. Slice 1 does not read it; it is declared here so slice 3
+    | needs no config change of its own.
+    |
+    */
+    'offered_plans' => array_values(array_filter(array_map(
+        'trim',
+        explode(',', (string) env('RESAYIL_OFFERED_PLANS', 'io-enterprise'))
+    ))),
+
+    'device_creation_enabled' => (bool) env('RESAYIL_DEVICE_CREATION_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | subscription_control_enabled
+    |--------------------------------------------------------------------------
+    |
+    | Pause/resume calls POST /v1/resellers/devices/{id}/disable|enable against
+    | the LIVE Resayil platform — there is no sandbox. Dev and production share
+    | one reseller account, so a pause clicked while demoing on dev takes a real
+    | customer's WhatsApp number OFF THE AIR. City Travelers' number
+    | (+96522210017) is online with 8 agents and real traffic; a stray click is
+    | a genuine outage for a trading company, not a test.
+    |
+    | So the lever ships DISABLED. The button still renders (an operator should
+    | see the control exists) but the server refuses and explains why. Turn it on
+    | deliberately, per environment, when collections actually need it:
+    |
+    |     RESAYIL_SUBSCRIPTION_CONTROL_ENABLED=true
+    |
+    */
+    'subscription_control_enabled' => (bool) env('RESAYIL_SUBSCRIPTION_CONTROL_ENABLED', false),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Center — reseller read cache TTL (seconds)
+    |--------------------------------------------------------------------------
+    |
+    | Plan §5.1: reseller reads are cached 60 s PER COMPANY. The cache key
+    | always carries the company id — a global key (as in the pre-existing
+    | `resayil_group_list` in SupplierController) would leak one company's
+    | devices into another company's panel.
+    |
+    */
+    'admin_cache_ttl' => (int) env('RESAYIL_ADMIN_CACHE_TTL', 60),
+
+];

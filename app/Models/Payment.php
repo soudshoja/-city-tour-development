@@ -84,6 +84,18 @@ class Payment extends Model
         return $this->belongsTo(Invoice::class, 'invoice_id');
     }
 
+    public function appliedToInvoices()
+    {
+        return $this->hasManyThrough(
+            Invoice::class,
+            Credit::class,
+            'payment_id',
+            'id',
+            'id',
+            'invoice_id'
+        )->where('credits.type', 'Invoice')->whereNotNull('credits.invoice_id');
+    }
+
     public function transactions(): MorphMany
     {
         return $this->morphMany(Transaction::class, 'referenceable', 'reference_type', 'reference_id');

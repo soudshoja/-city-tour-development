@@ -9,7 +9,9 @@
         </div>
 
         @php
-            $isReadOnly = strtolower($refund->status) === 'completed';
+            // Unlocked on iamshoja dev so agents can correct completed refunds (e.g. wrong supplier charge).
+            // Original guard: $isReadOnly = strtolower($refund->status) === 'completed';
+            $isReadOnly = false;
             $isEditing = true;
         @endphp
 

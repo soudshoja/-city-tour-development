@@ -14,9 +14,12 @@ class InvoiceMail extends Mailable
 
     protected $invoiceId;
 
-    public function __construct(int $invoiceId)
+    protected $staffView;
+
+    public function __construct(int $invoiceId, bool $staffView = false)
     {
         $this->invoiceId = $invoiceId;
+        $this->staffView = $staffView;
     }
 
     public function build()
@@ -29,6 +32,7 @@ class InvoiceMail extends Mailable
             'invoiceDetails.task.hotelDetails.hotel',
             'invoiceDetails.task.visaDetails',
             'invoiceDetails.task.insuranceDetails',
+            'invoiceDetails.task.paymentMethod',
             'invoicePartials.paymentMethod',
             'invoicePartials.client',
         ])->findOrFail($this->invoiceId);
@@ -44,6 +48,7 @@ class InvoiceMail extends Mailable
             'company' => $company,
             'invoiceDetails' => $invoiceDetails,
             'isPdf' => false,
+            'staffView' => $this->staffView,
         ];
 
         // $pdfData = array_merge($viewData, ['isPdf' => true]);

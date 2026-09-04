@@ -3,6 +3,7 @@
 use App\Http\Middleware\AccountantView;
 use App\Http\Middleware\EnsureModuleEnabled;
 use App\Http\Middleware\VerifyWebhookSignature;
+use App\Http\Middleware\ResayilFrameHeaders;
 use App\Modules\ResailAI\Middleware\VerifyResailAIToken;
 use App\Modules\DotwAI\Http\Middleware\ResolveDotwAIContext;
 use Illuminate\Foundation\Application;
@@ -43,6 +44,10 @@ return Application::configure(basePath: dirname(__DIR__))
             // presented" is turned into "signature mandatory" for this one endpoint without
             // modifying the shared middleware itself.
             'verify.webhook.signature' => VerifyWebhookSignature::class,
+            // Module 5 — Resayil WhatsApp CRM: CSP frame-ancestors/frame-src
+            // for the drawer + full-page embed. Applied only to the Resayil
+            // route(s) in routes/web.php, not app-wide.
+            'resayil.frame' => ResayilFrameHeaders::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\SetLocale::class,

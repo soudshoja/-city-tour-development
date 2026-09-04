@@ -1,0 +1,521 @@
+{
+  "name": "Supplier Document Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "supplier-document-processing",
+        "responseMode": "onReceived",
+        "responseCode": 202,
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          },
+          "responseData": "={{ { \"status\": \"accepted\", \"document_id\": $json.body.document_id } }}"
+        }
+      },
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 400],
+      "webhookId": "supplier-document-processing"
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\n// Extract request data\nconst body = JSON.stringify($input.all()[0].json.body);\nconst providedSignature = $input.all()[0].json.headers['x-signature'];\nconst timestamp = parseInt($input.all()[0].json.headers['x-timestamp']);\nconst documentId = $input.all()[0].json.body.document_id;\n\n// Check timestamp (replay attack protection - max 5 minutes old)\nconst now = Math.floor(Date.now() / 1000);\nif (Math.abs(now - timestamp) > 300) {\n  throw new Error('ERR_HMAC_INVALID: Timestamp outside acceptable range (replay attack)');\n}\n\n// Get webhook secret from credentials\nconst webhookSecret = $credentials.laravelWebhookSecret.secret;\n\n// Compute HMAC\nconst computedSignature = crypto\n  .createHmac('sha256', webhookSecret)\n  .update(body)\n  .digest('hex');\n\n// Timing-safe comparison\nif (crypto.timingSafeEqual(Buffer.from(providedSignature), Buffer.from(computedSignature))) {\n  // Valid signature - pass through\n  return $input.all()[0].json.body;\n} else {\n  throw new Error(`ERR_HMAC_INVALID: Signature mismatch for document ${documentId}`);\n}"
+      },
+      "name": "Validate HMAC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 400],
+      "credentials": {
+        "laravelWebhookSecret": {
+          "id": "1",
+          "name": "Laravel Webhook Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 1,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Jazeera Airways (AIR)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 2,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "FlyDubai (AIR)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ETA UK (PDF)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 4,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "The Skyrooms (PDF)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 5,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Air Arabia (AIR)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 6,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Indigo (AIR)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 7,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cham Wings (AIR)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 8,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "VFS Global (PDF)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 11,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Gmail (Email)"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.supplier_id }}",
+                    "rightValue": 12,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Image Upload"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "manual"
+        }
+      },
+      "name": "Route by Supplier",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const supplierId = $json.supplier_id;\nconst documentId = $json.document_id;\n\nthrow new Error(`ERR_SUPPLIER_NOT_CONFIG: Supplier ID ${supplierId} not configured in N8n workflow (document: ${documentId})`);"
+      },
+      "name": "Error Handler - Unmapped Supplier",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 800]
+    },
+    {
+      "parameters": {
+        "jsCode": "// AIR processing deferred to Laravel AirFileParser\nconst items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  results.push({\n    json: {\n      document_id: item.json.document_id,\n      document_type: 'air',\n      extraction_status: 'deferred',\n      extraction_method: 'laravel-airfileparser-fallback',\n      message: 'AIR file processing deferred to Laravel AirFileParser (N8n Phase 2 limitation)',\n      file_path: item.json.file_path,\n      company_id: item.json.company_id,\n      supplier_id: item.json.supplier_id,\n      callback_url: item.json.callback_url,\n      processing_timestamp: new Date().toISOString()\n    }\n  });\n}\n\nreturn results;"
+      },
+      "name": "AIR Processor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 100]
+    },
+    {
+      "parameters": {
+        "filePath": "={{ '/var/www/storage/app/' + $json.file_path }}",
+        "options": {}
+      },
+      "name": "Read PDF File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [850, 350],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://tika-server:9998/tika",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "text/plain"
+            },
+            {
+              "name": "X-Tika-PDFextractInlineImages",
+              "value": "true"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/pdf",
+        "body": "={{ $binary.data }}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "name": "Extract PDF with Tika",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1050, 350],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  try {\n    let extractedText = '';\n    \n    if (item.binary && item.binary.data) {\n      extractedText = item.binary.data.toString('utf-8');\n    } else if (item.json && item.json.data) {\n      extractedText = item.json.data;\n    } else if (typeof item.json === 'string') {\n      extractedText = item.json;\n    }\n    \n    if (!extractedText || extractedText.trim().length === 0) {\n      throw new Error('ERR_INSUFFICIENT_DATA: Tika extracted no text from PDF');\n    }\n    \n    results.push({\n      json: {\n        document_id: $('Read PDF File').item.json.document_id,\n        document_type: 'pdf',\n        extracted_text: extractedText.trim(),\n        extraction_method: 'tika',\n        file_path: $('Read PDF File').item.json.file_path,\n        company_id: $('Read PDF File').item.json.company_id,\n        supplier_id: $('Read PDF File').item.json.supplier_id,\n        callback_url: $('Read PDF File').item.json.callback_url,\n        text_length: extractedText.trim().length,\n        processing_timestamp: new Date().toISOString()\n      }\n    });\n  } catch (error) {\n    results.push({\n      json: {\n        document_id: $('Read PDF File').item.json.document_id,\n        document_type: 'pdf',\n        extraction_status: 'error',\n        error_code: error.message.includes('ERR_') ? error.message.split(':')[0] : 'ERR_EXTRACTION_FAILED',\n        error_message: error.message,\n        file_path: $('Read PDF File').item.json.file_path,\n        company_id: $('Read PDF File').item.json.company_id,\n        supplier_id: $('Read PDF File').item.json.supplier_id,\n        callback_url: $('Read PDF File').item.json.callback_url\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "name": "Parse Tika Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 350]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://gutenberg-server:8080/ocr",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ {\n  \"image_url\": \"file:///var/www/storage/app/\" + $json.file_path,\n  \"language\": \"en\",\n  \"output_format\": \"text\"\n} }}",
+        "options": {
+          "timeout": 90000
+        }
+      },
+      "name": "Extract Image with Gutenberg",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [850, 550],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  try {\n    const response = item.json;\n    \n    if (!response || !response.text || response.text.trim().length === 0) {\n      throw new Error('ERR_INSUFFICIENT_DATA: Gutenberg extracted no text from image');\n    }\n    \n    results.push({\n      json: {\n        document_id: $('Extract Image with Gutenberg').first().json.document_id,\n        document_type: 'image',\n        extracted_text: response.text.trim(),\n        extraction_method: 'gutenberg-ocr',\n        confidence_score: response.confidence || null,\n        file_path: $('Extract Image with Gutenberg').first().json.file_path,\n        company_id: $('Extract Image with Gutenberg').first().json.company_id,\n        supplier_id: $('Extract Image with Gutenberg').first().json.supplier_id,\n        callback_url: $('Extract Image with Gutenberg').first().json.callback_url,\n        text_length: response.text.trim().length,\n        processing_timestamp: new Date().toISOString()\n      }\n    });\n  } catch (error) {\n    results.push({\n      json: {\n        document_id: $('Extract Image with Gutenberg').first().json.document_id,\n        document_type: 'image',\n        extraction_status: 'error',\n        error_code: error.message.includes('ERR_') ? error.message.split(':')[0] : 'ERR_EXTRACTION_FAILED',\n        error_message: error.message,\n        file_path: $('Extract Image with Gutenberg').first().json.file_path,\n        company_id: $('Extract Image with Gutenberg').first().json.company_id,\n        supplier_id: $('Extract Image with Gutenberg').first().json.supplier_id,\n        callback_url: $('Extract Image with Gutenberg').first().json.callback_url\n      }\n    });\n  }\n}\n\nreturn results;"
+      },
+      "name": "Parse Gutenberg Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 550]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "name": "Merge Extraction Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst results = [];\n\nfor (const item of items) {\n  const input = item.json;\n  \n  const extractionResult = {\n    tasks: [],\n    metadata: {\n      extraction_method: input.extraction_method,\n      document_type: input.document_type,\n      supplier_id: input.supplier_id,\n      company_id: input.company_id,\n      file_path: input.file_path,\n      confidence_score: input.confidence_score || null,\n      text_length: input.text_length || null,\n      processing_timestamp: input.processing_timestamp || new Date().toISOString()\n    }\n  };\n  \n  if (input.document_type === 'air' && input.extraction_status === 'deferred') {\n    extractionResult.deferred = true;\n    extractionResult.message = input.message;\n    \n    results.push({\n      json: {\n        document_id: input.document_id,\n        extraction_status: 'deferred',\n        extraction_result: extractionResult,\n        callback_url: input.callback_url\n      }\n    });\n    continue;\n  }\n  \n  if (input.extraction_status === 'error') {\n    results.push({\n      json: {\n        document_id: input.document_id,\n        extraction_status: 'error',\n        error: {\n          code: input.error_code,\n          message: input.error_message,\n          context: {\n            document_type: input.document_type,\n            file_path: input.file_path\n          }\n        },\n        callback_url: input.callback_url\n      }\n    });\n    continue;\n  }\n  \n  const text = input.extracted_text || '';\n  const hasFlightKeywords = /flight|ticket|booking|PNR|passenger|airline|itinerary/i.test(text);\n  \n  if (hasFlightKeywords) {\n    const task = {\n      task_type: 'flight',\n      status: 'pending_review',\n      reference_number: extractReferenceNumber(text),\n      passenger_name: extractPassengerName(text),\n      amount: null,\n      currency: null,\n      notes: text.substring(0, 500),\n      extracted_at: new Date().toISOString()\n    };\n    extractionResult.tasks.push(task);\n  } else {\n    extractionResult.tasks.push({\n      task_type: 'unknown',\n      status: 'pending_manual_classification',\n      notes: text.substring(0, 500),\n      extracted_at: new Date().toISOString()\n    });\n  }\n  \n  if (input.document_type === 'email') {\n    extractionResult.metadata.email_subject = input.email_subject || '';\n    extractionResult.metadata.email_from = input.email_from || '';\n    extractionResult.metadata.email_date = input.email_date || '';\n  }\n  \n  results.push({\n    json: {\n      document_id: input.document_id,\n      extraction_status: input.extraction_status || 'success',\n      extraction_result: extractionResult,\n      callback_url: input.callback_url\n    }\n  });\n}\n\nfunction extractReferenceNumber(text) {\n  const pnrMatch = text.match(/PNR[:\\s]+([A-Z0-9]{6})/i);\n  if (pnrMatch) return pnrMatch[1];\n  \n  const bookingMatch = text.match(/booking[\\s#:]+([A-Z0-9]{6,10})/i);\n  if (bookingMatch) return bookingMatch[1];\n  \n  const refMatch = text.match(/reference[\\s#:]+([A-Z0-9]{6,10})/i);\n  if (refMatch) return refMatch[1];\n  \n  return null;\n}\n\nfunction extractPassengerName(text) {\n  const nameMatch = text.match(/passenger[:\\s]+([A-Z][A-Z\\s]{2,40})/i);\n  if (nameMatch) return nameMatch[1].trim();\n  \n  const mrMatch = text.match(/(?:MR|MRS|MS|MISS)[\\s.]+([A-Z][A-Z\\s]{2,40})/i);\n  if (mrMatch) return mrMatch[1].trim();\n  \n  return null;\n}\n\nreturn results;"
+      },
+      "name": "Normalize to Task Schema",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1650, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const crypto = require('crypto');\n\nconst callbackPayload = {\n  document_id: $json.document_id,\n  status: $json.extraction_status || 'error',\n  execution_id: $execution.id,\n  workflow_id: $workflow.id,\n  execution_time_ms: Math.floor($execution.resumeTime ? ($execution.resumeTime - $execution.startTime) : 0),\n  extraction_result: $json.extraction_result || null,\n  error: $json.error || null\n};\n\nconst body = JSON.stringify(callbackPayload);\nconst webhookSecret = $credentials.laravelWebhookSecret.secret;\nconst hmac = crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');\n\nreturn {\n  json: {\n    ...callbackPayload,\n    hmac: hmac,\n    callback_url: $json.callback_url\n  }\n};"
+      },
+      "name": "Compute Callback HMAC",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1850, 400],
+      "credentials": {
+        "laravelWebhookSecret": {
+          "id": "1",
+          "name": "Laravel Webhook Secret"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.callback_url }}",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-Signature",
+              "value": "={{ $json.hmac }}"
+            },
+            {
+              "name": "X-Timestamp",
+              "value": "={{ Math.floor(Date.now() / 1000) }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ { document_id: $json.document_id, status: $json.status, execution_id: $json.execution_id, workflow_id: $json.workflow_id, execution_time_ms: $json.execution_time_ms, extraction_result: $json.extraction_result, error: $json.error } }}",
+        "options": {
+          "timeout": 10000,
+          "retry": {
+            "maxRetries": 3,
+            "retryInterval": 5000,
+            "retryOn": ["408", "429", "500", "502", "503", "504"]
+          }
+        }
+      },
+      "name": "Send to Laravel Callback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2050, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [[{"node": "Validate HMAC", "type": "main", "index": 0}]]
+    },
+    "Validate HMAC": {
+      "main": [[{"node": "Route by Supplier", "type": "main", "index": 0}]]
+    },
+    "Route by Supplier": {
+      "main": [
+        [{"node": "AIR Processor", "type": "main", "index": 0}],
+        [{"node": "AIR Processor", "type": "main", "index": 0}],
+        [{"node": "Read PDF File", "type": "main", "index": 0}],
+        [{"node": "Read PDF File", "type": "main", "index": 0}],
+        [{"node": "AIR Processor", "type": "main", "index": 0}],
+        [{"node": "AIR Processor", "type": "main", "index": 0}],
+        [{"node": "AIR Processor", "type": "main", "index": 0}],
+        [{"node": "Read PDF File", "type": "main", "index": 0}],
+        [],
+        [{"node": "Extract Image with Gutenberg", "type": "main", "index": 0}],
+        [{"node": "Error Handler - Unmapped Supplier", "type": "main", "index": 0}]
+      ]
+    },
+    "AIR Processor": {
+      "main": [[{"node": "Merge Extraction Results", "type": "main", "index": 0}]]
+    },
+    "Read PDF File": {
+      "main": [[{"node": "Extract PDF with Tika", "type": "main", "index": 0}]]
+    },
+    "Extract PDF with Tika": {
+      "main": [[{"node": "Parse Tika Response", "type": "main", "index": 0}]]
+    },
+    "Parse Tika Response": {
+      "main": [[{"node": "Merge Extraction Results", "type": "main", "index": 0}]]
+    },
+    "Extract Image with Gutenberg": {
+      "main": [[{"node": "Parse Gutenberg Response", "type": "main", "index": 0}]]
+    },
+    "Parse Gutenberg Response": {
+      "main": [[{"node": "Merge Extraction Results", "type": "main", "index": 0}]]
+    },
+    "Merge Extraction Results": {
+      "main": [[{"node": "Normalize to Task Schema", "type": "main", "index": 0}]]
+    },
+    "Normalize to Task Schema": {
+      "main": [[{"node": "Compute Callback HMAC", "type": "main", "index": 0}]]
+    },
+    "Compute Callback HMAC": {
+      "main": [[{"node": "Send to Laravel Callback", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "soud-laravel-phase2-wave2"
+  },
+  "id": "supplier-document-processing",
+  "tags": []
+}

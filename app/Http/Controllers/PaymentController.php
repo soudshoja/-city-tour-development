@@ -6559,7 +6559,9 @@ class PaymentController extends Controller
     {
         Log::info('Hesabe webhook received', ['request' => $request->all()]);
 
-        // Extract webhook data - Hesabe sends unencrypted JSON directly
+        // Extract webhook data - Hesabe sends unencrypted JSON directly. NONE of
+        // this is trusted for the pay/no-pay decision below (see SECURITY block) --
+        // it is only used to look up which payment the webhook claims to be about.
         $voucherNumber = $request->input('reference_number');
         $paymentToken = $request->input('token');
         $status = $request->input('status');
@@ -6586,16 +6588,54 @@ class PaymentController extends Controller
             'payment_type' => $paymentType,
         ]);
 
+        // SECURITY (.planning/PLAN-GATEWAY-TENANT-ISOLATION-2026-09-02.md §2, Hesabe
+        // section): this endpoint is unauthenticated and Hesabe's webhook body is
+        // unsigned, so nothing in it (reference_number/status/status_code/amount) can
+        // drive a write. Voucher numbers are per-company sequential and collide across
+        // tenants, so a bare `voucher_number` lookup is ambiguous. Resolve the paying
+        // company FIRST from data we control, then confirm the transaction with
+        // Hesabe's own transaction-enquiry endpoint (GET /api/transaction/{token})
+        // using that company's credentials before anything is written.
+        $companyId = $this->resolveHesabeWebhookCompanyId($voucherNumber, $paymentToken);
+
+        if (!$companyId) {
+            Log::error('Hesabe webhook: could not resolve a single owning company for this voucher', [
+                'voucher_number' => $voucherNumber,
+                'payment_token' => $paymentToken,
+            ]);
+            return response()->json(['error' => 'Payment not found'], 404);
+        }
+
+        $enquiry = $this->hesabeWebhookEnquiry($companyId, $paymentToken, $voucherNumber);
+
+        if (!$enquiry) {
+            Log::error('Hesabe webhook: transaction enquiry failed or returned no data, refusing to write', [
+                'company_id' => $companyId,
+                'voucher_number' => $voucherNumber,
+                'payment_token' => $paymentToken,
+            ]);
+            // 200 so Hesabe does not endlessly retry an enquiry that will never
+            // succeed (e.g. a forged token); nothing has been written.
+            return response()->json(['message' => 'Unable to verify transaction'], 200);
+        }
+
         DB::beginTransaction();
         try {
             // lockForUpdate() serializes this against any other delivery (retry,
             // and against handleHesabeResponse's own claim) racing on the same
             // payment row, so the "already processed" check right below is
-            // authoritative rather than a TOCTOU snapshot.
-            $payment = Payment::where('voucher_number', $voucherNumber)->lockForUpdate()->first();
+            // authoritative rather than a TOCTOU snapshot. Scoped to the company
+            // resolved above -- never a bare voucher_number lookup.
+            $payment = Payment::where('company_id', $companyId)
+                ->where('voucher_number', $voucherNumber)
+                ->lockForUpdate()
+                ->first();
 
             if (!$payment) {
-                Log::error('Hesabe webhook: Payment record not found', ['voucher_number' => $voucherNumber]);
+                Log::error('Hesabe webhook: Payment record not found for resolved company', [
+                    'voucher_number' => $voucherNumber,
+                    'company_id' => $companyId,
+                ]);
                 DB::rollback();
                 return response()->json(['error' => 'Payment not found'], 404);
             }
@@ -6613,6 +6653,30 @@ class PaymentController extends Controller
                 ], 200);
             }
 
+            // Assert the enquiry response actually describes THIS payment. Any
+            // mismatch means the webhook body cannot be trusted to drive a write:
+            // log both sides and stop here (nothing written, no status change).
+            $enquiryRef = trim((string) ($enquiry['reference_number'] ?? ''));
+            $enquiryToken = trim((string) ($enquiry['token'] ?? ''));
+            $enquiryAmountRaw = $enquiry['amount'] ?? null;
+            $enquiryAmount = is_numeric($enquiryAmountRaw) ? (float) $enquiryAmountRaw : null;
+            $enquiryStatus = strtoupper(trim((string) ($enquiry['status'] ?? '')));
+
+            $refMatches = $enquiryRef !== '' && $enquiryRef === (string) $voucherNumber;
+            $tokenMatches = !$paymentToken || ($enquiryToken !== '' && $enquiryToken === (string) $paymentToken);
+
+            if (!$refMatches || !$tokenMatches) {
+                Log::error('Hesabe webhook: enquiry identity does not match the resolved payment, refusing to write', [
+                    'payment_id' => $payment->id,
+                    'voucher_number' => $voucherNumber,
+                    'payment_token' => $paymentToken,
+                    'enquiry_reference_number' => $enquiryRef,
+                    'enquiry_token' => $enquiryToken,
+                ]);
+                DB::rollback();
+                return response()->json(['message' => 'Verification failed'], 200);
+            }
+
             // Determine process type from payment record
             $process = $payment->invoice ? 'invoice' : 'topup';
             $partialId = $payment->invoice ? $payment->invoice->invoicePartials()->where('payment_id', $payment->id)->value('id') : null;
@@ -6623,51 +6687,35 @@ class PaymentController extends Controller
                 'partial_id' => $partialId,
             ]);
 
-            // Check if payment was successful
-            if (strtoupper($status) === 'SUCCESSFUL' && $statusCode == 1) {
+            $amountMatches = $enquiryAmount !== null && abs($enquiryAmount - (float) $payment->amount) <= 0.001;
+            $enquiryIsSuccess = in_array($enquiryStatus, ['SUCCESSFUL', 'SUCCESS', 'CAPTURED', 'ACCEPT'], true);
 
-                $paymentStatusData = null;
-                $fullPaymentResponse = null;
+            // Check if payment was successful -- per Hesabe's own enquiry response,
+            // never per the request body's status/status_code/amount.
+            if ($enquiryIsSuccess && $amountMatches) {
+
+                // Source of truth for this transaction is the enquiry call already
+                // made above (hesabeWebhookEnquiry) -- do not re-fetch from Hesabe
+                // using unscoped/global credentials as the previous implementation did.
+                $paymentStatusData = $enquiry;
+                $fullPaymentResponse = ['status' => true, 'data' => $enquiry];
                 $paymentTransaction = null;
 
                 if ($paymentToken) {
-                    Log::info('[HESABE WEBHOOK] Payment token found in the response', [
-                        'payment_token' => $paymentToken,
-                        'status' => $status,
-                    ]);
+                    $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $paymentToken)->first();
 
-                    $hesabe = new Hesabe();
-                    $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
+                    if ($paymentTransaction) {
+                        $paymentTransaction->status = $paymentStatusData['status'] ?? 'Completed';
+                        $paymentTransaction->track_id = $paymentStatusData['TrackID'] ?? $paymentTransaction->track_id;
+                        $paymentTransaction->save();
 
-                    if ($getPaymentStatus['status'] == true) {
-                        $paymentStatusData = $getPaymentStatus['data'];
-                        $fullPaymentResponse = $getPaymentStatus;
-
-                        Log::info('[HESABE WEBHOOK] Full payment status retrieved', [
-                            'payment_token' => $paymentToken,
-                            'data' => $paymentStatusData,
+                        Log::info('[HESABE WEBHOOK] Payment transaction updated to completed', [
+                            'payment_transaction_id' => $paymentTransaction->id,
+                            'status' => $paymentTransaction->status
                         ]);
-
-                        $paymentTransaction = $payment->paymentTransactions()->where('reference_number', $paymentToken)->first();
-
-                        if ($paymentTransaction) {
-                            $paymentTransaction->status = $paymentStatusData['status'] ?? 'Completed';
-                            $paymentTransaction->track_id = $paymentStatusData['TrackID'] ?? $paymentTransaction->track_id;
-                            $paymentTransaction->save();
-
-                            Log::info('[HESABE WEBHOOK] Payment transaction updated to completed', [
-                                'payment_transaction_id' => $paymentTransaction->id,
-                                'status' => $paymentTransaction->status
-                            ]);
-                        } else {
-                            Log::warning('[HESABE WEBHOOK] Payment transaction not found for the given payment token', [
-                                'payment_token' => $paymentToken
-                            ]);
-                        }
                     } else {
-                        Log::warning('[HESABE WEBHOOK] Failed to get payment status from Hesabe API', [
-                            'payment_token' => $paymentToken,
-                            'response' => $getPaymentStatus,
+                        Log::warning('[HESABE WEBHOOK] Payment transaction not found for the given payment token', [
+                            'payment_token' => $paymentToken
                         ]);
                     }
                 }
@@ -6752,7 +6800,7 @@ class PaymentController extends Controller
 
                     $coaResult = $this->createInvoicePaymentCOA(
                         payment: $payment,
-                        finalPaidAmount: floatval($amount),
+                        finalPaidAmount: $enquiryAmount,
                         gatewayName: 'Hesabe',
                         partialIds: $partialId ? [$partialId] : null,
                         paymentReference: $paymentToken
@@ -6802,24 +6850,29 @@ class PaymentController extends Controller
                     'message' => 'Payment processed successfully',
                     'status' => 'success',
                 ], 200);
+            } elseif ($enquiryIsSuccess && !$amountMatches) {
+                // Enquiry confirms the transaction is genuinely SUCCESSFUL at Hesabe,
+                // but the confirmed amount does not match what this payment is for.
+                // This does not happen on a legitimate webhook -- refuse to write
+                // anything (do not mark paid, do not mark failed) and stop retries.
+                Log::error('Hesabe webhook: enquiry amount does not match payment amount, refusing to write', [
+                    'payment_id' => $payment->id,
+                    'voucher_number' => $voucherNumber,
+                    'payment_amount' => $payment->amount,
+                    'enquiry_amount' => $enquiryAmount,
+                ]);
+                DB::rollback();
+                return response()->json(['message' => 'Verification failed'], 200);
             } else {
-                // Payment failed
-                $paymentStatusData = null;
-                $fullPaymentResponse = null;
-
-                if ($paymentToken) {
-                    $hesabe = new Hesabe();
-                    $getPaymentStatus = $hesabe->getPaymentStatus($paymentToken);
-
-                    if ($getPaymentStatus['status'] == true) {
-                        $paymentStatusData = $getPaymentStatus['data'];
-                        $fullPaymentResponse = $getPaymentStatus;
-                    }
-                }
+                // Payment failed -- per Hesabe's own enquiry response, not the
+                // unsigned/unverified request body.
+                $paymentStatusData = $enquiry;
+                $fullPaymentResponse = ['status' => true, 'data' => $enquiry];
 
                 Log::error('Hesabe webhook: Payment failed', [
                     'status' => $status,
                     'status_code' => $statusCode,
+                    'enquiry_status' => $enquiryStatus,
                     'voucher_number' => $voucherNumber,
                 ]);
 
@@ -6886,6 +6939,115 @@ class PaymentController extends Controller
             ]);
             return response()->json(['error' => 'Internal server error'], 500);
         }
+    }
+
+    /**
+     * Resolve the single company that owns the Hesabe payment a webhook claims to
+     * be about, from data this application controls -- never from the request
+     * body. Voucher numbers are per-company sequential and can collide across
+     * tenants, so a bare `voucher_number` match against >1 company is treated as
+     * unresolvable rather than guessed.
+     *
+     * @return int|null Company id, or null if it cannot be resolved unambiguously.
+     */
+    private function resolveHesabeWebhookCompanyId(string $voucherNumber, ?string $paymentToken): ?int
+    {
+        $candidates = Payment::where('voucher_number', $voucherNumber)->get();
+
+        if ($candidates->isEmpty()) {
+            return null;
+        }
+
+        $companyIdFor = function (Payment $payment): ?int {
+            return $payment->company_id
+                ?? optional(optional($payment->agent)->branch)->company_id;
+        };
+
+        if ($candidates->count() === 1) {
+            return $companyIdFor($candidates->first());
+        }
+
+        // Voucher collision across companies: this is exactly the scenario the
+        // request body cannot be trusted to resolve. Disambiguate using Hesabe's
+        // own transaction-enquiry response (matched by amount) instead of guessing.
+        Log::warning('Hesabe webhook: voucher number collision across companies', [
+            'voucher_number' => $voucherNumber,
+            'candidate_payment_ids' => $candidates->pluck('id'),
+        ]);
+
+        // The enquiry credentials that matter for this GET call (accessCode,
+        // base_url) are structurally global in this system today (see plan doc
+        // §0.2) -- api_key/secret is the only per-company field and is not used
+        // here, so an unscoped probe cannot leak or misuse another company's
+        // secret. This probe is only used to pick which candidate to trust; the
+        // real, authoritative enquiry is re-run scoped to the resolved company.
+        $probe = $this->hesabeWebhookEnquiry(null, $paymentToken, $voucherNumber);
+
+        if (!$probe || !isset($probe['amount']) || !is_numeric($probe['amount'])) {
+            return null;
+        }
+
+        $probeAmount = (float) $probe['amount'];
+        $matches = $candidates->filter(
+            fn (Payment $candidate) => abs((float) $candidate->amount - $probeAmount) <= 0.001
+        );
+
+        if ($matches->count() !== 1) {
+            Log::error('Hesabe webhook: voucher collision could not be resolved to a single payment', [
+                'voucher_number' => $voucherNumber,
+                'probe_amount' => $probeAmount,
+                'match_count' => $matches->count(),
+            ]);
+            return null;
+        }
+
+        return $companyIdFor($matches->first());
+    }
+
+    /**
+     * Confirm a Hesabe transaction server-side via GET /api/transaction/{token}
+     * (or by orderReferenceNumber when no token was supplied), using the given
+     * company's Hesabe credentials. Returns the `data` object from a successful,
+     * confirmed response, or null if the transaction could not be confirmed.
+     *
+     * @return array<string,mixed>|null
+     */
+    private function hesabeWebhookEnquiry(?int $companyId, ?string $paymentToken, string $voucherNumber): ?array
+    {
+        try {
+            $hesabe = new Hesabe($companyId);
+        } catch (\Throwable $e) {
+            Log::error('Hesabe webhook: unable to build Hesabe client for enquiry', [
+                'company_id' => $companyId,
+                'message' => $e->getMessage(),
+            ]);
+            return null;
+        }
+
+        try {
+            if ($paymentToken) {
+                $response = $hesabe->getPaymentStatus($paymentToken);
+                $body = $response instanceof \Illuminate\Http\Client\Response ? $response->json() : $response;
+            } else {
+                $body = $hesabe->getTransaction($voucherNumber);
+            }
+        } catch (\Throwable $e) {
+            Log::error('Hesabe webhook: enquiry HTTP call failed', [
+                'company_id' => $companyId,
+                'message' => $e->getMessage(),
+            ]);
+            return null;
+        }
+
+        if (!is_array($body) || !($body['status'] ?? false) || !isset($body['data']) || !is_array($body['data'])) {
+            Log::warning('Hesabe webhook: enquiry returned no confirmed transaction', [
+                'company_id' => $companyId,
+                'body' => $body,
+            ]);
+            return null;
+        }
+
+        return $body['data'];
     }
 
     /**

@@ -507,7 +507,16 @@ class AirFileParser
             // otherwise be the unconverted foreign fare.
             $total = (float) ($data['total'] ?? 0);
             $collected = $this->extractCollectedTax();
-            if ($total == 0.0 && $collected !== null && $collected == 0.0) {
+            // Both corrections below only make sense when the K- line's fare is
+            // itself KWD: 'total' and 'collected' are always KWD amounts, so
+            // deriving price from them is only valid when price is denominated
+            // the same way. When the original K-line fare is a genuine foreign
+            // currency (e.g. K-REGP13894.00), extractPrice() already returned
+            // that fare at face value and must be left alone — there is no KWD
+            // total on this line to net it against (ticket 001137: EGP 13894
+            // fare, KWD0.000 net collection on a name-correction reissue).
+            $originalIsKwd = strtoupper((string) $this->extractOriginalCurrency()) === 'KWD';
+            if ($originalIsKwd && $total == 0.0 && $collected !== null && $collected == 0.0) {
                 // Zero-collection reissue (schedule change / name correction /
                 // even exchange): the K- line explicitly totals KWD0.000 and the
                 // TAX- line carries only PD (already-paid) items. Zero the split
@@ -517,7 +526,15 @@ class AirFileParser
                 $data['total'] = 0.0;
                 return $data;
             }
-            if ($total > 0 && $collected !== null && $collected >= 0 && $collected <= $total + 0.004) {
+            if (!$originalIsKwd && $total > 0 && $collected !== null && $collected >= 0 && $collected <= $total + 0.004) {
+                // Foreign-fare exchange (the K-RMAD10545 ... KWD209.600 case this
+                // branch was built for): raw price is the unconverted foreign
+                // fare, so rebuild it from the KWD total minus newly-collected
+                // tax. When the K-line is already KWD (ticket 001255: K-RKWD181
+                // fare paired with a separate KWD82 collectable, not a total/tax
+                // split of the same amount), extractPrice()'s raw 181 is already
+                // correct — recomputing total-collected would silently discard
+                // it (82 - 25 = 57, wrong).
                 $data['tax'] = round($collected, 3);
                 $data['price'] = round($total - $collected - (float) ($data['surcharge'] ?? 0), 3);
             }

@@ -10,6 +10,7 @@ class IncomingMedia extends Model
 
     protected $fillable = [
         'phone',
+        'company_id',
         'media_id',
         'mime_type',
         'caption',
@@ -19,7 +20,13 @@ class IncomingMedia extends Model
         'agent_email',
         'agent_id',
         'media_type',
+        'client_id',
     ];
+
+    public function company()
+    {
+        return $this->belongsTo(Company::class);
+    }
 
     protected $dates = [
         'received_at',

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 /**
  * Links one TravelERP (company, user) pair to its Resayil account identity.
@@ -73,6 +74,7 @@ class ResayilAccount extends Model
         'resayil_user_id',
         'resayil_webhook_id',
         'webhook_nonce',
+        'webhook_secret',
         'key_source',
         'device_paired_at',
         'device_health',
@@ -131,6 +133,36 @@ class ResayilAccount extends Model
     public function isProvisioned(): bool
     {
         return $this->status === self::STATUS_PROVISIONED;
+    }
+
+    /**
+     * Security fix (sec/resayil-webhook): Resayil's register-webhook body
+     * (`{name, device, url, events}`) carries no signature/secret of its
+     * own — see the resayil-whatsapp-api skill's webhooks reference.
+     * Security is entirely ours: a random per-company secret is embedded
+     * in the webhook URL path we register with Resayil
+     * (`/webhook/resayil/media/{secret}`, `/webhook/resayil/{secret}`) and
+     * VerifyResayilWebhookSecret resolves the company from it.
+     *
+     * Only the SHA-256 digest is ever persisted (`webhook_secret`). This
+     * method is idempotent: if a secret already exists it returns null
+     * (the plaintext cannot be recovered from the digest) rather than
+     * silently rotating it and breaking an already-registered webhook.
+     * Call it once per admin row and persist the returned plaintext into
+     * the URL registered with Resayil at that moment — it will not be
+     * retrievable again.
+     */
+    public function ensureWebhookSecret(): ?string
+    {
+        if (! empty($this->webhook_secret)) {
+            return null;
+        }
+
+        $plain = Str::random(48);
+        $this->webhook_secret = hash('sha256', $plain);
+        $this->save();
+
+        return $plain;
     }
 
     public function scopeForCompany($query, int $companyId)

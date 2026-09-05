@@ -351,6 +351,17 @@ final class CreditApplicationDraftBuilder
      * not assume otherwise) by filtering to `transactions.doc_type = 'INV'`. Returns null when no
      * such line exists (legacy-era invoice, or one never engine-posted) — the caller falls back to
      * a live lookup in that case, logged distinctly.
+     *
+     * accounting-builds T1 POST-FIX RE-VERIFY (defect V-6, the same defect and the same fix as
+     * `RealisedFxService::resolveAppliedLineId()` — see that method's docblock). Without the
+     * `posting_status = 'posted'` / `deleted_at` filters this read returns the REVERSED original
+     * after an invoice repost (it keeps `doc_type = 'INV'`, keeps its lines' `invoice_id`, and
+     * holds the lowest `journal_entries.id`, so "earliest wins" picks it), clearing the receivable
+     * at a rate the invoice no longer carries — re-opening the exact AR residual this F1/Q2 fix
+     * exists to close, and doing it SILENTLY: a row was found, so the distinct
+     * 'accounting.credit_apply_rate_fallback_live_lookup' log never fires. Legacy rows still match:
+     * the `posting_status` column's migration default is `'posted'`. Pinned by
+     * RealisedFxRepostChainTest::test_credit_apply_jv_uses_the_live_invoice_rate_after_a_repost().
      */
     private function resolvePostedInvoiceRate(Invoice $invoice, int $companyId): ?float
     {
@@ -365,6 +376,8 @@ final class CreditApplicationDraftBuilder
         $line = JournalEntry::withoutGlobalScopes()
             ->whereNull('journal_entries.deleted_at')
             ->join('transactions', 'transactions.id', '=', 'journal_entries.transaction_id')
+            ->whereNull('transactions.deleted_at')
+            ->where('transactions.posting_status', 'posted')
             ->where('transactions.doc_type', 'INV')
             ->where('transactions.company_id', $companyId)
             ->where('journal_entries.invoice_id', $invoice->id)

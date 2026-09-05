@@ -391,6 +391,20 @@ final class RealisedFxService
      * credit-apply JV's own credit line, which also carries `invoice_id = $invoice->id` (the
      * `transactions.doc_type = 'INV'` filter is what tells the two apart). Earliest such line wins
      * when more than one exists (there should be exactly one for a normal single-INV invoice).
+     *
+     * accounting-builds T1 POST-FIX RE-VERIFY (defect V-6). `posting_status = 'posted'` and the
+     * `transactions.deleted_at` exclusion are LOAD-BEARING, not tidiness. V-1 fixed the SOURCE
+     * side's repost blindness; the applied side had the same blindness pointing the other way.
+     * `PostingService::repost()` leaves the reversed ORIGINAL row intact -- same `doc_type = 'INV'`,
+     * same `invoice_id` on its lines, and holding the LOWEST `journal_entries.id` -- so
+     * "earliest wins" silently returned the DEAD line and computed the whole realised-FX
+     * difference against a rate the invoice no longer carries. (The reversal document itself is
+     * `doc_type = 'REV'` and was already excluded; the reversed original was not.) Reached in
+     * production by {@see \App\Http\Controllers\InvoiceController::repostInvoiceTransactionsWithNewDate()}
+     * and the sale-document repost paths. Legacy pre-engine rows are unaffected: the
+     * `posting_status` column's migration default is `'posted'` precisely so existing rows keep
+     * matching. Pinned by
+     * RealisedFxRepostChainTest::test_applied_line_uses_the_live_invoice_document_after_a_repost().
      */
     private function resolveAppliedLineId(Invoice $invoice, int $companyId): ?int
     {
@@ -399,6 +413,8 @@ final class RealisedFxService
         $line = JournalEntry::withoutGlobalScopes()
             ->whereNull('journal_entries.deleted_at')
             ->join('transactions', 'transactions.id', '=', 'journal_entries.transaction_id')
+            ->whereNull('transactions.deleted_at')
+            ->where('transactions.posting_status', 'posted')
             ->where('transactions.doc_type', 'INV')
             ->where('transactions.company_id', $companyId)
             ->where('journal_entries.invoice_id', $invoice->id)

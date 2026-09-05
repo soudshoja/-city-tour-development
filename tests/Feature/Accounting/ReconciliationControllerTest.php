@@ -18,6 +18,7 @@ use App\Models\User;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Carbon;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -28,6 +29,8 @@ use Tests\Support\AccountingTestCase;
  */
 class ReconciliationControllerTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -37,6 +40,7 @@ class ReconciliationControllerTest extends AccountingTestCase
     private function makeCompanyAndAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
         (new SystemAccountsSeeder)->run();
 
@@ -103,6 +107,7 @@ class ReconciliationControllerTest extends AccountingTestCase
     public function test_guest_is_redirected_to_login(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
 
         $response = $this->get(route('accounting.reconciliation.index', ['company_id' => $company->id]));

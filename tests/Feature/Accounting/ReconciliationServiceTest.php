@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\Accounting\ReconciliationService;
 use Database\Seeders\CoaSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -29,9 +30,12 @@ use Tests\Support\AccountingTestCase;
  */
 class ReconciliationServiceTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     private function makeCompanyAndBranch(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
 
         $branchOwner = User::factory()->create();
@@ -255,6 +259,7 @@ class ReconciliationServiceTest extends AccountingTestCase
     public function test_decline_reconcile_unmarks_the_original_lines_and_removes_the_reconciliation_row(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
         $branchOwner = User::factory()->create();
         $branch = Branch::factory()->create(['company_id' => $company->id, 'user_id' => $branchOwner->id]);
@@ -318,6 +323,7 @@ class ReconciliationServiceTest extends AccountingTestCase
         // "Case 1: user directly owns a company" branch and User::branch() (hasOne(Branch::class)).
         $companyOwner = User::factory()->create(['role_id' => Role::COMPANY]);
         $company = Company::factory()->create(['user_id' => $companyOwner->id]);
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
         $branch = Branch::factory()->create(['company_id' => $company->id, 'user_id' => $companyOwner->id]);
         $this->trackCompanyForInvariants($company->id);

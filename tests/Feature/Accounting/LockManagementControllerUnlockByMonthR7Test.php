@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\PaymentApplication;
 use App\Models\Transaction;
 use Spatie\Permission\Models\Permission;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Feature\Security\Concerns\CreatesTenantFixtures;
 use Tests\Support\AccountingTestCase;
 
@@ -25,7 +26,10 @@ use Tests\Support\AccountingTestCase;
  */
 class LockManagementControllerUnlockByMonthR7Test extends AccountingTestCase
 {
-    use CreatesTenantFixtures;
+    use CreatesTenantFixtures {
+        createTenant as private createTenantFixture;
+    }
+    use GrantsAccountingModule;
 
     protected function tearDown(): void
     {
@@ -34,6 +38,23 @@ class LockManagementControllerUnlockByMonthR7Test extends AccountingTestCase
     }
 
     private const MANAGE_LOCKS = ['manage locks'];
+
+    /**
+     * B7a: CreatesTenantFixtures::createTenant() is shared with the Security suite, whose
+     * fixtures resolve against modules that default ON -- see that trait's own docblock. This
+     * suite hits `module:accounting`-gated routes, which now fail CLOSED, so the tenant built
+     * here needs the grant every time; overriding (not editing) the shared trait method keeps
+     * that grant local to this file.
+     *
+     * @return array{user: User, company: Company, branch: Branch, agent: Agent, client: Client}
+     */
+    private function createTenant(array $permissions = []): array
+    {
+        $tenant = $this->createTenantFixture($permissions);
+        $this->grantAccountingModule($tenant['company']);
+
+        return $tenant;
+    }
 
     private function lockedInvoiceFor(array $tenant, string $invoiceDate): Invoice
     {

@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Services\Accounting\AccountResolver;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -25,9 +26,12 @@ use Tests\Support\AccountingTestCase;
  */
 class CoaControllerSafeWritersTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     private function makeCompanyAndAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $admin = User::factory()->create(['role_id' => Role::ADMIN]);
         session(['company_id' => $company->id]);
         $this->trackCompanyForInvariants($company->id);

@@ -4,7 +4,9 @@ namespace Tests\Feature\Security;
 
 use App\Models\Account;
 use App\Models\Credit;
+use App\Models\Permission;
 use App\Models\Role;
+use App\Models\SystemAccount;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\Feature\Security\Concerns\CreatesTenantFixtures;
 use Tests\TestCase;
@@ -129,12 +131,36 @@ class CreditTopupTenantIsolationTest extends TestCase
         $tenant = $this->createTenant();
         $this->seedTopupAccounts($tenant['company']->id);
 
+        // buildCreditTopupDraft() resolves CASH_IN_HAND unconditionally, even on this OFF path
+        // (posting_engine_enabled stays false, so PostingSeam::isEnabledFor() still routes to
+        // the $legacy closure below) -- mirrors
+        // CreditControllerW7KTest::test_off_path_matches_legacy_exactly()'s identical
+        // comment/setup. Map a dedicated leaf (kept separate from seedTopupAccounts()'s hand
+        // -built chain, which the $legacy closure looks up by name) to that purpose code so the
+        // lookup resolves.
+        $cashInHand = Account::create([
+            'name' => 'Cash In Hand', 'level' => 1, 'actual_balance' => 0,
+            'budget_balance' => 0, 'variance' => 0, 'company_id' => $tenant['company']->id,
+        ]);
+        SystemAccount::create([
+            'company_id' => $tenant['company']->id,
+            'purpose_code' => 'CASH_IN_HAND',
+            'service_type' => null,
+            'account_id' => $cashInHand->id,
+        ]);
+
         // creditTopup() records `topup_by` from the caller's Spatie role name (an enum column
         // restricted to Client/Branch/Company) -- CompanyController::store() assigns the
         // 'company' Spatie role to every real Role::COMPANY user, so mirror that here rather
         // than relying on createTenant()'s default (no Spatie role at all).
         Role::firstOrCreate(['name' => 'company', 'guard_name' => 'web']);
         $tenant['user']->assignRole('company');
+
+        // CreditPolicy::create() (Wave A) now gates creditTopup() on 'create credit' -- see
+        // database/seeders/PermissionSeeder.php's own grant for this permission; mirrors
+        // tests/Feature/Accounting/CreditControllerW7KTest.php's makeCompanyWithAdmin().
+        Permission::firstOrCreate(['name' => 'create credit', 'group' => 'credit']);
+        $tenant['user']->givePermissionTo('create credit');
 
         $response = $this->actingAs($tenant['user'])
             ->post(route('credits.topup'), [

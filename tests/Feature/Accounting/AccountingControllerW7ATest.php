@@ -15,6 +15,7 @@ use App\Services\Accounting\DocumentDraft;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PostingService;
 use Illuminate\Support\Facades\DB;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -25,6 +26,8 @@ use Tests\Support\AccountingTestCase;
  */
 class AccountingControllerW7ATest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -39,6 +42,7 @@ class AccountingControllerW7ATest extends AccountingTestCase
     {
         $user = User::factory()->create(['role_id' => Role::COMPANY]);
         $company = Company::factory()->create(['user_id' => $user->id]);
+        $this->grantAccountingModule($company);
         $branch = Branch::factory()->create(['company_id' => $company->id, 'user_id' => $user->id]);
 
         if ($engineOn) {

@@ -102,13 +102,21 @@ class ProdDriftRemindersTest extends TestCase
             'payment_date' => now()->subDays(3),
         ]);
 
-        AgentNotificationSetting::create([
-            'agent_id' => $agent->id,
-            'company_id' => $company->id,
-            'notification_type' => AgentNotificationSetting::TYPE_PAYMENT_LINK_UNINVOICED,
-            'channel' => AgentNotificationSetting::CHANNEL_EMAIL,
-            'is_active' => true,
-        ]);
+        // AgentObserver::created() (prod-drift commit 254bb45a8) now auto-seeds a default
+        // TYPE_PAYMENT_LINK_UNINVOICED row (channel=both, is_active=true) for every new agent --
+        // updateOrCreate so this test's explicit channel/is_active override wins instead of
+        // colliding with that seeded row on the agent_notif_unique key.
+        AgentNotificationSetting::updateOrCreate(
+            [
+                'agent_id' => $agent->id,
+                'company_id' => $company->id,
+                'notification_type' => AgentNotificationSetting::TYPE_PAYMENT_LINK_UNINVOICED,
+            ],
+            [
+                'channel' => AgentNotificationSetting::CHANNEL_EMAIL,
+                'is_active' => true,
+            ]
+        );
 
         Mail::fake();
 
@@ -134,13 +142,19 @@ class ProdDriftRemindersTest extends TestCase
             'payment_date' => now()->subDays(3),
         ]);
 
-        AgentNotificationSetting::create([
-            'agent_id' => $agent->id,
-            'company_id' => $company->id,
-            'notification_type' => AgentNotificationSetting::TYPE_PAYMENT_LINK_UNINVOICED,
-            'channel' => AgentNotificationSetting::CHANNEL_EMAIL,
-            'is_active' => false,
-        ]);
+        // See the updateOrCreate note above -- AgentObserver::created() already seeded a row on
+        // this same unique key when $agent was created.
+        AgentNotificationSetting::updateOrCreate(
+            [
+                'agent_id' => $agent->id,
+                'company_id' => $company->id,
+                'notification_type' => AgentNotificationSetting::TYPE_PAYMENT_LINK_UNINVOICED,
+            ],
+            [
+                'channel' => AgentNotificationSetting::CHANNEL_EMAIL,
+                'is_active' => false,
+            ]
+        );
 
         Mail::fake();
 

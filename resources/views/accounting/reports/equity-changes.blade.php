@@ -86,6 +86,12 @@
                                 <td class="px-4 py-2 text-right"></td>
                             </tr>
                         @endif
+                        @if ($key === 'dividends_paid')
+                            <tr class="text-gray-500 dark:text-gray-400 text-xs">
+                                <td class="px-4 py-2" colspan="4">&nbsp;&nbsp;&#8627; swept to Retained Earnings (pro-forma, as if closed today) — Closing shown as 0.000 above</td>
+                                <td class="px-4 py-2 text-right"></td>
+                            </tr>
+                        @endif
                     @endforeach
                 </tbody>
                 <tfoot class="bg-gray-50 dark:bg-gray-700/40 font-semibold text-gray-800 dark:text-gray-100">

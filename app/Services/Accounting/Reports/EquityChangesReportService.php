@@ -154,13 +154,39 @@ final class EquityChangesReportService
 
         $closingCapital = $openingCapital + $capitalMovement;
         $closingObe = $openingObe + $obeMovement;
-        $closingDividendsLeaf = $openingDividends + $dividendsMovement;
         // Pro-forma: opening RE + this year's real RE movement (always ~0 pre-close, YEC-excluded
         // even post-close — see class docblock) + net profit − dividends paid, i.e. what RE WOULD
         // read the moment this year is closed.
         $closingRetainedEarnings = $openingRe + $reMovement + $netProfit + $dividendsMovement;
 
         $closingTotal = $closingCapital + $closingObe + $closingRetainedEarnings;
+
+        // Wave 3 lane I item A2 (T5/T6 §12 sign-off finding): the Dividends Paid row's presented
+        // Closing must NOT be the raw unswept leaf balance (`$openingDividends + $dividendsMovement`).
+        // $closingRetainedEarnings above already folds `$dividendsMovement` in as part of the SAME
+        // pro-forma "as if closed today" assumption the class docblock documents at length for RE —
+        // showing the raw unswept Dividends Paid balance ALONGSIDE that pro-forma RE figure double-
+        // counts the dividend movement, so Σ(every row's closing) != closing_equity_total whenever a
+        // dividend moved this year. The fix is symmetric with RE's own treatment, not a special case:
+        // exactly as RE's presented Closing assumes this year's close has already run, the Dividends
+        // Paid leaf's presented Closing must assume the SAME pro-forma close already swept it to
+        // zero (`Dr Retained Earnings / Cr Dividends Paid`, the real entry YearEndCloseService posts)
+        // — so it is always presented as 0.0, regardless of the raw unswept balance. This is the
+        // "dividends row closing = 0 after a pro-forma sweep" presentation (chosen over adding a
+        // brand-new "explicit transfer" row/component, which would change this report's fixed
+        // 4-component shape for no numeric benefit — the two are algebraically identical, this one
+        // is the minimal diff and mirrors the RE row's own already-established pro-forma-fold-in
+        // convention, including its own informational footnote row in the Blade view). The Movement
+        // column is deliberately left UNCHANGED (still the real period dividend payment,
+        // `$dividendsMovement`) — exactly as RE's own Movement column is left as the real, tiny,
+        // YEC-excluded `$reMovement` rather than being inflated to match its pro-forma Closing; ANY
+        // individual row's Opening+Movement=Closing was never an invariant this report enforced
+        // (RE's row does not satisfy it either, pre- or post-close, on purpose) — see the class
+        // docblock. What per-column FOOTING to the grand total actually requires (and what the
+        // regression test below pins) is that summing each column DOWN across all four rows
+        // reproduces `opening_equity_total` / `closing_equity_total` — never that a single row foots
+        // internally.
+        $closingDividendsPresented = 0.0;
 
         $nextYearOpeningTotal = $this->netCredit($capital->id, $nextYearOpening)
             + $this->netCredit($obe->id, $nextYearOpening)
@@ -187,7 +213,7 @@ final class EquityChangesReportService
                 'capital' => ['code' => $capital->code, 'name' => $capital->name, 'opening' => $openingCapital, 'movement' => $capitalMovement, 'closing' => $closingCapital],
                 'opening_balance_equity' => ['code' => $obe->code, 'name' => $obe->name, 'opening' => $openingObe, 'movement' => $obeMovement, 'closing' => $closingObe],
                 'retained_earnings' => ['code' => $retainedEarnings->code, 'name' => $retainedEarnings->name, 'opening' => $openingRe, 'movement' => $reMovement, 'closing' => $closingRetainedEarnings],
-                'dividends_paid' => ['code' => $dividends->code, 'name' => $dividends->name, 'opening' => $openingDividends, 'movement' => $dividendsMovement, 'closing' => $closingDividendsLeaf],
+                'dividends_paid' => ['code' => $dividends->code, 'name' => $dividends->name, 'opening' => $openingDividends, 'movement' => $dividendsMovement, 'closing' => $closingDividendsPresented],
             ],
             'net_profit' => $netProfit,
             'dividends_paid_this_year' => -$dividendsMovement,

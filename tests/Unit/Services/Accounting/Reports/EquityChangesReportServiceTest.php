@@ -291,6 +291,49 @@ class EquityChangesReportServiceTest extends AccountingTestCase
     }
 
     /**
+     * accounting-builds Wave 3 lane I item A2 (T5/T6 §12 sign-off finding): every component's
+     * Opening/Closing column must foot to the equity total when a dividend moved this year — the
+     * Dividends Paid row's presented Closing must NOT double-count into the total the same
+     * dividend movement Retained Earnings' own pro-forma Closing already folded in. Exercised both
+     * pre-close (dividend leaf still carries its raw unswept balance in the real ledger) and
+     * post-close (YEC has actually swept it) — the presented figures must foot identically either
+     * way, since this is a presentation fix, not a ledger-state-dependent one.
+     */
+    public function test_dividends_paid_row_and_all_component_columns_foot_to_the_equity_totals(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->postCapitalInjection($company, $branch, 2026, 1000);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->postDividendPayment($company, $branch, 2026, 100);
+
+        $preClose = $this->service()->generate($company->id, 2026);
+
+        $this->assertEqualsWithDelta(0.0, $preClose['components']['dividends_paid']['closing'], 0.001, 'Dividends Paid Closing must be presented as swept (0), never the raw unswept leaf balance.');
+        $this->assertEqualsWithDelta(-100.0, $preClose['components']['dividends_paid']['movement'], 0.001, 'The real period dividend payment must still be visible in Movement even though Closing is presented as swept.');
+
+        $openingFooted = $preClose['components']['capital']['opening'] + $preClose['components']['opening_balance_equity']['opening']
+            + $preClose['components']['retained_earnings']['opening'] + $preClose['components']['dividends_paid']['opening'];
+        $closingFooted = $preClose['components']['capital']['closing'] + $preClose['components']['opening_balance_equity']['closing']
+            + $preClose['components']['retained_earnings']['closing'] + $preClose['components']['dividends_paid']['closing'];
+
+        $this->assertEqualsWithDelta($preClose['opening_equity_total'], $openingFooted, 0.001, 'Summing every row\'s Opening column must foot to opening_equity_total.');
+        $this->assertEqualsWithDelta($preClose['closing_equity_total'], $closingFooted, 0.001, 'Summing every row\'s Closing column must foot to closing_equity_total — this is the exact footing that broke when Dividends Paid showed its raw unswept balance.');
+
+        // Same assertions post-close: the presentation fix must not depend on YEC having run.
+        $this->lockAllMonths($company, 2026);
+        $close = $this->yearEndClose()->run($company->id, 2026, null);
+        $this->assertTrue($close['success']);
+
+        $postClose = $this->service()->generate($company->id, 2026);
+
+        $this->assertEqualsWithDelta(0.0, $postClose['components']['dividends_paid']['closing'], 0.001);
+
+        $closingFootedPostClose = $postClose['components']['capital']['closing'] + $postClose['components']['opening_balance_equity']['closing']
+            + $postClose['components']['retained_earnings']['closing'] + $postClose['components']['dividends_paid']['closing'];
+        $this->assertEqualsWithDelta($postClose['closing_equity_total'], $closingFootedPostClose, 0.001);
+    }
+
+    /**
      * MP-6-2 (adversarial verification, "never reads accounts.actual_balance / journal_entries.
      * balance"): a static source-text guard on the service file itself, mirroring the class
      * docblock's own claim. This is a genuine mutation-catching oracle: injecting either forbidden

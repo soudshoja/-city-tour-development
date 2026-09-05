@@ -52,7 +52,14 @@ class FixedAssetsDepreciate extends Command
         $userId = $userOption !== null ? (int) $userOption : null;
 
         if ((bool) $this->option('all-companies')) {
-            $companyIds = FixedAsset::withoutGlobalScopes()->distinct()->pluck('company_id')->map(fn ($id) => (int) $id)->all();
+            // whereNull('deleted_at'): withoutGlobalScopes() drops SoftDeletingScope too — a company
+            // whose only assets are archived has nothing to run (verifier fix, defect D2).
+            $companyIds = FixedAsset::withoutGlobalScopes()
+                ->whereNull('deleted_at')
+                ->distinct()
+                ->pluck('company_id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
         } else {
             $companyArg = $this->argument('company');
 

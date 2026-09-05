@@ -177,6 +177,19 @@ final class FixedAssetService
      */
     public function nbv(FixedAsset $asset): float
     {
+        // VERIFIER FIX (adversarial pass, defect D3): a disposed asset carries NO book value. Its
+        // `DSP` document credits the full cost off FA_COST_{class} AND debits the accumulated
+        // depreciation off the contra — which nets this method's own contra sum back to zero, so
+        // the derivation below would report the disposed asset at its FULL ORIGINAL COST. Gated
+        // on exactly the same pair `dispose()`'s own idempotency short-circuit uses (status +
+        // a recorded disposal_transaction_id), so the two can never disagree: dispose() returns
+        // the existing document before ever reaching this line. (A future reversal flow that
+        // un-disposes an asset must clear `disposal_transaction_id` and the status together —
+        // the same pair dispose() keys on.)
+        if ($asset->status === FixedAsset::STATUS_DISPOSED && $asset->disposal_transaction_id !== null) {
+            return 0.0;
+        }
+
         $classConfig = $this->classConfig($asset->asset_class);
 
         $contraAccount = Account::withoutGlobalScopes()
@@ -218,6 +231,20 @@ final class FixedAssetService
         $life = (int) $asset->useful_life_months;
         $depreciableBase = round((float) $asset->cost - (float) $asset->salvage, 3);
         $base = $life > 0 ? round($depreciableBase / $life, 3) : 0.0;
+
+        // VERIFIER FIX (adversarial pass, defect D1): for a sub-fils monthly charge (a
+        // depreciable base small relative to life² — e.g. base 0.003 over 5 months, or 0.004 over
+        // 7) `round()` can round the monthly amount UP hard enough that `(life − 1) × base`
+        // already exceeds the whole depreciable base, leaving the final month a NEGATIVE residual
+        // (−0.001 in the 0.003/5 case). The sum stayed exact, but DepreciationRunService skips any
+        // month whose amount is `<= 0`, so the negative month was silently dropped and the asset
+        // over-depreciated below salvage. Flooring at 3dp can never overshoot — `(life − 1) ×
+        // floor(D/L)` is strictly below D — so the residual month is always ≥ base and never
+        // negative, and Σ is still exactly `cost − salvage`. Only the pathological case falls
+        // back; every normal schedule keeps the round()-plus-residual shape unchanged.
+        if ($life > 1 && round($base * ($life - 1), 3) > $depreciableBase) {
+            $base = floor(($depreciableBase / $life) * 1000) / 1000;
+        }
 
         $inService = Carbon::parse($asset->in_service_date)->startOfMonth();
         $schedule = [];

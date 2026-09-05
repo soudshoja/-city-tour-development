@@ -104,7 +104,13 @@ final class DepreciationRunService
 
         $monthEnd = Carbon::create($year, $month, 1)->endOfMonth();
 
+        // VERIFIER FIX (adversarial pass, defect D2): `withoutGlobalScopes()` also drops Eloquent's
+        // SoftDeletingScope, so an ARCHIVED (soft-deleted) asset was still being depreciated month
+        // after month. The explicit `deleted_at IS NULL` predicate is the same convention
+        // PostingService's own P1 fix round adopted for every withoutGlobalScopes() read of a
+        // soft-deleting model.
         $assets = FixedAsset::withoutGlobalScopes()
+            ->whereNull('deleted_at')
             ->where('company_id', $companyId)
             ->where('status', FixedAsset::STATUS_ACTIVE)
             ->get();

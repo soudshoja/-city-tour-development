@@ -68,11 +68,11 @@
 
 <body>
     <div class="email-container">
-        <div class="brand-name">City Tour</div>
+        <div class="brand-name">{{ $company->name ?? config('app.name') }}</div>
 
         <p>Hello,</p>
 
-        <p>Thank you for choosing City Tour.</p>
+        <p>Thank you for choosing {{ $company->name ?? config('app.name') }}.</p>
 
         <p>Please proceed with your payment using the link below:</p>
 
@@ -87,10 +87,10 @@
 
         <p>Should you have any questions, feel free to contact our support team.</p>
 
-        <p>Regards,<br>City Tour App</p>
+        <p>Regards,<br>{{ $company->name ?? config('app.name') }}</p>
 
         <div class="footer">
-            &copy; {{ date('Y') }} City Tour. All rights reserved.
+            &copy; {{ date('Y') }} {{ $company->name ?? config('app.name') }}. All rights reserved.
         </div>
     </div>
 </body>

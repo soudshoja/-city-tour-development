@@ -7,6 +7,7 @@ namespace App\Services\Accounting\FixedAssets;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\FixedAsset;
+use App\Models\FixedAssetDepreciation;
 use App\Models\JournalEntry;
 use App\Models\Transaction;
 use App\Services\Accounting\AccountResolver;
@@ -59,6 +60,8 @@ final class FixedAssetService
     {
         $merged = array_merge($asset->only(['asset_class', 'cost', 'salvage', 'useful_life_months']), $data);
         $this->validate($merged);
+
+        $this->assertBasisNotFrozen($asset, $data);
 
         $asset->fill($data);
         $asset->save();
@@ -444,6 +447,71 @@ final class FixedAssetService
         }
 
         return $classes[$classKey];
+    }
+
+    /**
+     * POST-FIX RE-VERIFIER (second adversarial pass, defect D4): the DEPRECIATION BASIS is FROZEN
+     * once any depreciation has been posted for the asset.
+     *
+     * {@see self::scheduleFor()} re-derives the WHOLE schedule from the asset's CURRENT
+     * cost/salvage/life/in-service date every time it is called, and {@see DepreciationRunService}
+     * charges whatever the current schedule says for the month being run — it never reconciles
+     * against what was already posted. So lowering `cost` mid-life made the remaining months post
+     * against the new, smaller base ON TOP OF the old, larger charges: cost 1000 over 5 months
+     * with 3 months (600.000) already posted, then `cost` edited to 500.000, still posted 100.000
+     * for month 4 — driving NBV to **−200.000** (a negative book value, accumulated depreciation
+     * exceeding cost, and 200.000 KWD of overstated depreciation expense) and flipping the asset
+     * to `fully_depreciated` on the way.
+     *
+     * Refusing the edit is the minimal guard that closes the hole without inventing scope: a real
+     * basis revision (impairment, life re-estimate, salvage re-estimate) has to re-spread the
+     * REMAINING depreciable base over the REMAINING months prospectively, which the plan does not
+     * specify and no caller needs yet — this exception is where that feature will hang when it is
+     * specified. Everything descriptive (name, code, notes, supplier, branch, status) stays
+     * editable at any time, and the basis itself stays editable right up until the first `DEP`
+     * document posts.
+     */
+    private function assertBasisNotFrozen(FixedAsset $asset, array $data): void
+    {
+        $changed = [];
+
+        foreach (['asset_class', 'method'] as $key) {
+            if (array_key_exists($key, $data) && (string) $data[$key] !== (string) $asset->{$key}) {
+                $changed[] = $key;
+            }
+        }
+
+        foreach (['cost', 'salvage'] as $key) {
+            if (array_key_exists($key, $data) && round((float) $data[$key], 3) !== round((float) $asset->{$key}, 3)) {
+                $changed[] = $key;
+            }
+        }
+
+        if (array_key_exists('useful_life_months', $data)
+            && (int) $data['useful_life_months'] !== (int) $asset->useful_life_months) {
+            $changed[] = 'useful_life_months';
+        }
+
+        if (array_key_exists('in_service_date', $data)
+            && Carbon::parse($data['in_service_date'])->toDateString() !== Carbon::parse($asset->in_service_date)->toDateString()) {
+            $changed[] = 'in_service_date';
+        }
+
+        if ($changed === []) {
+            return;
+        }
+
+        $posted = FixedAssetDepreciation::where('fixed_asset_id', $asset->id)
+            ->where('status', FixedAssetDepreciation::STATUS_POSTED)
+            ->exists();
+
+        if ($posted) {
+            throw new \InvalidArgumentException(sprintf(
+                'Fixed asset #%d already has posted depreciation; its depreciation basis (%s) can no longer be changed. Reverse the posted depreciation first, or add a prospective revision flow.',
+                (int) $asset->id,
+                implode(', ', $changed)
+            ));
+        }
     }
 
     private function validate(array $data): void

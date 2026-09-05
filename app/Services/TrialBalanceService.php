@@ -104,9 +104,51 @@ class TrialBalanceService
             // fallback — exactly the same "posting_date, else transaction_date" rule this wave's
             // own migration backfill uses for pre-existing rows, applied here at query time for
             // any row a future legacy writer still produces.
+            //
+            // YEC exclusion (conformance audit, blueprint analog of "SubType <> 'OJV': opening
+            // journal is opening balance, never movement"): {@see \App\Services\Accounting\
+            // YearEndCloseService} posts one doc_type='YEC' document per (company, year), dated at
+            // fiscal year end, that zeroes every Income/Expense leaf's balance for the year against
+            // RETAINED_EARNINGS. Because every balance here is a date-range QUERY (no running
+            // column reset at rollover — see that class's own docblock), a period-MOVEMENT query
+            // like this one must exclude the YEC's own zeroing lines or a P&L run for an
+            // already-closed year sees its own year's real trading activity net to ~zero against
+            // itself. getOpeningBalances() below deliberately does NOT apply this exclusion — the
+            // YEC lines are exactly what must carry INTO next year's opening balances (Income/
+            // Expense leaves opening at zero, Retained Earnings carrying the swept net) — only
+            // in-period movement is affected.
+            //
+            // Deliberately excludes the WHOLE YEC document (every line, by transaction_id), not just
+            // its Income/Expense zeroing lines — adversarial verification (2026-09-01) tried scoping
+            // this to Income/Expenses roots only (via a join to the leaf's own root name) so that the
+            // YEC's Retained-Earnings balancing line would still count as same-year movement. That
+            // narrower scoping was REJECTED: a YEC document is itself fully balanced (every posted
+            // Transaction is, by PostingService's own invariant), so excluding it whole always keeps
+            // this report's total_debit/total_credit sums equal — excluding only SOME of its lines
+            // does not, and broke tests/Support/AccountingInvariants.php's assertCompanyLedgerBalanced()
+            // (file 11 §C1's structural "the ledger always balances" requirement, asserted after every
+            // accounting test) by exactly the swept net profit. Whole-document exclusion is also the
+            // accounting-correct reading of what this query answers once ANY exclusion is applied to a
+            // range containing a YEC: a "pre-closing trial balance" for that range — as if the closing
+            // entry (a single atomic document) had not been posted yet — which by definition omits its
+            // Retained-Earnings line too, not only its zeroing lines. A caller that wants the POST-
+            // closing figure for Retained Earnings (or any account) as of a date on/after the YEC's own
+            // date must query it the same way real bookkeeping does: via getOpeningBalances() for a
+            // $dateFrom strictly after the YEC's posting date — e.g. the next fiscal year's Jan 1 — not
+            // by widening this method's $dateTo up to the YEC's own date and expecting the swept figure
+            // to appear in THIS method's movement/closing_balance instead. See
+            // YearEndCloseReportExclusionTest::test_multi_year_movement_and_opening_semantics_around_a_yec_boundary()
+            // for both halves pinned together: RE movement is 0 for the closing year's own report, and
+            // getOpeningBalances() for the following year correctly carries the swept 300 forward.
             ->leftJoin('journal_entries as je', function ($join) use ($dateFrom, $dateTo) {
                 $join->on('je.account_id', '=', 'a.id')
-                    ->whereNull('je.deleted_at');
+                    ->whereNull('je.deleted_at')
+                    ->whereNotExists(function ($sub) {
+                        $sub->selectRaw('1')
+                            ->from('transactions as yec_t')
+                            ->whereColumn('yec_t.id', 'je.transaction_id')
+                            ->where('yec_t.doc_type', 'YEC');
+                    });
                 if ($dateFrom && $dateTo) {
                     $join->whereBetween(DB::raw('COALESCE(je.posting_date, je.transaction_date)'), [$dateFrom, $dateTo]);
                 }
@@ -161,6 +203,12 @@ class TrialBalanceService
             ')
             // P2.5.B: COALESCE(posting_date, transaction_date) — same rationale as
             // getAccountBalances() above.
+            //
+            // Deliberately NO doc_type='YEC' exclusion here (contrast getAccountBalances() above):
+            // opening balance is the sum of ALL history strictly before $dateFrom, and the YEC's
+            // zeroing lines are exactly what must be included for next year to open with Income/
+            // Expense leaves at zero and Retained Earnings carrying the swept net forward. Excluding
+            // YEC here would break carry-forward, not fix anything.
             ->leftJoin('journal_entries as je', function ($join) use ($dateFrom) {
                 $join->on('je.account_id', '=', 'a.id')
                     ->whereNull('je.deleted_at')

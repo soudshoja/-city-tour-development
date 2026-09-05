@@ -397,13 +397,18 @@ class ReconciliationController extends Controller
             'gateway' => ['required', 'string'],
             'payout_reference' => ['required', 'string', 'max:100'],
             'payout_date' => ['required', 'date'],
-            'gross' => ['required', 'numeric'],
-            'fee' => ['required', 'numeric'],
-            'net' => ['required', 'numeric'],
+            // Verifier fix (T7 adversarial review, defect #3): a bare 'numeric' rule accepted a
+            // negative gross/fee/net (e.g. -100/-5/-95, still internally consistent) all the way
+            // through to a posted GWS document. A payout is money actually received/paid — never
+            // negative. `fee`/`recognised_fee` may legitimately be 0 (a fee-free payout) but never
+            // negative (a negative fee has no real-world meaning here).
+            'gross' => ['required', 'numeric', 'gt:0'],
+            'fee' => ['required', 'numeric', 'min:0'],
+            'net' => ['required', 'numeric', 'gt:0'],
             'bank_account_id' => ['required', 'integer'],
             'currency' => ['nullable', 'string', 'size:3'],
             'settlement_channel' => ['nullable', 'string', 'max:24'],
-            'recognised_fee' => ['nullable', 'numeric'],
+            'recognised_fee' => ['nullable', 'numeric', 'min:0'],
         ]);
 
         try {

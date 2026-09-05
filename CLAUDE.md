@@ -143,6 +143,43 @@ php artisan app:process-files --export-debug
 - Indexes on frequently queried columns
 - Soft deletes for audit trail
 
+## Accounting architecture ratchets
+
+`tests/Feature/Accounting/ArchitectureTest.php` is a source-scanner, not a runtime test: it greps
+`app/` and fails the build on shapes that are legal PHP but illegal here. Five rules are enforced
+today, each paired with a mutation proof (a companion test that builds a throwaway tree carrying
+the forbidden shape and asserts the scanner reports it) — so a regex that quietly stops matching
+fails loudly instead of reading as a clean codebase. Add the rule AND its mutation proof together,
+or the ratchet is decorative.
+
+1. **Sole-writer allow-list for the ledger.** No `JournalEntry` / `Transaction`
+   `create`/`insert`/`update`/`save` outside `app/Services/Accounting/**`. Legacy call sites are
+   named individually in `ALLOW_LISTED_RAW_WRITER_FILES`; the list only ever shrinks. New ledger
+   writes go through `PostingSeam::post()` or `PostingService::post()`.
+2. **No post-hoc `settlement_channel` updates.** The column is stamped once, by the posting path
+   that creates the line. Nothing may go back and rewrite it afterwards.
+3. **No post-hoc `reconciled` updates outside the accounting services.**
+   `journal_entries.reconciled` flips in exactly one place — `ReconciliationProposalService`
+   (plus `ReconciliationService`/`BankPaymentController`'s own born-settled fast path). Importers
+   and matchers propose; they never settle.
+4. **No raw `accounts` UPDATE outside the engine.** Direct `DB::table('accounts')->update(...)` /
+   `Account::where(...)->update(...)` is banned except at two allow-listed pre-existing sites
+   (`EnsureSystemLeaves`, `SupplierController`). Balances are derived from `journal_entries`;
+   `accounts.actual_balance` and `journal_entries.balance` are never read by report or engine code.
+5. **Approval is guarded: one live claim per ledger line.** `ReconciliationProposalService::
+   approve()` refuses a line already at `reconciled` 1 or 2 and names the competing claim. Every
+   proposal kind — `gateway_settlement`, `supplier_statement`, `bank_statement`, and the internal
+   detectors — shares one id space, one status machine and one approval path, and
+   `reconciliation_proposals.book_journal_entry_id` carries no unique index, so without this guard
+   a second approval silently overwrites the first claim's `reconciled_ref_id`. Matchers must also
+   refuse to PROPOSE over a foreign kind's live claim (their `liveClaimOn()` lookups are
+   deliberately kind-agnostic), so the exceptions report stays honest instead of failing late.
+
+Running the accounting suites: **chunk `tests/Feature/Accounting` into groups of ~32 files.** A
+single-process run of all 128 files reports hundreds of phantom failures — one test leaking an open
+transaction makes every later test fail on an `innodb_lock_wait_timeout` about 50s later, attributed
+to the wrong test. The identical files split into four chunks are green.
+
 ### Git Workflow
 - **main** - Production code
 - **dev** - Development branch

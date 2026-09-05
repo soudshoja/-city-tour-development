@@ -1244,4 +1244,134 @@ class EnsureSystemLeavesTest extends AccountingTestCase
             'The WHOLE per-company transaction must roll back, including the core leaves created earlier in the same run.'
         );
     }
+
+    /**
+     * accounting-builds T0a: the two NEW core leaves for FX_GAIN_REALISED (4139) and
+     * ASSET_DISPOSAL_GAIN (4141, NOT 4140 — see CoaSeeder's own comment). "Old company" simulated
+     * the same way makeOldCompany() does for the pre-existing four leaves: seed with the REAL,
+     * CURRENT CoaSeeder+SystemAccountsSeeder, then delete these two leaves and their
+     * system_accounts rows.
+     */
+    public function test_creates_and_maps_realised_fx_gain_and_asset_disposal_gain_leaves(): void
+    {
+        $company = Company::factory()->create();
+        CoaSeeder::run($company->id);
+        (new SystemAccountsSeeder())->run();
+
+        $fxGain = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '4139')->firstOrFail();
+        $disposalGain = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '4141')->firstOrFail();
+
+        DB::table('system_accounts')
+            ->where('company_id', $company->id)
+            ->whereIn('purpose_code', ['FX_GAIN_REALISED', 'ASSET_DISPOSAL_GAIN'])
+            ->delete();
+        Account::withoutGlobalScopes()->whereIn('id', [$fxGain->id, $disposalGain->id])->delete();
+
+        $this->trackCompanyForInvariants($company->id);
+
+        Artisan::call('accounting:ensure-system-leaves', ['--company' => $company->id]);
+
+        $fxGain = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('name', 'Realised Exchange Gain')->first();
+        $disposalGain = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('name', 'Gain on Asset Disposal')->first();
+
+        $this->assertNotNull($fxGain, 'AccountService::createSystemLeaf() must have created the Realised Exchange Gain leaf.');
+        $this->assertNotNull($disposalGain, 'AccountService::createSystemLeaf() must have created the Gain on Asset Disposal leaf.');
+        $this->assertSame('4139', $fxGain->code);
+        $this->assertSame('4141', $disposalGain->code, 'CODE 4141, NOT 4140 — 4140 is a real, pre-existing Sales leaf.');
+        $this->assertSame('Commission & Service Fee Income', $fxGain->parent->name);
+        $this->assertSame('Commission & Service Fee Income', $disposalGain->parent->name);
+        $this->assertSame('Income', $fxGain->root->name);
+        $this->assertFalse((bool) $fxGain->is_group);
+        $this->assertFalse((bool) $disposalGain->is_group);
+        $this->assertNoDuplicateAccountCodes($company->id);
+
+        $this->assertSame(
+            $fxGain->id,
+            DB::table('system_accounts')->where('company_id', $company->id)->where('purpose_code', 'FX_GAIN_REALISED')->value('account_id')
+        );
+        $this->assertSame(
+            $disposalGain->id,
+            DB::table('system_accounts')->where('company_id', $company->id)->where('purpose_code', 'ASSET_DISPOSAL_GAIN')->value('account_id')
+        );
+
+        // Idempotent second run.
+        Artisan::call('accounting:ensure-system-leaves', ['--company' => $company->id]);
+        $this->assertSame(1, Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '4139')->count());
+        $this->assertSame(1, Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '4141')->count());
+    }
+
+    /**
+     * accounting-builds T0a (L7, positive path — 1880 has no journal lines): the seven per-class
+     * accumulated-depreciation contras are minted as children of 1880 and mapped to their
+     * FA_ACCUM_DEP_{class} purposes. The guard-refusal path (1880 HAS journal lines) is covered by
+     * the dedicated FixedAssetContraGuardTest, not here.
+     */
+    public function test_creates_and_maps_fixed_asset_contra_leaves_when_1880_has_no_journal_lines(): void
+    {
+        $company = Company::factory()->create();
+        CoaSeeder::run($company->id);
+        (new SystemAccountsSeeder())->run();
+
+        $contraCodes = ['1881', '1882', '1883', '1884', '1885', '1886', '1887'];
+        $contraIds = Account::withoutGlobalScopes()
+            ->where('company_id', $company->id)
+            ->whereIn('code', $contraCodes)
+            ->pluck('id', 'code');
+
+        $this->assertCount(7, $contraIds, 'Precondition: CoaSeeder must have seeded all 7 contra leaves for a fresh company.');
+
+        DB::table('system_accounts')
+            ->where('company_id', $company->id)
+            ->where('purpose_code', 'like', 'FA_ACCUM_DEP_%')
+            ->delete();
+        Account::withoutGlobalScopes()->whereIn('id', $contraIds->values())->delete();
+
+        $this->trackCompanyForInvariants($company->id);
+
+        $accumulatedDepreciation = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1880')->firstOrFail();
+        $this->assertSame(
+            0,
+            DB::table('journal_entries')->where('account_id', $accumulatedDepreciation->id)->count(),
+            'Precondition: 1880 must carry no journal lines for this test to exercise the unguarded path.'
+        );
+
+        Artisan::call('accounting:ensure-system-leaves', ['--company' => $company->id]);
+
+        $expected = [
+            '1881' => ['name' => 'Accumulated Depreciation — Capital Equipments', 'purpose' => 'FA_ACCUM_DEP_CAPITAL_EQUIPMENT'],
+            '1882' => ['name' => 'Accumulated Depreciation — Electronic Equipments', 'purpose' => 'FA_ACCUM_DEP_ELECTRONIC_EQUIPMENT'],
+            '1883' => ['name' => 'Accumulated Depreciation — Furniture and Fixtures', 'purpose' => 'FA_ACCUM_DEP_FURNITURE_FIXTURES'],
+            '1884' => ['name' => 'Accumulated Depreciation — Office Equipments', 'purpose' => 'FA_ACCUM_DEP_OFFICE_EQUIPMENT'],
+            '1885' => ['name' => 'Accumulated Depreciation — Plants and Machineries', 'purpose' => 'FA_ACCUM_DEP_PLANT_MACHINERY'],
+            '1886' => ['name' => 'Accumulated Depreciation — Buildings', 'purpose' => 'FA_ACCUM_DEP_BUILDINGS'],
+            '1887' => ['name' => 'Accumulated Depreciation — Softwares', 'purpose' => 'FA_ACCUM_DEP_SOFTWARE'],
+        ];
+
+        foreach ($expected as $code => $spec) {
+            $account = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', $code)->first();
+
+            $this->assertNotNull($account, "Contra leaf code={$code} must have been created.");
+            $this->assertSame($spec['name'], $account->name);
+            $this->assertSame('Accumulated Depreciation', $account->parent->name);
+            $this->assertSame('Assets', $account->root->name);
+            $this->assertFalse((bool) $account->is_group);
+            $this->assertSame(
+                $account->id,
+                DB::table('system_accounts')->where('company_id', $company->id)->where('purpose_code', $spec['purpose'])->value('account_id'),
+                "{$spec['purpose']} must now be mapped to the newly created leaf."
+            );
+        }
+
+        $this->assertNoDuplicateAccountCodes($company->id);
+
+        // 1880 itself is now a group (has children) — never posted to directly again.
+        $accumulatedDepreciation->refresh();
+        $this->assertTrue($accumulatedDepreciation->children()->exists());
+
+        // Idempotent second run: creates nothing further.
+        Artisan::call('accounting:ensure-system-leaves', ['--company' => $company->id]);
+        foreach (array_keys($expected) as $code) {
+            $this->assertSame(1, Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', $code)->count());
+        }
+    }
 }

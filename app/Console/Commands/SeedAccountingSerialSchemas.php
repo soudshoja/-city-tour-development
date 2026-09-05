@@ -58,7 +58,10 @@ class SeedAccountingSerialSchemas extends Command
      * by this command, just never previously asserted by a dedicated RV/PV/AST-focused test (see
      * SeedAccountingSerialSchemasVoucherSeriesTest).
      */
-    private const ALL_DOC_TYPES = ['INV', 'RV', 'PV', 'JV', 'CRN', 'DBN', 'OJV', 'REV', 'AST'];
+    // accounting-builds T0a (L6): FXR/DEP/DSP/GWS — the phase's four new document types (config
+    // 'accounting.doc_types'), each with its own serial series from cutover day one, same
+    // convention AST's own addition above already established.
+    private const ALL_DOC_TYPES = ['INV', 'RV', 'PV', 'JV', 'CRN', 'DBN', 'OJV', 'REV', 'AST', 'FXR', 'DEP', 'DSP', 'GWS'];
 
     /**
      * W3-prereq lane B addition (doc 17 §3.3/§4) — read-only diagnostic, deliberately independent

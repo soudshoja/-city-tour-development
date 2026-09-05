@@ -271,6 +271,14 @@ class PurposeMappingIndex extends Component
             $codes[] = ["GATEWAY_CLEARING_{$key}", null, "Gateway clearing — {$label}"];
         }
 
+        // accounting-builds T0a: FA_COST_{key}/FA_ACCUM_DEP_{key} for every fixed-asset class,
+        // same key-expansion pattern as 'gateways' immediately above.
+        foreach (config('accounting.purpose_codes.fixed_asset_classes', []) as $key => $spec) {
+            $label = $spec['label'] ?? $key;
+            $codes[] = ["FA_COST_{$key}", null, "Fixed asset cost — {$label}"];
+            $codes[] = ["FA_ACCUM_DEP_{$key}", null, "Fixed asset accumulated depreciation — {$label}"];
+        }
+
         foreach (config('accounting.purpose_codes.per_service', []) as $base) {
             foreach (config('accounting.purpose_codes.service_types', []) as $type) {
                 $codes[] = [$base, $type, "{$base} — {$type}"];

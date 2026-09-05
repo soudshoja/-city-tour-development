@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\Supplier;
 use App\Models\SystemAccount;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -99,6 +100,107 @@ class SystemAccountsSeeder extends Seeder
         $this->resolveGatewayClearing($companyId, $companyLabel);
         $this->resolveGatewayFeeExpense($companyId, $companyLabel);
         $this->resolveServices($companyId, $companyLabel);
+        $this->resolveAccountingBuildsGlobals($companyId, $companyLabel);
+        $this->resolveFixedAssetClasses($companyId, $companyLabel);
+    }
+
+    /**
+     * accounting-builds T0a: the six new GLOBAL (service_type NULL) purpose codes for realised
+     * FX (L3), the dividend sweep (L9), depreciation (L7), and asset disposal (L7). All six
+     * resolve by CODE (mapByCode()), same convention as RETAINED_EARNINGS/FX_GAIN_LOSS above --
+     * four to EXISTING leaves (5219/3200/5203/5220), two to the NEW 4139/4141 leaves CoaSeeder
+     * now seeds (see that seeder's own comment on 4141 for why NOT 4140).
+     */
+    private function resolveAccountingBuildsGlobals(int $companyId, string $companyLabel): void
+    {
+        $this->mapByCode($companyId, $companyLabel, 'FX_GAIN_REALISED', null, '4139', 'Realised Exchange Gain');
+        $this->mapByCode($companyId, $companyLabel, 'FX_LOSS_REALISED', null, '5219', 'Exchange Gain/Loss');
+        $this->mapByCode($companyId, $companyLabel, 'DIVIDENDS_PAID', null, '3200', 'Dividends Paid');
+        $this->mapByCode($companyId, $companyLabel, 'DEPRECIATION_EXPENSE', null, '5203', 'Depreciation');
+        $this->mapByCode($companyId, $companyLabel, 'ASSET_DISPOSAL_LOSS', null, '5220', 'Gain/Loss on Asset Disposal');
+        $this->mapByCode($companyId, $companyLabel, 'ASSET_DISPOSAL_GAIN', null, '4141', 'Gain on Asset Disposal');
+    }
+
+    /**
+     * accounting-builds T0a (L7): FA_COST_{class} (existing 1810-1870 leaves, always mappable)
+     * and FA_ACCUM_DEP_{class} (new 1881-1887 leaves, GUARDED) for every class in
+     * config('accounting.purpose_codes.fixed_asset_classes') -- the same key-expansion pattern
+     * resolveGatewayClearing()/resolveGatewayFeeExpense() already establish for the 'gateways'
+     * map.
+     *
+     * The guard (fixedAssetContraGuardReason()) is evaluated ONCE per company, before the class
+     * loop: if this company's 1880 'Accumulated Depreciation' account already carries
+     * journal_entries lines, EVERY FA_ACCUM_DEP_{class} purpose is skipped/reported (never
+     * mapped) for this company -- FA_COST_{class} is unaffected (it targets the pre-existing
+     * 1810-1870 leaves, never 1880 or its children).
+     */
+    private function resolveFixedAssetClasses(int $companyId, string $companyLabel): void
+    {
+        $classes = config('accounting.purpose_codes.fixed_asset_classes', []);
+
+        $guardReason = $this->fixedAssetContraGuardReason($companyId);
+
+        foreach ($classes as $classKey => $spec) {
+            $this->mapByCode(
+                $companyId,
+                $companyLabel,
+                "FA_COST_{$classKey}",
+                null,
+                $spec['cost_code'],
+                $spec['label']
+            );
+
+            if ($guardReason !== null) {
+                $this->skip($companyId, $companyLabel, "FA_ACCUM_DEP_{$classKey}", null, $guardReason);
+
+                continue;
+            }
+
+            $this->mapByCode(
+                $companyId,
+                $companyLabel,
+                "FA_ACCUM_DEP_{$classKey}",
+                null,
+                $spec['accum_dep_code'],
+                'Accumulated Depreciation'
+            );
+        }
+    }
+
+    /**
+     * L7 guard: null when this company's 1880 'Accumulated Depreciation' account has no posted
+     * journal_entries lines (safe to mint/map 1881-1887 as its children) -- a reason string when
+     * it does (refuse, report a gap; MP-0a-2). Read-only: never writes, never touches 1880 itself.
+     * A company with no 1880 account at all (should never happen on a CoaSeeder-seeded chart) is
+     * treated as unguarded -- mapByCode()'s own "no account with code X" skip already reports
+     * that gap for FA_ACCUM_DEP_{class} without this method's help.
+     */
+    private function fixedAssetContraGuardReason(int $companyId): ?string
+    {
+        $accumulatedDepreciation = Account::query()
+            ->withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->where('code', '1880')
+            ->first();
+
+        if ($accumulatedDepreciation === null) {
+            return null;
+        }
+
+        $hasPostedLines = DB::table('journal_entries')
+            ->where('account_id', $accumulatedDepreciation->id)
+            ->exists();
+
+        if (! $hasPostedLines) {
+            return null;
+        }
+
+        return sprintf(
+            "account 1880 'Accumulated Depreciation' (id=%d) already carries journal_entries lines for this "
+                .'company — refusing to mint per-class contra children under it (L7 guard); fallback is minting '
+                .'1881-1887 as siblings under 1800 instead (Q3, owner decision pending).',
+            $accumulatedDepreciation->id
+        );
     }
 
     /**

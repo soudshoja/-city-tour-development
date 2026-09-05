@@ -164,6 +164,16 @@ return [
         // doc_type` is a plain varchar(8) with no DB enum constraint (see that migration's own
         // column def), so this is a pure additive vocabulary entry, same as 'AST' above.
         'YEC' => 'Year-End Closing',
+        // accounting-builds T0a/L6: four new, sub-type-less document types for the phase's four
+        // owner-approved capabilities. Each keeps its own doc_type (rather than a JV sub-type) so
+        // it is separately countable/excludable in reports, matching the 'YEC' precedent above —
+        // JV has no sub-type list and VoucherSubTypeGuard semantics would have to be widened to
+        // give it one. Added to SeedAccountingSerialSchemas::ALL_DOC_TYPES so each gets its own
+        // per-company/branch/year serial counter from day one.
+        'FXR' => 'Realised FX (apply-time)',
+        'DEP' => 'Depreciation',
+        'DSP' => 'Asset Disposal',
+        'GWS' => 'Gateway Settlement',
     ],
 
     /*
@@ -510,6 +520,36 @@ return [
             //     split for a brand new leaf was judged unnecessary complexity for a single shared
             //     "money paid to a supplier ahead of the service" concept).
             'PREPAID_SUPPLIER_COST',
+            // accounting-builds T0a (L3 — two-purpose realised FX, not one differential): the
+            // apply-time realised-FX pair RealisedFxService (Lane A / T1) posts. FX_LOSS_REALISED
+            // resolves to the EXISTING 5219 'Exchange Gain/Loss' leaf (kept as-is, no rename —
+            // the legacy FX_GAIN_LOSS purpose below stays registered, zero call sites, listed for
+            // the stale sweep). FX_GAIN_REALISED resolves to a NEW income leaf, 4139 'Realised
+            // Exchange Gain', the next free code in the 4131.../4138 'Commission & Service Fee
+            // Income > Direct Income > Income' family — kept as its own leaf (not netted into
+            // 5219) so the sign-matrix census test can assert *which leaf* is hit, a strictly
+            // stronger oracle than a same-leaf balance check.
+            'FX_GAIN_REALISED',
+            'FX_LOSS_REALISED',
+            // accounting-builds T0a (L9): the credit leg of YearEndCloseService's new dividend
+            // sweep — Dr RETAINED_EARNINGS / Cr this code for the year's 3200 'Dividends Paid'
+            // movement, posted as extra lines inside the SAME YEC document (never a separate
+            // document — keeps the YEC whole-document TB-exclusion rule intact). Resolves to the
+            // EXISTING 3200 leaf, mapByCode() same convention as RETAINED_EARNINGS/FX_GAIN_LOSS.
+            'DIVIDENDS_PAID',
+            // accounting-builds T0a (L7/L8): the monthly straight-line depreciation expense leg
+            // DepreciationRunService (Lane B / T3) posts. Resolves to the EXISTING 5203
+            // 'Depreciation' leaf.
+            'DEPRECIATION_EXPENSE',
+            // accounting-builds T0a (L7): the asset-disposal balancing pair FixedAssetService::
+            // dispose() (Lane B / T4) posts for proceeds − NBV. ASSET_DISPOSAL_LOSS resolves to
+            // the EXISTING 5220 'Gain/Loss on Asset Disposal' leaf; ASSET_DISPOSAL_GAIN resolves
+            // to a NEW income leaf, 4141 'Gain on Asset Disposal' (NOT 4140 — a real-data COA
+            // collision with a pre-existing 'Sales' leaf found on the akeed_verify_snapshot
+            // bench; see CoaSeeder's own comment on code 4141 for the full before/after), same
+            // chain as FX_GAIN_REALISED (4139) directly above.
+            'ASSET_DISPOSAL_LOSS',
+            'ASSET_DISPOSAL_GAIN',
         ],
 
         'gateways' => [
@@ -555,6 +595,35 @@ return [
         'anchors' => [
             'AGENT_COMMISSION_PAYABLE_GROUP',
             'AGENT_RECEIVABLE_GROUP',
+        ],
+
+        /*
+        |--------------------------------------------------------------------------------------
+        | Fixed-asset classes (accounting-builds T0a, L7)
+        |--------------------------------------------------------------------------------------
+        | Expanded by SystemAccountsSeeder::resolveFixedAssetClasses() into FA_COST_{key} and
+        | FA_ACCUM_DEP_{key} purpose codes, the SAME key-expansion pattern 'gateways' above already
+        | establishes for GATEWAY_CLEARING_{key}/GATEWAY_FEE_EXPENSE_{key} — PurposeMappingIndex
+        | expands this map the same way it expands 'gateways'.
+        |
+        |   - 'cost_code': the EXISTING 1810-1870 cost leaf (CoaSeeder already seeds these — no
+        |     new leaf minted).
+        |   - 'accum_dep_code': the NEW 1881-1887 per-class contra leaf, minted as a CHILD of 1880
+        |     'Accumulated Depreciation' (converting 1880 from a leaf to a group) — GUARDED: both
+        |     SystemAccountsSeeder::resolveFixedAssetClasses() and EnsureSystemLeaves refuse (report
+        |     a gap, mint nothing) for a company whose 1880 already carries journal_entries lines,
+        |     per L7. Confirmed clear on the akeed_verify_snapshot bench (T13/T0a dry-run, 2026-09-02:
+        |     0 journal lines on account code 1880 across all 3 snapshot companies) — the fallback
+        |     (siblings under 1800 instead of children of 1880, Q3) was NOT needed.
+        */
+        'fixed_asset_classes' => [
+            'CAPITAL_EQUIPMENT' => ['label' => 'Capital Equipment', 'cost_code' => '1810', 'accum_dep_code' => '1881'],
+            'ELECTRONIC_EQUIPMENT' => ['label' => 'Electronic Equipment', 'cost_code' => '1820', 'accum_dep_code' => '1882'],
+            'FURNITURE_FIXTURES' => ['label' => 'Furniture & Fixtures', 'cost_code' => '1830', 'accum_dep_code' => '1883'],
+            'OFFICE_EQUIPMENT' => ['label' => 'Office Equipment', 'cost_code' => '1840', 'accum_dep_code' => '1884'],
+            'PLANT_MACHINERY' => ['label' => 'Plant & Machinery', 'cost_code' => '1850', 'accum_dep_code' => '1885'],
+            'BUILDINGS' => ['label' => 'Buildings', 'cost_code' => '1860', 'accum_dep_code' => '1886'],
+            'SOFTWARE' => ['label' => 'Software', 'cost_code' => '1870', 'accum_dep_code' => '1887'],
         ],
     ],
 
@@ -982,6 +1051,75 @@ return [
         // (HH:MM-HH:MM); a generator that would land inside it shifts scheduled_at forward to the
         // window's end. Null (both empty) disables the shift entirely -- the P2.5.I default.
         'quiet_hours' => ['start' => null, 'end' => null],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------------------------
+    | Fixed assets (accounting-builds T0a-T4, L7/L8/Q4)
+    |--------------------------------------------------------------------------------------------
+    | Consulted by App\Services\Accounting\FixedAssets\FixedAssetService and DepreciationRunService
+    | (Lane B). Straight-line only this phase — 'method' has one member, listed as a whitelist so a
+    | future method addition is a config change, not a magic-string comparison.
+    |   - 'depreciation_cadence': monthly, full month of depreciation in the in-service month (no
+    |     pro-rata days) — Q4's assumed default, pending owner confirmation.
+    */
+    'fixed_assets' => [
+        'methods' => ['straight_line'],
+        'depreciation_cadence' => 'monthly',
+        'pro_rata_days' => false,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------------------------
+    | Supplier statement reconciliation — DOTW (accounting-builds T8, L14/L15/L16/Q5)
+    |--------------------------------------------------------------------------------------------
+    | Consulted by App\Services\Accounting\Reconciliation\SupplierStatementImporter/Matcher
+    | (Lane E). Column map is CONFIG, with a per-import override in the UI (L15) — the real DOTW
+    | column names are unknown until a real sample file is seen (Q5); this default is a guess,
+    | not a fact, and MUST be overridden per-import until confirmed.
+    */
+    'supplier_statements' => [
+        'dotw' => [
+            'columns' => [
+                'booking_ref' => 'Booking Reference',
+                'confirmation_code' => 'Confirmation Code',
+                'guest' => 'Guest Name',
+                'checkin' => 'Check-in Date',
+                'amount' => 'Amount',
+                'currency' => 'Currency',
+                'statement_date' => 'Statement Date',
+                'description' => 'Description',
+            ],
+        ],
+        // L16: DOTW match tolerance is base-currency 0.001 KWD (or original_amount when the
+        // statement currency equals the line's original_currency), no date window — booking-ref
+        // keyed, not date-windowed.
+        'match_tolerance' => 0.001,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------------------------
+    | Bank statement import + auto-match (accounting-builds T9, L15/L16)
+    |--------------------------------------------------------------------------------------------
+    | Consulted by App\Services\Accounting\Reconciliation\BankStatementImporter and
+    | ReconciliationAutoMatchService::detectBankStatementMatches() (T9, Wave 2). Column map is
+    | CONFIG with a per-import override in the UI (L15).
+    */
+    'bank_statements' => [
+        'columns' => [
+            'value_date' => 'Value Date',
+            'posting_date' => 'Posting Date',
+            'description' => 'Description',
+            'reference' => 'Reference',
+            'auth_no' => 'Auth No',
+            'cheque_no' => 'Cheque No',
+            'debit' => 'Debit',
+            'credit' => 'Credit',
+            'running_balance' => 'Balance',
+        ],
+        // L16: bank match tolerance 0.001 KWD on base amounts, date window ±3 days.
+        'match_tolerance' => 0.001,
+        'date_window_days' => 3,
     ],
 
 ];

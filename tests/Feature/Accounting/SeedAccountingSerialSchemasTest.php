@@ -195,4 +195,36 @@ class SeedAccountingSerialSchemasTest extends AccountingTestCase
         $this->assertSame(99, $scan['fallback_max']);
         $this->assertSame(1, $scan['unparseable'], 'Exactly one reference_number has no trailing digit group at all.');
     }
+
+    /**
+     * accounting-builds T0a (L6): FXR/DEP/DSP/GWS are now part of
+     * SeedAccountingSerialSchemas::ALL_DOC_TYPES, so a bare (no --doc-type filter) run seeds a
+     * serial_schemas row for each of them, same as every original member of that list — even for
+     * a company with zero legacy transactions of that doc_type (seedFromLegacyMax() always seeds
+     * the '0' no-branch sentinel bucket, per that method's own docblock).
+     */
+    public function test_default_doc_type_set_now_includes_the_four_accounting_builds_doc_types(): void
+    {
+        $company = Company::factory()->create();
+        $this->trackCompanyForInvariants($company->id);
+        $year = (int) now()->year;
+
+        $exitCode = Artisan::call('accounting:seed-serial-schemas', [
+            '--company' => [$company->id],
+            '--year' => $year,
+        ]);
+        $this->assertSame(0, $exitCode);
+
+        foreach (['FXR', 'DEP', 'DSP', 'GWS'] as $docType) {
+            $row = DB::table('serial_schemas')
+                ->where('company_id', $company->id)
+                ->where('branch_id', 0)
+                ->where('doc_type', $docType)
+                ->where('doc_year', $year)
+                ->first();
+
+            $this->assertNotNull($row, "A bare run must seed a serial_schemas row for doc_type={$docType}.");
+            $this->assertSame(0, (int) $row->last_serial, "No legacy data for {$docType} — seeded ceiling must be 0.");
+        }
+    }
 }

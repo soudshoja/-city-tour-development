@@ -84,6 +84,22 @@ class CoaSeeder extends Seeder
             ['code' => '1860', 'name' => 'Buildings', 'level' => 3, 'parent' => 'Fixed Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1870', 'name' => 'Softwares', 'level' => 3, 'parent' => 'Fixed Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1880', 'name' => 'Accumulated Depreciation', 'level' => 3, 'parent' => 'Fixed Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            // accounting-builds T0a (L7): per-class accumulated-depreciation contras, minted as
+            // CHILDREN of 1880 (converting it from a leaf to a group by having children) --
+            // guarded: SystemAccountsSeeder::resolveFixedAssetClasses() and EnsureSystemLeaves both
+            // refuse (report a gap, mint nothing) for a company whose 1880 already carries
+            // journal_entries lines, per L7. Confirmed clear on akeed_verify_snapshot (T13/T0a
+            // dry-run, 2026-09-02: 0 journal lines on account code 1880 across all 3 snapshot
+            // companies) -- the sibling-under-1800 fallback (Q3) was NOT needed. One contra per
+            // cost leaf 1810-1870 directly above, same order, config('accounting.purpose_codes.
+            // fixed_asset_classes') is the single source of truth for the code/class pairing.
+            ['code' => '1881', 'name' => 'Accumulated Depreciation — Capital Equipments', 'level' => 4, 'parent' => 'Accumulated Depreciation', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1882', 'name' => 'Accumulated Depreciation — Electronic Equipments', 'level' => 4, 'parent' => 'Accumulated Depreciation', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1883', 'name' => 'Accumulated Depreciation — Furniture and Fixtures', 'level' => 4, 'parent' => 'Accumulated Depreciation', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1884', 'name' => 'Accumulated Depreciation — Office Equipments', 'level' => 4, 'parent' => 'Accumulated Depreciation', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1885', 'name' => 'Accumulated Depreciation — Plants and Machineries', 'level' => 4, 'parent' => 'Accumulated Depreciation', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1886', 'name' => 'Accumulated Depreciation — Buildings', 'level' => 4, 'parent' => 'Accumulated Depreciation', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1887', 'name' => 'Accumulated Depreciation — Softwares', 'level' => 4, 'parent' => 'Accumulated Depreciation', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1890', 'name' => 'CWIP Account (Construction Work in Progress)', 'level' => 3, 'parent' => 'Fixed Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
 
             ['code' => '1900', 'name' => 'Investments', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
@@ -255,6 +271,23 @@ class CoaSeeder extends Seeder
             // the parent ticket's existing invoice via TaskStatusService::postEmdAncillary().
             // Next free code in the 4131/4132/4133/4134/4135/4136/4137 family.
             ['code' => '4138', 'name' => 'EMD Ancillary Revenue', 'level' => 4, 'parent' => 'Commission & Service Fee Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            // accounting-builds T0a (L3): new leaf for the FX_GAIN_REALISED purpose code (config
+            // 'accounting.purpose_codes') -- the credit leg RealisedFxService (Lane A / T1) posts
+            // for a debit-sourced apply with D<0 or a credit-sourced apply with D>0. Same parent
+            // family (4131-4138) as the other Commission & Service Fee Income leaves -- 4139 is
+            // the next free code in that family.
+            ['code' => '4139', 'name' => 'Realised Exchange Gain', 'level' => 4, 'parent' => 'Commission & Service Fee Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            // accounting-builds T0a (L7): new leaf for the ASSET_DISPOSAL_GAIN purpose code --
+            // the balancing credit FixedAssetService::dispose() (Lane B / T4) posts when
+            // proceeds > NBV. CODE 4141, NOT 4140 (COA BLOCKER, same class of collision as the
+            // 1430->1431 fix above): a real-data audit against akeed_verify_snapshot (all 3
+            // companies, 2026-09-02) found code 4140 already occupied by a REAL, pre-existing
+            // 'Sales' account (level 3, direct child of 'Direct Income', NOT a child of
+            // 'Commission & Service Fee Income' -- a peer of 4130, not one of its family) --
+            // predates this wave and must not be touched or renumbered. 4141 was verified free
+            // on the same bench and unused anywhere in this code-space; same parent chain as
+            // 4139 directly above (a family member, not a peer of 'Sales').
+            ['code' => '4141', 'name' => 'Gain on Asset Disposal', 'level' => 4, 'parent' => 'Commission & Service Fee Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '4140', 'name' => 'Sales', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '4150', 'name' => 'Services (other)', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '4170', 'name' => 'Loss Recovery Income', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],

@@ -348,6 +348,87 @@ class EnsureSystemLeaves extends Command
             'purposeCode' => 'SUSPENSE',
             'core' => true,
         ],
+        // accounting-builds T0a (L3/L7): the two NEW income leaves the phase's realised-FX and
+        // asset-disposal purposes need. Both CORE: 'Commission & Service Fee Income' is expected
+        // to already exist on every CoaSeeder chart, old or new — same reasoning as 'Markup
+        // Income'/'Service Fee Income' above.
+        [
+            'leafName' => 'Realised Exchange Gain',
+            'code' => '4139',
+            'parentChain' => ['Commission & Service Fee Income', 'Direct Income', 'Income'],
+            'purposeCode' => 'FX_GAIN_REALISED',
+            'core' => true,
+        ],
+        [
+            // CODE 4141, NOT 4140 — see CoaSeeder's own comment on this row (COA BLOCKER: 4140 is
+            // a real, pre-existing 'Sales' leaf under 'Direct Income' directly, verified on
+            // akeed_verify_snapshot, all 3 companies, 2026-09-02).
+            'leafName' => 'Gain on Asset Disposal',
+            'code' => '4141',
+            'parentChain' => ['Commission & Service Fee Income', 'Direct Income', 'Income'],
+            'purposeCode' => 'ASSET_DISPOSAL_GAIN',
+            'core' => true,
+        ],
+        // accounting-builds T0a (L7): the seven per-class accumulated-depreciation contras, minted
+        // as children of 1880 'Accumulated Depreciation'. core=false (OPTIONAL), UNLIKE every
+        // other leaf in this const: not because the parent chain is uncertain (it is not — 1880
+        // is core, every CoaSeeder chart seeds it) but because of the L7 GUARD — a company whose
+        // 1880 already carries journal_entries lines must have NONE of these seven minted, and
+        // that refusal must never roll back any other leaf in this same per-company transaction
+        // (Markup Income, Suspense, etc.) any more than a merely-missing gateway pool does. See
+        // processCompany()'s own loop: entries whose purposeCode starts with 'FA_ACCUM_DEP_' are
+        // intercepted BEFORE createSystemLeaf() is even called when the guard fires, and reported
+        // via the SAME 'optionalSkipped' counter/message shape a genuinely-missing-parent optional
+        // leaf already uses — see fixedAssetContraGuardReason() below.
+        [
+            'leafName' => 'Accumulated Depreciation — Capital Equipments',
+            'code' => '1881',
+            'parentChain' => ['Accumulated Depreciation', 'Fixed Assets', 'Assets'],
+            'purposeCode' => 'FA_ACCUM_DEP_CAPITAL_EQUIPMENT',
+            'core' => false,
+        ],
+        [
+            'leafName' => 'Accumulated Depreciation — Electronic Equipments',
+            'code' => '1882',
+            'parentChain' => ['Accumulated Depreciation', 'Fixed Assets', 'Assets'],
+            'purposeCode' => 'FA_ACCUM_DEP_ELECTRONIC_EQUIPMENT',
+            'core' => false,
+        ],
+        [
+            'leafName' => 'Accumulated Depreciation — Furniture and Fixtures',
+            'code' => '1883',
+            'parentChain' => ['Accumulated Depreciation', 'Fixed Assets', 'Assets'],
+            'purposeCode' => 'FA_ACCUM_DEP_FURNITURE_FIXTURES',
+            'core' => false,
+        ],
+        [
+            'leafName' => 'Accumulated Depreciation — Office Equipments',
+            'code' => '1884',
+            'parentChain' => ['Accumulated Depreciation', 'Fixed Assets', 'Assets'],
+            'purposeCode' => 'FA_ACCUM_DEP_OFFICE_EQUIPMENT',
+            'core' => false,
+        ],
+        [
+            'leafName' => 'Accumulated Depreciation — Plants and Machineries',
+            'code' => '1885',
+            'parentChain' => ['Accumulated Depreciation', 'Fixed Assets', 'Assets'],
+            'purposeCode' => 'FA_ACCUM_DEP_PLANT_MACHINERY',
+            'core' => false,
+        ],
+        [
+            'leafName' => 'Accumulated Depreciation — Buildings',
+            'code' => '1886',
+            'parentChain' => ['Accumulated Depreciation', 'Fixed Assets', 'Assets'],
+            'purposeCode' => 'FA_ACCUM_DEP_BUILDINGS',
+            'core' => false,
+        ],
+        [
+            'leafName' => 'Accumulated Depreciation — Softwares',
+            'code' => '1887',
+            'parentChain' => ['Accumulated Depreciation', 'Fixed Assets', 'Assets'],
+            'purposeCode' => 'FA_ACCUM_DEP_SOFTWARE',
+            'core' => false,
+        ],
     ];
 
     /**
@@ -608,7 +689,25 @@ class EnsureSystemLeaves extends Command
                 };
             }
 
+            // accounting-builds T0a (L7 guard, MP-0a-2): evaluated ONCE per company, before the
+            // loop — null when 1880 has no posted journal_entries lines (safe to mint its seven
+            // children below), a reason string when it does. See fixedAssetContraGuardReason()'s
+            // own docblock.
+            $fixedAssetContraGuardReason = $this->fixedAssetContraGuardReason($companyId);
+
             foreach (self::LEAVES as $spec) {
+                if ($fixedAssetContraGuardReason !== null && str_starts_with($spec['purposeCode'], 'FA_ACCUM_DEP_')) {
+                    // Intercepted BEFORE createSystemLeaf() is even called — this leaf is refused
+                    // by business rule (L7), not by a structural collision createSystemLeaf()
+                    // itself would detect. Reported via the SAME 'optionalSkipped' shape a
+                    // genuinely-missing-parent optional leaf already uses; core=false on this
+                    // spec means it never rolls back the rest of this company's leaves.
+                    $messages[] = ['line', "  [{$companyLabel}] SKIPPED (fixed-asset contra guard): '{$spec['leafName']}' (code={$spec['code']}) — {$fixedAssetContraGuardReason}"];
+                    $result['optionalSkipped']++;
+
+                    continue;
+                }
+
                 try {
                     $account = $accountService->createSystemLeaf(
                         $companyId,
@@ -912,6 +1011,46 @@ class EnsureSystemLeaves extends Command
      *     collision guard refuses to guess). Creating a third account here would make the
      *     ambiguity worse, not better.
      */
+    /**
+     * accounting-builds T0a (L7 guard, MP-0a-2): null when this company's 1880 'Accumulated
+     * Depreciation' account has no posted journal_entries lines (safe to mint/map 1881-1887 as
+     * its children) — a reason string when it does (refuse, report a gap; never mint). Mirrors
+     * SystemAccountsSeeder::fixedAssetContraGuardReason() exactly (same read-only check, same
+     * account code, same table) — kept as two small methods rather than one shared helper because
+     * this class and that seeder have no shared base class to hang a common implementation on,
+     * and the check itself is a single indexed `exists()` query, not worth a new shared service
+     * for this phase. Read-only: never writes, never touches 1880 itself. A company with no 1880
+     * account at all (should never happen on a CoaSeeder-seeded chart) is treated as unguarded —
+     * createSystemLeaf()'s own parent-chain resolution already reports THAT gap (a missing
+     * 'Accumulated Depreciation' parent) if it ever occurs.
+     */
+    private function fixedAssetContraGuardReason(int $companyId): ?string
+    {
+        $accumulatedDepreciation = Account::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->where('code', '1880')
+            ->first();
+
+        if ($accumulatedDepreciation === null) {
+            return null;
+        }
+
+        $hasPostedLines = DB::table('journal_entries')
+            ->where('account_id', $accumulatedDepreciation->id)
+            ->exists();
+
+        if (! $hasPostedLines) {
+            return null;
+        }
+
+        return sprintf(
+            "account 1880 'Accumulated Depreciation' (id=%d) already carries journal_entries lines for this "
+                .'company — refusing to mint per-class contra children under it (L7 guard); fallback is minting '
+                .'1881-1887 as siblings under 1800 instead (Q3, owner decision pending).',
+            $accumulatedDepreciation->id
+        );
+    }
+
     private function backfillServiceRevenueLeaves(
         int $companyId,
         string $companyLabel,

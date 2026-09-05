@@ -22,6 +22,17 @@ class ReconciliationProposal extends Model
 
     public const KIND_MANUAL = 'manual';
 
+    // accounting-builds T0a (§4): three new EXTERNAL proposal kinds — no migration needed, 'kind'
+    // is a plain string(40) column. KIND_SUPPLIER_STATEMENT (T8, Lane E) and KIND_BANK_STATEMENT
+    // (T9, Wave 2) pair with the existing source='external' value (L13); KIND_GATEWAY_SETTLEMENT
+    // (T7, Lane D) likewise, for a settlement payout item matched against an unreconciled
+    // clearing line.
+    public const KIND_SUPPLIER_STATEMENT = 'supplier_statement';
+
+    public const KIND_BANK_STATEMENT = 'bank_statement';
+
+    public const KIND_GATEWAY_SETTLEMENT = 'gateway_settlement';
+
     public const CONFIDENCE_EXACT = 'exact';
 
     public const CONFIDENCE_TOLERANCE = 'tolerance';

@@ -34,9 +34,12 @@ use Tests\Support\AccountingTestCase;
  *     seeded/mapped by this build ... an explicitly out-of-scope lane per this build's own brief".
  *     SystemAccountsSeeder's global-purpose loop never iterates this sub-key at all.
  *
- * Every OTHER purpose code -- all 25 remaining 'global' entries, all 5 gateways x 2
- * (GATEWAY_CLEARING_{key} and GATEWAY_FEE_EXPENSE_{key}), and all 3 per_service codes x 12
- * service_types (36) -- MUST resolve. 25 + 10 + 36 = 71 assertions.
+ * Every OTHER purpose code -- all remaining 'global' entries (31 as of accounting-builds T0a,
+ * which added FX_GAIN_REALISED/FX_LOSS_REALISED/DIVIDENDS_PAID/DEPRECIATION_EXPENSE/
+ * ASSET_DISPOSAL_LOSS/ASSET_DISPOSAL_GAIN), all 5 gateways x 2 (GATEWAY_CLEARING_{key} and
+ * GATEWAY_FEE_EXPENSE_{key}), all 3 per_service codes x 12 service_types (36), and all 7
+ * fixed_asset_classes x 2 (FA_COST_{key}/FA_ACCUM_DEP_{key}, T0a) -- MUST resolve.
+ * 31 + 10 + 36 + 14 = 91 assertions.
  *
  * Before this build's SUSPENSE/SERVICE_PAYABLE/SERVICE_COST fixes (CoaSeeder's new 'Suspense'
  * leaf, SystemAccountsSeeder::mapSupplierPoolLeaf()), this exact test would have failed on
@@ -49,6 +52,22 @@ class PurposeMappingCoverageTest extends AccountingTestCase
     private const EXCLUDED_GLOBAL_PURPOSE_CODES = [
         // Documented, permanent gap -- see class docblock above.
         'VAT_OUTPUT',
+    ];
+
+    /**
+     * accounting-builds T0a (MP-0a-1): hardcoded, INDEPENDENT of config('accounting.purpose_codes.
+     * fixed_asset_classes') -- deliberately NOT `array_keys($purposeCodes['fixed_asset_classes'])`
+     * the way the gateways/per_service loops above read straight from config. A config-derived
+     * loop would silently stop checking a class the moment it was removed from config (a weaker
+     * oracle -- the test would just never look for it again, not fail). This fixed list is the
+     * independent proof: removing 'SOFTWARE' from config's map leaves this test still expecting
+     * FA_COST_SOFTWARE/FA_ACCUM_DEP_SOFTWARE to resolve, so AccountResolver throws
+     * UnmappedPurposeException and the test fails, NAMING the exact purpose code (MP-0a-1's own
+     * requirement) -- exactly the failure mode a silently-shrunk config loop cannot produce.
+     */
+    private const EXPECTED_FIXED_ASSET_CLASSES = [
+        'CAPITAL_EQUIPMENT', 'ELECTRONIC_EQUIPMENT', 'FURNITURE_FIXTURES', 'OFFICE_EQUIPMENT',
+        'PLANT_MACHINERY', 'BUILDINGS', 'SOFTWARE',
     ];
 
     public function test_every_catalogued_purpose_resolves_for_a_freshly_seeded_company(): void
@@ -88,6 +107,20 @@ class PurposeMappingCoverageTest extends AccountingTestCase
             foreach ($serviceTypes as $serviceType) {
                 $this->assertResolvable($resolver, $purposeCode, $company->id, $serviceType);
             }
+        }
+
+        // accounting-builds T0a (MP-0a-1): FA_COST_{class}/FA_ACCUM_DEP_{class} for every class
+        // in the HARDCODED self::EXPECTED_FIXED_ASSET_CLASSES (see that const's own docblock for
+        // why NOT config-derived) — 7 classes x 2 = 14 assertions.
+        $this->assertSame(
+            self::EXPECTED_FIXED_ASSET_CLASSES,
+            array_keys($purposeCodes['fixed_asset_classes']),
+            'Sanity: config(\'accounting.purpose_codes.fixed_asset_classes\') must carry exactly the expected 7 classes, in this order.'
+        );
+
+        foreach (self::EXPECTED_FIXED_ASSET_CLASSES as $classKey) {
+            $this->assertResolvable($resolver, "FA_COST_{$classKey}", $company->id, null);
+            $this->assertResolvable($resolver, "FA_ACCUM_DEP_{$classKey}", $company->id, null);
         }
 
         // Explicitly confirms the two documented exclusions are STILL excluded by design -- if a

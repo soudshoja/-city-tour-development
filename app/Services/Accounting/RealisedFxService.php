@@ -368,13 +368,7 @@ final class RealisedFxService
             return null;
         }
 
-        $transaction = Transaction::withoutGlobalScopes()
-            ->whereNull('deleted_at')
-            ->where('company_id', $companyId)
-            ->where('payment_id', $application->sourceId)
-            ->where('posting_status', 'posted')
-            ->orderBy('id')
-            ->first(['id']);
+        $transaction = $this->resolveLiveSourceTransaction((int) $application->sourceId, $companyId);
 
         if ($transaction === null) {
             return null;
@@ -414,6 +408,93 @@ final class RealisedFxService
             ->first();
 
         return $line?->id;
+    }
+
+    /**
+     * accounting-builds T1 VERIFY ROUND (defect V-1). Finds the payment's LIVE posted receipt
+     * document.
+     *
+     * `WHERE payment_id = P AND posting_status = 'posted'` alone is NOT sufficient, and
+     * {@see PostingService}'s own class docblock says so verbatim: `repost()` forces the
+     * REPLACEMENT draft's `paymentId` to NULL unconditionally, so after a repost the only row that
+     * ever carried `payment_id = P` is the ORIGINAL, now flipped to `posting_status = 'reversed'`
+     * — "a query such as `WHERE payment_id = P AND posting_status = 'posted'` finds NEITHER the
+     * reversal nor the replacement". Reposting a receipt is an ordinary production operation
+     * ({@see \App\Http\Controllers\ReceiptVoucherController::update()},
+     * {@see \App\Http\Controllers\BankPaymentController::update()}), so without this fallback every
+     * realised-FX document for an edited receipt was silently skipped — the books quietly missing
+     * a real gain/loss, with only an `accounting.fx_apply_skipped_no_posted_rate` info log.
+     *
+     * The fallback follows the ONLY linkage PostingService itself sanctions ("The only reliable
+     * way to find a repost's REPLACEMENT is by its idempotency key"): `repost()` suffixes the
+     * replacement's key with `":repost:{$old->id}"` whenever it collides with `$old`'s. Chained
+     * reposts nest that suffix, so the walk loops (bounded — a malformed chain must never spin).
+     * When the chain cannot be followed (the replacement used a genuinely different key, so no
+     * suffix was added) the caller's skip stands, but it is logged DISTINCTLY
+     * (`reason: 'source_document_reposted_unresolvable'`) so the miss is triageable rather than
+     * indistinguishable from "this payment was never engine-posted at all".
+     */
+    private function resolveLiveSourceTransaction(int $paymentId, int $companyId): ?Transaction
+    {
+        $live = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where('payment_id', $paymentId)
+            ->where('posting_status', 'posted')
+            ->orderBy('id')
+            ->first(['id']);
+
+        if ($live !== null) {
+            return $live;
+        }
+
+        $node = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where('payment_id', $paymentId)
+            ->where('posting_status', 'reversed')
+            ->orderByDesc('id')
+            ->first(['id', 'idempotency_key', 'posting_status']);
+
+        $reversedOriginalExists = $node !== null;
+
+        for ($hop = 0; $node !== null && $hop < 10; $hop++) {
+            $key = (string) $node->idempotency_key;
+
+            if ($key === '') {
+                break;
+            }
+
+            $replacement = Transaction::withoutGlobalScopes()
+                ->whereNull('deleted_at')
+                ->where('company_id', $companyId)
+                ->where('idempotency_key', $key.':repost:'.$node->id)
+                ->first(['id', 'idempotency_key', 'posting_status']);
+
+            if ($replacement === null) {
+                break;
+            }
+
+            if ($replacement->posting_status === 'posted') {
+                return $replacement;
+            }
+
+            $node = $replacement->posting_status === 'reversed' ? $replacement : null;
+        }
+
+        if ($reversedOriginalExists) {
+            // A reposted receipt whose replacement could not be followed — distinct from "this
+            // payment was never engine-posted at all", which the caller logs as
+            // 'source_line_unresolved'.
+            Log::info('accounting.fx_apply_skipped_no_posted_rate', [
+                'feeder' => self::FEEDER,
+                'company_id' => $companyId,
+                'payment_id' => $paymentId,
+                'reason' => 'source_document_reposted_unresolvable',
+            ]);
+        }
+
+        return null;
     }
 
     /** @return int[] */

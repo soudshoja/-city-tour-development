@@ -80,6 +80,41 @@ class ScheduleRenderingTest extends TestCase
     }
 
     /**
+     * accounting-builds P3 integration (2026-09-02): fixed-assets:depreciate was scheduled as
+     * Schedule::command('fixed-assets:depreciate', ['--all-companies' => true]) -- the exact
+     * same array-form bug pattern this hotfix's generic guard (below) exists to catch, against
+     * FixedAssetsDepreciate's own value-less `{--all-companies}` flag. Caught by the generic
+     * guard on merge (it renders "--all-companies=\"1\"", which FixedAssetsDepreciate's
+     * InputDefinition rejects) and fixed to the string form here, same as process:reminder
+     * above. Pinned explicitly so this specific command can't silently regress back to the
+     * array form even if it were ever added to KNOWN_PRE_EXISTING_ISSUES by mistake.
+     */
+    public function test_fixed_assets_depreciate_all_companies_flag_renders_without_a_value(): void
+    {
+        $event = $this->findEventContaining('fixed-assets:depreciate');
+
+        $this->assertNotNull($event, 'fixed-assets:depreciate must be registered on the schedule.');
+
+        $rendered = $event->command ?? '';
+
+        $this->assertStringContainsString(
+            '--all-companies',
+            $rendered,
+            'fixed-assets:depreciate must be scheduled with the --all-companies flag.'
+        );
+        $this->assertStringNotContainsString(
+            '--all-companies=',
+            $rendered,
+            "fixed-assets:depreciate's --all-companies flag must render bare, not as --all-companies=<value> (rendered: {$rendered})."
+        );
+        $this->assertStringNotContainsString(
+            "--all-companies='1'",
+            $rendered,
+            "fixed-assets:depreciate's --all-companies flag must not render with a stringified boolean value (rendered: {$rendered})."
+        );
+    }
+
+    /**
      * Generic guard: for every scheduled artisan-backed event, the rendered option/argument
      * string must actually bind against that command's own InputDefinition. This is what would
      * have caught the --proceed regression without knowing about it in advance, and catches the

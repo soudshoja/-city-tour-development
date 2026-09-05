@@ -88,7 +88,7 @@ Schedule::command('accounting:reconcile --auto')
 // every company that has at least one fixed asset. Engine-OFF companies are a logged no-op inside
 // the command itself (see DepreciationRunService's own docblock) — this schedule entry does not
 // need its own engine-flag check.
-Schedule::command('fixed-assets:depreciate', ['--all-companies' => true])
+Schedule::command('fixed-assets:depreciate --all-companies')
     ->monthlyOn(1, '00:30')
     ->withoutOverlapping(120)
     ->runInBackground()

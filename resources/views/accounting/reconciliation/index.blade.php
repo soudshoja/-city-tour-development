@@ -41,6 +41,10 @@
                    class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40">
                     DOTW statements
                 </a>
+                <a href="{{ route('accounting.reconciliation.bank-statements.index') }}"
+                   class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                    Bank statements
+                </a>
                 <div class="flex items-center rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden text-sm">
                     <button type="button" @click="setMode('day')"
                             :class="mode === 'day' ? 'bg-slate-800 text-white' : 'bg-white dark:bg-gray-700 dark:text-gray-200'"

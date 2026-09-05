@@ -6,6 +6,7 @@ namespace App\Services\Accounting;
 
 use App\Models\Account;
 use App\Models\AccountingPeriod;
+use App\Models\BankStatementImportLine;
 use App\Models\IdempotencyKeyRejection;
 use App\Models\Transaction;
 use App\Services\TrialBalanceService;
@@ -321,6 +322,29 @@ final class PeriodCloseChecklistService
                     'meta' => ['account_id' => $accountId, 'count' => $count],
                 ];
             }
+        }
+
+        // accounting-builds T9 (Wave 2): "PeriodCloseChecklistService::checkBankCashReconciliation
+        // gains a WARN row 'N statement lines unmatched'." A statement-side gap (a bank statement
+        // line that never matched a ledger line, or a disputed amount) is exactly as WARN-worthy
+        // as the book-side gap this check already reports — same (a) class, same "WARN, never
+        // block" rule. Scoped to THIS company's bank leaves and this period only (a statement
+        // whose `bank_account_id` is not one of $leafIds — a different company's leaf, or a
+        // non-bank/cash leaf — never contributes, mirroring the per-leaf loop above).
+        $unmatchedStatementCount = $leafIds === [] ? 0 : (int) BankStatementImportLine::whereIn('state', [
+            BankStatementImportLine::STATE_UNMATCHED,
+            BankStatementImportLine::STATE_DISPUTED,
+        ])
+            ->whereHas('import', fn ($q) => $q->whereIn('bank_account_id', $leafIds))
+            ->whereBetween('value_date', [$start, $end])
+            ->count();
+
+        if ($unmatchedStatementCount > 0) {
+            $warnings[] = [
+                'code' => 'unmatched_bank_statement_lines',
+                'message' => sprintf('%d bank statement line(s) unmatched in this period.', $unmatchedStatementCount),
+                'meta' => ['count' => $unmatchedStatementCount, 'account_ids' => $leafIds],
+            ];
         }
 
         return ['warnings' => $warnings, 'accounts' => $accounts];

@@ -6,6 +6,7 @@ namespace App\Services\Accounting;
 
 use App\Exceptions\Accounting\ReconciliationPeriodLockedException;
 use App\Models\AccountingPeriod;
+use App\Models\BankStatementImportLine;
 use App\Models\JournalEntry;
 use App\Models\ReconciliationProposal;
 use App\Models\User;
@@ -87,8 +88,19 @@ final class ReconciliationProposalService
                 'type_reference_id' => $book->type_reference_id,
             ];
 
+            // accounting-builds T9 (Wave 2): a bank_statement proposal's "other side" is not a
+            // second journal_entries row (unlike KIND_SUB_LEDGER_VS_CONTROL/plain internal
+            // matches) — it is a BankStatementImportLine, identified by
+            // `matched_reference = 'bank_stmt_line:{id}'` (see BankStatementMatcher::
+            // ensureProposal()). `reconciled_ref_id` is stamped with THAT statement line's id
+            // (spec: "approval marks the ledger line reconciled" / "ReconciliationProposalService::
+            // approve extended to stamp reconciled_ref_id = statement line id and set the line
+            // state") — never with the proposal's own id, which is the generic fallback below for
+            // every OTHER proposal kind.
+            $bankStatementLineId = $this->bankStatementLineIdFor($proposal);
+
             $book->reconciled = 1;
-            $book->reconciled_ref_id = $proposal->matched_journal_entry_id ?? $proposal->id;
+            $book->reconciled_ref_id = $bankStatementLineId ?? ($proposal->matched_journal_entry_id ?? $proposal->id);
             $book->reconciled_date = now()->toDateString();
             $book->reconciled_amount = $proposal->amount;
 
@@ -108,6 +120,16 @@ final class ReconciliationProposalService
             }
 
             $book->save();
+
+            // Confirm the statement line's own state at the moment of approval — idempotent (the
+            // matcher already set state='matched' at match time, per T8's precedent); this is the
+            // one write on approval that touches BankStatementImportLine.state, never
+            // journal_entries.reconciled a second way.
+            if ($bankStatementLineId !== null) {
+                BankStatementImportLine::where('id', $bankStatementLineId)->update([
+                    'state' => BankStatementImportLine::STATE_MATCHED,
+                ]);
+            }
 
             if ($proposal->matched_journal_entry_id !== null) {
                 $matched = JournalEntry::withoutGlobalScopes()->find($proposal->matched_journal_entry_id);
@@ -142,6 +164,28 @@ final class ReconciliationProposalService
         });
 
         return $proposal->refresh();
+    }
+
+    /**
+     * accounting-builds T9. Extracts the {@see BankStatementImportLine} id from a
+     * `kind = bank_statement` proposal's `matched_reference` (format `bank_stmt_line:{id}`,
+     * BankStatementMatcher::ensureProposal()'s own identity convention) — null for every other
+     * proposal kind, or if the referenced line no longer exists.
+     */
+    private function bankStatementLineIdFor(ReconciliationProposal $proposal): ?int
+    {
+        if ($proposal->kind !== ReconciliationProposal::KIND_BANK_STATEMENT) {
+            return null;
+        }
+
+        $reference = (string) $proposal->matched_reference;
+        if (! str_starts_with($reference, 'bank_stmt_line:')) {
+            return null;
+        }
+
+        $lineId = (int) mb_substr($reference, mb_strlen('bank_stmt_line:'));
+
+        return BankStatementImportLine::where('id', $lineId)->exists() ? $lineId : null;
     }
 
     public function reject(ReconciliationProposal $proposal, string $reason, ?User $actor): ReconciliationProposal

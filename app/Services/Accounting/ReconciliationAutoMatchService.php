@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Accounting;
 
 use App\Exceptions\Accounting\UnmappedPurposeException;
+use App\Models\BankStatementImport;
 use App\Models\GatewaySettlement;
 use App\Models\JournalEntry;
 use App\Models\ReconciliationProposal;
 use App\Models\ReconciliationRun;
+use App\Services\Accounting\Reconciliation\BankStatementMatcher;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\DB;
 
 /**
  * P2.5.G (p2_5-brief.md §P2.5.G; reconciliation-design.md §9): the internal half of
@@ -61,6 +62,7 @@ final class ReconciliationAutoMatchService
     public function __construct(
         private readonly ReconciliationCenterService $center,
         private readonly AccountResolver $accountResolver,
+        private readonly BankStatementMatcher $bankStatementMatcher,
     ) {}
 
     public function run(int $companyId, string $trigger = ReconciliationRun::TRIGGER_MANUAL, ?int $triggeredBy = null): ReconciliationRun
@@ -80,6 +82,7 @@ final class ReconciliationAutoMatchService
             $created += $this->detectSubLedgerVsControl($companyId, $run->id);
             $created += $this->detectReceiptInvoiceConsistency($companyId, $run->id);
             $created += $this->detectGatewaySettlementItems($companyId, $run->id);
+            $created += $this->detectBankStatementMatches($companyId, $run->id);
 
             $exactCount = ReconciliationProposal::forCompany($companyId)
                 ->where('run_id', $run->id)
@@ -263,6 +266,7 @@ final class ReconciliationAutoMatchService
             $groupKey = $line->account_id.':'.$line->type_reference_id.':'.number_format((float) $line->debit, 3, '.', '');
             if (! isset($seen[$groupKey])) {
                 $seen[$groupKey] = $line;
+
                 continue;
             }
 
@@ -396,5 +400,45 @@ final class ReconciliationAutoMatchService
         }
 
         return $created;
+    }
+
+    /**
+     * accounting-builds T9 (Wave 2, PLAN.md §5's "fourth detector" — the fourth internal-sweep
+     * detector by the PLAN's own count at the time it was written; {@see
+     * self::detectGatewaySettlementItems()} landed first in build order and is this class's
+     * fourth detector overall, making this the fifth method but the one PLAN.md names for T9).
+     * Reuses {@see BankStatementMatcher} rather than re-implementing tiered matching a second
+     * time — same idempotency rule as every other detector here: BankStatementMatcher::match()
+     * is itself idempotent per statement line ({@see BankStatementMatcher::ensureProposal()}'s
+     * own `matched_reference` existing-check, plus the cross-run {@see
+     * BankStatementMatcher::liveClaimOn()} guard), so sweeping every 'staged'/'matched' import for
+     * a company on each nightly run only ever proposes NEW matches, never a duplicate — and never
+     * posts (BankStatementMatcher itself never writes journal_entries.reconciled; only {@see
+     * \App\Services\Accounting\ReconciliationProposalService::approve()} does).
+     */
+    private function detectBankStatementMatches(int $companyId, int $runId): int
+    {
+        $imports = BankStatementImport::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->whereIn('status', [BankStatementImport::STATUS_STAGED, BankStatementImport::STATUS_MATCHED])
+            ->get();
+
+        if ($imports->isEmpty()) {
+            return 0;
+        }
+
+        $before = ReconciliationProposal::forCompany($companyId)
+            ->where('kind', ReconciliationProposal::KIND_BANK_STATEMENT)
+            ->count();
+
+        foreach ($imports as $import) {
+            $this->bankStatementMatcher->match($import);
+        }
+
+        $after = ReconciliationProposal::forCompany($companyId)
+            ->where('kind', ReconciliationProposal::KIND_BANK_STATEMENT)
+            ->count();
+
+        return max(0, $after - $before);
     }
 }

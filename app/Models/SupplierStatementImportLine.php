@@ -45,6 +45,7 @@ class SupplierStatementImportLine extends Model
         'description',
         'state',
         'matched_journal_entry_id',
+        'matched_journal_entry_ids',
         'matched_task_id',
         'difference',
         'note',
@@ -60,6 +61,9 @@ class SupplierStatementImportLine extends Model
         'amount' => 'float',
         'difference' => 'float',
         'matched_journal_entry_id' => 'integer',
+        // RV-1: every payable line this statement row consumed (aggregate matches cover more
+        // than the one id `matched_journal_entry_id` can hold) — see migration ...000006.
+        'matched_journal_entry_ids' => 'array',
         'matched_task_id' => 'integer',
         'raw' => 'array',
     ];

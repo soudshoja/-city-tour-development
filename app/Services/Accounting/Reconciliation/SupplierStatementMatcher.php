@@ -85,7 +85,7 @@ final class SupplierStatementMatcher
 
     /**
      * @param  array<int,bool>  $consumedJournalEntryIds  keyed by journal_entries.id already
-     *     claimed by an earlier statement line in this same match() run — mutated in place.
+     *                                                    claimed by an earlier statement line in this same match() run — mutated in place.
      * @return array{state:string}
      */
     private function matchLine(SupplierStatementImport $import, SupplierStatementImportLine $line, array &$consumedJournalEntryIds): array
@@ -138,20 +138,33 @@ final class SupplierStatementMatcher
         // when no single candidate lines up do we fall back to the legacy aggregate-across-all
         // behavior (one statement row summarising several ledger lines for the same invoice,
         // e.g. multiple room-nights posted as separate credits).
+        //
+        // RV-4 (post-fix re-verify): when SEVERAL candidates sit inside tolerance, the CLOSEST one
+        // wins, not simply the first by id. First-wins let a row consume another row's exact
+        // counterpart (cross-pairing two rows that each had an exact match) and downgraded both
+        // proposals from 'exact' to 'tolerance' confidence. Ties keep the lower id (`orderBy('id')`
+        // on the candidate query + a strict `<` below), so selection stays deterministic.
+        $best = null;
+
         foreach ($candidates as $candidate) {
-            [$soloAmount, $soloBasis] = $this->bookAmountFor(collect([$candidate]), $line->currency);
+            [$soloAmount] = $this->bookAmountFor(collect([$candidate]), $line->currency);
             $soloDiff = round($soloAmount - (float) $line->amount, 3);
 
-            if (abs($soloDiff) <= $tolerance + 1e-9) {
-                $consumedJournalEntryIds[$candidate->id] = true;
-
-                return $this->settle($line, SupplierStatementImportLine::STATE_MATCHED, [
-                    'note' => null,
-                    'difference' => $soloDiff,
-                    'matched_journal_entry_id' => $candidate->id,
-                    'matched_task_id' => $booking->task_id,
-                ], $this->proposalConfidenceFor($soloDiff));
+            if (abs($soloDiff) <= $tolerance + 1e-9 && ($best === null || abs($soloDiff) < abs($best[1]) - 1e-9)) {
+                $best = [$candidate, $soloDiff];
             }
+        }
+
+        if ($best !== null) {
+            [$bestCandidate, $bestDiff] = $best;
+            $consumedJournalEntryIds[$bestCandidate->id] = true;
+
+            return $this->settle($line, SupplierStatementImportLine::STATE_MATCHED, [
+                'note' => null,
+                'difference' => $bestDiff,
+                'matched_journal_entry_id' => $bestCandidate->id,
+                'matched_task_id' => $booking->task_id,
+            ], $this->proposalConfidenceFor($bestDiff), [$bestCandidate->id]);
         }
 
         [$bookAmount, $basis] = $this->bookAmountFor($candidates, $line->currency);
@@ -167,12 +180,17 @@ final class SupplierStatementMatcher
                 $consumedJournalEntryIds[$candidate->id] = true;
             }
 
+            // RV-1 (post-fix re-verify): an aggregate match consumes EVERY candidate but only one
+            // of them fits `matched_journal_entry_id` (the primary). Recording the full covered set
+            // is what stops the non-primary lines from resurfacing as "unmatched-ledger"
+            // exceptions — they are not open payables absent from the statement, they are inside
+            // the row that just matched. See unmatchedLedgerLines().
             return $this->settle($line, SupplierStatementImportLine::STATE_MATCHED, [
                 'note' => null,
                 'difference' => $diff,
                 'matched_journal_entry_id' => $primary->id,
                 'matched_task_id' => $booking->task_id,
-            ], $this->proposalConfidenceFor($diff));
+            ], $this->proposalConfidenceFor($diff), $candidates->pluck('id')->map(fn ($id) => (int) $id)->all());
         }
 
         return $this->settle($line, SupplierStatementImportLine::STATE_DISPUTED, [
@@ -185,14 +203,17 @@ final class SupplierStatementMatcher
 
     /**
      * @param  array{note:?string,difference:float,matched_journal_entry_id:?int,matched_task_id:?int}  $fields
+     * @param  array<int,int>  $coveredJournalEntryIds  every payable line this statement row
+     *                                                  actually consumed — one id for a 1:1 match, all of them for an aggregate match (RV-1).
      * @return array{state:string}
      */
-    private function settle(SupplierStatementImportLine $line, string $state, array $fields, ?string $proposalConfidence = null): array
+    private function settle(SupplierStatementImportLine $line, string $state, array $fields, ?string $proposalConfidence = null, array $coveredJournalEntryIds = []): array
     {
         $line->state = $state;
         $line->note = $fields['note'];
         $line->difference = $fields['difference'];
         $line->matched_journal_entry_id = $fields['matched_journal_entry_id'];
+        $line->matched_journal_entry_ids = $coveredJournalEntryIds !== [] ? array_values($coveredJournalEntryIds) : null;
         $line->matched_task_id = $fields['matched_task_id'];
         $line->save();
 
@@ -208,6 +229,14 @@ final class SupplierStatementMatcher
      * match() run for the same line reuses the existing pending proposal rather than creating a
      * duplicate. Never creates one for 'disputed'/'unmatched' lines — there is nothing clean to
      * approve there; those stay visible only in the exceptions report.
+     *
+     * RV-6 (post-fix re-verify): the AV-2 consumed-id set lives in memory for ONE match() run, so
+     * it cannot stop a LATER import (a corrected or extended statement — a different content_hash,
+     * so the importer's own idempotency does not apply either) from raising a SECOND approvable
+     * proposal against a ledger line an earlier statement already claimed. That is the same
+     * double-count risk AV-2 named, one cycle later, so the guard is completed here at the point
+     * of truth: a payable line already carrying a pending-or-approved supplier-statement proposal
+     * is spoken for. A REJECTED one is not a claim — a re-import may legitimately propose again.
      */
     private function ensureProposal(SupplierStatementImportLine $line, int $bookJournalEntryId, string $confidence): void
     {
@@ -215,6 +244,25 @@ final class SupplierStatementMatcher
 
         $existing = ReconciliationProposal::where('matched_reference', $reference)->first();
         if ($existing !== null) {
+            return;
+        }
+
+        $claimed = ReconciliationProposal::where('book_journal_entry_id', $bookJournalEntryId)
+            ->where('kind', ReconciliationProposal::KIND_SUPPLIER_STATEMENT)
+            ->whereIn('status', [ReconciliationProposal::STATUS_PENDING, ReconciliationProposal::STATUS_APPROVED])
+            ->first();
+
+        if ($claimed !== null) {
+            // The line stays 'matched' (it genuinely corresponds to that ledger line — demoting it
+            // to an exception would send the operator chasing an already-reconciled charge), but
+            // says so instead of silently producing no proposal.
+            $line->note = sprintf(
+                'Ledger line already reconciled against an earlier statement (proposal #%d, %s) — matched, no new proposal raised.',
+                $claimed->id,
+                $claimed->status
+            );
+            $line->save();
+
             return;
         }
 
@@ -270,11 +318,11 @@ final class SupplierStatementMatcher
 
     /**
      * @param  array<int,int>  $excludeIds  journal_entries.id values already claimed by an
-     *     earlier statement line in the current match() run (AV-1/AV-2 fix) — excluded so a
-     *     second statement row never re-consumes a payable line another row already matched.
+     *                                      earlier statement line in the current match() run (AV-1/AV-2 fix) — excluded so a
+     *                                      second statement row never re-consumes a payable line another row already matched.
      * @return Collection<int, JournalEntry> posted payable lines for one supplier on one invoice
-     *     — see this class's own docblock for why this reads by `type_reference_id` only, never
-     *     by GL leaf.
+     *                                       — see this class's own docblock for why this reads by `type_reference_id` only, never
+     *                                       by GL leaf.
      */
     private function payableLinesFor(int $companyId, int $supplierId, int $invoiceId, array $excludeIds = []): Collection
     {
@@ -321,7 +369,20 @@ final class SupplierStatementMatcher
      */
     public function unmatchedLedgerLines(SupplierStatementImport $import): Collection
     {
-        $matchedIds = $import->lines()->whereNotNull('matched_journal_entry_id')->pluck('matched_journal_entry_id')->all();
+        // RV-1: a line's own `matched_journal_entry_id` is only the PRIMARY of its match; an
+        // aggregate match covers several payable lines (`matched_journal_entry_ids`). Both sets
+        // are "present on the statement" and neither is an open ledger gap.
+        $matchedLines = $import->lines()->whereNotNull('matched_journal_entry_id')->get(['matched_journal_entry_id', 'matched_journal_entry_ids']);
+
+        $matchedIds = $matchedLines->pluck('matched_journal_entry_id')->all();
+
+        foreach ($matchedLines as $matchedLine) {
+            foreach ((array) $matchedLine->matched_journal_entry_ids as $coveredId) {
+                $matchedIds[] = $coveredId;
+            }
+        }
+
+        $matchedIds = array_values(array_unique(array_map('intval', $matchedIds)));
 
         $from = $import->period_from?->toDateString() ?? $import->lines()->min('statement_date');
         $to = $import->period_to?->toDateString() ?? $import->lines()->max('statement_date');

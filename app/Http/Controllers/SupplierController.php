@@ -1629,6 +1629,38 @@ class SupplierController extends Controller
     }
 
     /**
+     * Normalizes the free-text identifier fields (currency, IBAN, SWIFT/BIC) the same way the
+     * `ValidIban`/`ValidSwiftBic` rules normalize their OWN local copy of the value before
+     * checking it (uppercase; IBAN also has internal spaces stripped) -- but those rules only
+     * validate a local variable, they never write back to the value that ends up stored. Without
+     * this, a validation-passing "de89 3704 ..." or " deutdeff " gets persisted byte-for-byte,
+     * which breaks the monospaced display's implied canonical form and any future exact-match
+     * lookup (e.g. a duplicate-IBAN check) on the stored column. Adversarial-verification finding
+     * (T14 verify pass, 2026-09-02) -- see `SupplierBankDetailAdversarialTest`.
+     *
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function normalizeBankDetailFields(array $validated): array
+    {
+        $validated['currency'] = mb_strtoupper($validated['currency']);
+
+        if (! empty($validated['iban'])) {
+            $validated['iban'] = strtoupper(str_replace(' ', '', $validated['iban']));
+        }
+
+        if (! empty($validated['swift_bic'])) {
+            $validated['swift_bic'] = strtoupper(trim($validated['swift_bic']));
+        }
+
+        if (! empty($validated['intermediary_swift_bic'])) {
+            $validated['intermediary_swift_bic'] = strtoupper(trim($validated['intermediary_swift_bic']));
+        }
+
+        return $validated;
+    }
+
+    /**
      * "Setting a new default demotes the old one" (T14 spec, MP-14 mutation proof list) -- rather
      * than let a second DEFAULT+active row for the same (supplier, currency) hit the DB-level
      * `supplier_bank_details_default_group_unique` violation, this demotes whatever row currently
@@ -1656,8 +1688,7 @@ class SupplierController extends Controller
         Gate::authorize('update', Supplier::class);
 
         $companyId = getCompanyId(Auth::user());
-        $validated = $request->validate($this->bankDetailValidationRules());
-        $validated['currency'] = mb_strtoupper($validated['currency']);
+        $validated = $this->normalizeBankDetailFields($request->validate($this->bankDetailValidationRules()));
         $wantsDefault = (bool) ($validated['is_default'] ?? false);
 
         try {
@@ -1702,8 +1733,7 @@ class SupplierController extends Controller
         $companyId = getCompanyId(Auth::user());
         abort_unless($bankDetail->company_id === $companyId, 403);
 
-        $validated = $request->validate($this->bankDetailValidationRules());
-        $validated['currency'] = mb_strtoupper($validated['currency']);
+        $validated = $this->normalizeBankDetailFields($request->validate($this->bankDetailValidationRules()));
         $wantsDefault = (bool) ($validated['is_default'] ?? false);
 
         $before = $bankDetail->only(array_keys($this->bankDetailValidationRules()));

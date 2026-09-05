@@ -44,6 +44,43 @@ final class ReconciliationProposalService
 
         DB::transaction(function () use ($proposal, $actor) {
             $book = JournalEntry::withoutGlobalScopes()->findOrFail($proposal->book_journal_entry_id);
+
+            // PHASE GATE (accounting-builds, cross-lane): this method is the ONE place every
+            // proposal kind flips `journal_entries.reconciled`, and it is deliberately
+            // kind-agnostic. That was safe while every detector was internal and each ran over a
+            // disjoint slice of the ledger; it stopped being safe the moment this phase added two
+            // independent, externally-fed kinds (`supplier_statement` from lane E,
+            // `gateway_settlement` from lane D — and `bank_statement` from lane H next) whose
+            // candidate sets are derived from files a human uploads, not from one shared query.
+            //
+            // Nothing upstream prevents two PENDING proposals of DIFFERENT kinds naming the same
+            // `book_journal_entry_id`: there is no unique index on that column (only a plain index,
+            // 2026_08_30_170001_p25g_create_reconciliation_proposals_table.php), lane E's own
+            // claim check (SupplierStatementMatcher::liveClaimOn()) was scoped to its own kind
+            // until this same fix widened it, and manualMatch() below creates-and-approves without
+            // consulting pending proposals at all. Without this guard the SECOND approval simply
+            // overwrote `reconciled_ref_id`/`reconciled_date`/`reconciled_amount` written by the
+            // first — silently, with an audit row that recorded the overwrite as a normal
+            // reconcile. One ledger line would then appear settled by two different external
+            // documents, and only the later one would be traceable.
+            //
+            // A line is "claimed" at reconciled = 1 (an approved proposal, or a manual match) and
+            // at reconciled = 2 (BankPaymentController's own fast path, which ReconciliationService
+            // already refuses to touch — see its docblock). Refusing loudly is correct here rather
+            // than silently skipping: the operator asked to approve a match the ledger cannot
+            // honour, and the competing claim is named in the message so they can go look at it.
+            if ((int) $book->reconciled !== 0) {
+                throw new \RuntimeException(sprintf(
+                    'Journal entry #%d is already reconciled (state %d, ref %s); proposal #%d (kind %s) cannot claim it. '
+                    .'Unmatch the existing claim first if this proposal is the correct one.',
+                    (int) $book->id,
+                    (int) $book->reconciled,
+                    $book->reconciled_ref_id === null ? 'none' : (string) $book->reconciled_ref_id,
+                    (int) $proposal->id,
+                    (string) $proposal->kind,
+                ));
+            }
+
             $before = [
                 'reconciled' => $book->reconciled,
                 'reconciled_ref_id' => $book->reconciled_ref_id,

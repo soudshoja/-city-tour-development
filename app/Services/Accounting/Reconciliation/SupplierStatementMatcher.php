@@ -304,8 +304,22 @@ final class SupplierStatementMatcher
      */
     private function liveClaimOn(SupplierStatementImportLine $line, int $bookJournalEntryId): ?ReconciliationProposal
     {
+        // PHASE GATE (accounting-builds, cross-lane): this direct lookup is deliberately NOT
+        // scoped to KIND_SUPPLIER_STATEMENT. A claim on a payable line is a claim whoever made it
+        // — lane D's gateway-payout detector (ReconciliationAutoMatchService::alreadyPending())
+        // already checks kind-agnostically, and lane H's bank-statement detector will be a third
+        // claimant on the same one id space and one status machine. Scoping this to our own kind
+        // meant a line another kind had already claimed still looked free here, so we raised a
+        // second approvable proposal against it; approving both was a silent overwrite of
+        // `reconciled_ref_id` until ReconciliationProposalService::approve() gained its own
+        // already-reconciled guard in this same fix. Refusing to PROPOSE over a foreign claim is
+        // the half that keeps the exceptions report honest rather than merely failing late at
+        // approval time.
+        //
+        // The covering-set lookup below stays kind-scoped on purpose: `matched_reference` values
+        // shaped `supplier_stmt_line:{id}` are this matcher's own private encoding, so a foreign
+        // kind can never carry one and the filter costs nothing.
         $direct = ReconciliationProposal::where('book_journal_entry_id', $bookJournalEntryId)
-            ->where('kind', ReconciliationProposal::KIND_SUPPLIER_STATEMENT)
             ->whereIn('status', [ReconciliationProposal::STATUS_PENDING, ReconciliationProposal::STATUS_APPROVED])
             ->first();
 

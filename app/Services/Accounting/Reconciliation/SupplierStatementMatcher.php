@@ -53,8 +53,17 @@ final class SupplierStatementMatcher
         $disputed = 0;
         $unmatchedStatement = 0;
 
+        // ADVERSARIAL-VERIFY FIX (T8 re-verify, AV-1/AV-2): tracks payable-line ids already
+        // consumed by an EARLIER statement line within this same match() run, so that (a) two
+        // legitimate ledger lines on one invoice (e.g. room + tax posted as separate JE credit
+        // lines) each get matched to their OWN statement row instead of being summed and falsely
+        // disputed against every row individually, and (b) two statement rows that duplicate one
+        // booking reference never both resolve to — and each get a pending ReconciliationProposal
+        // against — the SAME ledger line. See payableLinesFor()'s $excludeIds param.
+        $consumedJournalEntryIds = [];
+
         foreach ($import->lines()->orderBy('row_no')->get() as $line) {
-            $outcome = $this->matchLine($import, $line);
+            $outcome = $this->matchLine($import, $line, $consumedJournalEntryIds);
 
             match ($outcome['state']) {
                 SupplierStatementImportLine::STATE_MATCHED => $matched++,
@@ -75,9 +84,11 @@ final class SupplierStatementMatcher
     }
 
     /**
+     * @param  array<int,bool>  $consumedJournalEntryIds  keyed by journal_entries.id already
+     *     claimed by an earlier statement line in this same match() run — mutated in place.
      * @return array{state:string}
      */
-    private function matchLine(SupplierStatementImport $import, SupplierStatementImportLine $line): array
+    private function matchLine(SupplierStatementImport $import, SupplierStatementImportLine $line, array &$consumedJournalEntryIds): array
     {
         $booking = $this->resolveBooking($import->company_id, $line);
 
@@ -99,7 +110,12 @@ final class SupplierStatementMatcher
             ]);
         }
 
-        $candidates = $this->payableLinesFor($import->company_id, $import->supplier_id, (int) $booking->invoice_id);
+        $candidates = $this->payableLinesFor(
+            $import->company_id,
+            $import->supplier_id,
+            (int) $booking->invoice_id,
+            array_keys($consumedJournalEntryIds)
+        );
 
         if ($candidates->isEmpty()) {
             return $this->settle($line, SupplierStatementImportLine::STATE_UNMATCHED, [
@@ -110,9 +126,6 @@ final class SupplierStatementMatcher
             ]);
         }
 
-        [$bookAmount, $basis] = $this->bookAmountFor($candidates, $line->currency);
-        $primary = $candidates->first();
-        $diff = round($bookAmount - (float) $line->amount, 3);
         // NOTE: match_tolerance lives at config('accounting.supplier_statements.match_tolerance')
         // — a SIBLING of 'dotw', not nested inside it (see config/accounting.php's own layout).
         // Caught by the MP-8-2 mutation proof: widening this to 0.01 silently did nothing until
@@ -120,11 +133,40 @@ final class SupplierStatementMatcher
         // equal the real tolerance value and masked the wrong path.
         $tolerance = (float) config('accounting.supplier_statements.match_tolerance', 0.001);
 
+        // AV-1/AV-2 fix: first try to match this statement row against ONE still-unconsumed
+        // candidate individually (the common case — one statement row per ledger charge). Only
+        // when no single candidate lines up do we fall back to the legacy aggregate-across-all
+        // behavior (one statement row summarising several ledger lines for the same invoice,
+        // e.g. multiple room-nights posted as separate credits).
+        foreach ($candidates as $candidate) {
+            [$soloAmount, $soloBasis] = $this->bookAmountFor(collect([$candidate]), $line->currency);
+            $soloDiff = round($soloAmount - (float) $line->amount, 3);
+
+            if (abs($soloDiff) <= $tolerance + 1e-9) {
+                $consumedJournalEntryIds[$candidate->id] = true;
+
+                return $this->settle($line, SupplierStatementImportLine::STATE_MATCHED, [
+                    'note' => null,
+                    'difference' => $soloDiff,
+                    'matched_journal_entry_id' => $candidate->id,
+                    'matched_task_id' => $booking->task_id,
+                ], $this->proposalConfidenceFor($soloDiff));
+            }
+        }
+
+        [$bookAmount, $basis] = $this->bookAmountFor($candidates, $line->currency);
+        $primary = $candidates->first();
+        $diff = round($bookAmount - (float) $line->amount, 3);
+
         $aggregateNote = $candidates->count() > 1
             ? sprintf(' (aggregated across %d payable lines, primary=JE#%d: %s)', $candidates->count(), $primary->id, $candidates->pluck('id')->implode(','))
             : '';
 
         if (abs($diff) <= $tolerance + 1e-9) {
+            foreach ($candidates as $candidate) {
+                $consumedJournalEntryIds[$candidate->id] = true;
+            }
+
             return $this->settle($line, SupplierStatementImportLine::STATE_MATCHED, [
                 'note' => null,
                 'difference' => $diff,
@@ -227,17 +269,21 @@ final class SupplierStatementMatcher
     }
 
     /**
+     * @param  array<int,int>  $excludeIds  journal_entries.id values already claimed by an
+     *     earlier statement line in the current match() run (AV-1/AV-2 fix) — excluded so a
+     *     second statement row never re-consumes a payable line another row already matched.
      * @return Collection<int, JournalEntry> posted payable lines for one supplier on one invoice
      *     — see this class's own docblock for why this reads by `type_reference_id` only, never
      *     by GL leaf.
      */
-    private function payableLinesFor(int $companyId, int $supplierId, int $invoiceId): Collection
+    private function payableLinesFor(int $companyId, int $supplierId, int $invoiceId, array $excludeIds = []): Collection
     {
         return JournalEntry::withoutGlobalScopes()
             ->where('company_id', $companyId)
             ->where('type_reference_id', $supplierId)
             ->where('invoice_id', $invoiceId)
             ->where('credit', '>', 0)
+            ->when($excludeIds !== [], fn ($q) => $q->whereNotIn('id', $excludeIds))
             ->whereHas('transaction', fn ($q) => $q->where('posting_status', 'posted'))
             ->orderBy('id')
             ->get();

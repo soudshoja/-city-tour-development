@@ -32,7 +32,11 @@ use Illuminate\Support\Facades\DB;
  *     dropped and Retained Earnings overstated with no signal. See
  *     {@see self::checkDividendMappingGap()} for the full derivation of why "unmapped" cannot be
  *     read as "zero" once real money is on the leaf. An unmapped leaf that did NOT move is still a
- *     clean no-op, not a block.
+ *     clean no-op, not a block, and neither is a balance CARRIED IN from an earlier year with no
+ *     movement of its own (a correctly mapped company does not sweep that either — see that
+ *     method's "MOVEMENT, NOT BALANCE" note). The mirror case blocks too: when the mapping DOES
+ *     exist but points at only part of the 3200 subtree, the rest of that subtree's movement would
+ *     be left behind by the mapped-account-only sweep — the same silent loss, same refusal.
  *
  * ── The closing entry itself ──────────────────────────────────────────────────────────────────
  * This ledger has no separate "year" reset — every balance is a date-range QUERY
@@ -251,20 +255,26 @@ final class YearEndCloseService
      * 3200 are included — a 3200 that grew sub-accounts is itself a reason the seeder skipped the
      * mapping, and the money then lives on the children.
      *
+     * MOVEMENT, NOT BALANCE — the ruling, re-derived in the loop-3 pass and pinned by
+     * {@see \Tests\Feature\Accounting\T5T6AdversarialVerificationTest}::
+     * test_a_carried_dividend_balance_with_no_movement_is_treated_identically_mapped_or_not():
+     * a balance carried in from an earlier year with NO movement this year is NOT swept by a
+     * correctly-MAPPED company either (L9 defines the sweep on the year's movement), so an unmapped
+     * company in that state loses nothing the mapping would have saved. Gating on balance would
+     * therefore refuse a close that a correct company sails through, and the remedy this guard
+     * promises ("map the purpose and close again") would not actually sweep the balance — a block
+     * the operator cannot clear by doing what it says. The carried balance is a real but SEPARATE
+     * concern (a prior year never closed, or closed before T5 existed); it belongs to the one-off
+     * backfill question in the review packet's §10.8, not to this precondition.
+     *
+     * Loop-3 addition: the guard now also covers the MAPPED side of the same hazard — see the
+     * second arm below and {@see self::dividendMappingRemedy()} for why the old flat "re-run
+     * SystemAccountsSeeder" remedy was a dead end for two of the three unmapped states.
+     *
      * @return list<string>
      */
     private function checkDividendMappingGap(int $companyId, int $year): array
     {
-        $mapped = DB::table('system_accounts')
-            ->where('company_id', $companyId)
-            ->where('purpose_code', 'DIVIDENDS_PAID')
-            ->whereNull('service_type')
-            ->exists();
-
-        if ($mapped) {
-            return [];
-        }
-
         $accountIds = $this->dividendSubtreeAccountIds($companyId);
 
         if ($accountIds === []) {
@@ -273,6 +283,82 @@ final class YearEndCloseService
             return [];
         }
 
+        $tolerance = (float) config('accounting.engine.balance_tolerance', 0.0005);
+
+        $mappedId = DB::table('system_accounts')
+            ->where('company_id', $companyId)
+            ->where('purpose_code', 'DIVIDENDS_PAID')
+            ->whereNull('service_type')
+            ->value('account_id');
+
+        if ($mappedId === null) {
+            $movement = $this->dividendMovement($accountIds, $year);
+
+            if (abs($movement) <= $tolerance) {
+                return [];
+            }
+
+            return [sprintf(
+                'Dividends Paid (code %s) moved %s during %d but this company has no DIVIDENDS_PAID purpose mapping — the year-end dividend sweep would be silently dropped and Retained Earnings overstated by that amount. %s',
+                self::DIVIDENDS_PAID_CODE,
+                number_format($movement, 3),
+                $year,
+                $this->dividendMappingRemedy($companyId)
+            )];
+        }
+
+        // FINAL RE-VERIFICATION (loop 3): the mapped side of the SAME hazard, reachable by
+        // half-following the remedy the message above hands the operator ("map DIVIDENDS_PAID onto
+        // the leaf that carries the dividends"). buildClosingLines()'s sweep queries ONLY the
+        // mapped account's own journal_entries, so anything that moved elsewhere in the 3200
+        // subtree is not swept. Two distinct outcomes, both bad, both caught here:
+        //   - mapped onto the 3200 GROUP itself: {@see AccountResolver::resolve()} throws
+        //     NonLeafAccountException from inside buildClosingLines() — AFTER preconditions passed,
+        //     so the operator gets an uncaught 500 instead of a refusal they can act on (pinned by
+        //     mutation MP-L4, whose failure mode is exactly that exception).
+        //   - mapped onto ONE child leaf while a SIBLING child also carries dividends: resolve()
+        //     is perfectly happy, the close posts, and the sibling's movement is dropped in
+        //     silence with Retained Earnings overstated by it — the genuine silent-loss case.
+        // On a standard CoaSeeder chart 3200 is a childless, unique leaf and the mapped account IS
+        // the whole subtree, so this arm can never fire.
+        $mappedId = (int) $mappedId;
+
+        if (! in_array($mappedId, $accountIds, true)) {
+            // DIVIDENDS_PAID deliberately points somewhere outside the 3200 subtree — the registry
+            // is authoritative about which account this company treats as Dividends Paid, so 3200's
+            // own movement is none of this guard's business.
+            return [];
+        }
+
+        $strandedIds = array_values(array_diff($accountIds, [$mappedId]));
+
+        if ($strandedIds === []) {
+            return [];
+        }
+
+        $stranded = $this->dividendMovement($strandedIds, $year);
+
+        if (abs($stranded) <= $tolerance) {
+            return [];
+        }
+
+        return [sprintf(
+            'Dividends Paid (code %s) has %d other account(s) in its subtree carrying %s of %d movement that the DIVIDENDS_PAID mapping does not point at — the year-end sweep only zeroes the mapped account, so that amount would be silently left behind and Retained Earnings overstated by it. Re-point the DIVIDENDS_PAID mapping at the account that actually carries the dividends (or consolidate the movement onto it) and close again.',
+            self::DIVIDENDS_PAID_CODE,
+            count($strandedIds),
+            number_format($stranded, 3),
+            $year
+        )];
+    }
+
+    /**
+     * Year movement (debit-normal) of a set of accounts, queried the identical way
+     * {@see self::buildClosingLines()} queries the sweep itself.
+     *
+     * @param  list<int>  $accountIds
+     */
+    private function dividendMovement(array $accountIds, int $year): float
+    {
         $totals = DB::table('journal_entries')
             ->whereIn('account_id', $accountIds)
             ->whereNull('deleted_at')
@@ -283,19 +369,59 @@ final class YearEndCloseService
             ->selectRaw('COALESCE(SUM(debit),0) as d, COALESCE(SUM(credit),0) as c')
             ->first();
 
-        $movement = (float) $totals->d - (float) $totals->c;
-        $tolerance = (float) config('accounting.engine.balance_tolerance', 0.0005);
+        return (float) $totals->d - (float) $totals->c;
+    }
 
-        if (abs($movement) <= $tolerance) {
-            return [];
+    /**
+     * FINAL RE-VERIFICATION (loop 3): the ACTIONABLE half of the blocking message above.
+     *
+     * The previous wording was a flat "re-run SystemAccountsSeeder" — provably wrong for two of the
+     * three states that leave `DIVIDENDS_PAID` unmapped, and they are exactly the two states this
+     * guard's own subtree walk exists to catch. {@see \Database\Seeders\SystemAccountsSeeder}
+     * ::mapByCode() refuses to map code 3200 when it is DUPLICATED ("ambiguous") or when it has
+     * GROWN CHILDREN ("group account, not a leaf"), so re-running the seeder leaves the company
+     * unmapped and the very next close refuses again — an endless dead end, reproduced by test.
+     * Only the third state (a clean, childless, unique 3200 that the seeder simply never ran over —
+     * the pre-T0a installed base) is actually fixed by re-running it.
+     *
+     * So the message now diagnoses WHICH state this company is in and names the remedy that works.
+     */
+    private function dividendMappingRemedy(int $companyId): string
+    {
+        $candidates = DB::table('accounts')
+            ->where('company_id', $companyId)
+            ->where('code', self::DIVIDENDS_PAID_CODE)
+            ->get(['id', 'name']);
+
+        if ($candidates->count() > 1) {
+            return sprintf(
+                '%d accounts share code %s, so SystemAccountsSeeder skips the mapping as ambiguous and re-running it will NOT help: de-duplicate the code, or map DIVIDENDS_PAID directly onto the account that carries the dividends (ids: %s), then close again.',
+                $candidates->count(),
+                self::DIVIDENDS_PAID_CODE,
+                $candidates->pluck('id')->implode(', ')
+            );
         }
 
-        return [sprintf(
-            'Dividends Paid (code %s) moved %s during %d but this company has no DIVIDENDS_PAID purpose mapping — the year-end dividend sweep would be silently dropped and Retained Earnings overstated by that amount. Map the purpose (re-run SystemAccountsSeeder) and close again.',
-            self::DIVIDENDS_PAID_CODE,
-            number_format($movement, 3),
-            $year
-        )];
+        $account = $candidates->first();
+
+        $children = DB::table('accounts')
+            ->where('company_id', $companyId)
+            ->where('parent_id', $account->id)
+            ->get(['id', 'name']);
+
+        if ($children->isNotEmpty()) {
+            return sprintf(
+                'Code %s is a group account with %d child account(s), so SystemAccountsSeeder skips the mapping ("not a leaf") and re-running it will NOT help: map DIVIDENDS_PAID directly onto the child leaf that carries the dividends (ids: %s), then close again.',
+                self::DIVIDENDS_PAID_CODE,
+                $children->count(),
+                $children->pluck('id')->implode(', ')
+            );
+        }
+
+        return sprintf(
+            'Code %s is a clean unmapped leaf: re-run SystemAccountsSeeder to map DIVIDENDS_PAID onto it, then close again.',
+            self::DIVIDENDS_PAID_CODE
+        );
     }
 
     /**

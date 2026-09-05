@@ -1,8 +1,5 @@
 <?php
 
-use App\Models\Company;
-use App\Models\Payment;
-use App\Models\PaymentMethod;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -15,7 +12,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $paymentMethods = PaymentMethod::all();
+        // Migrations must not use application models (Eloquent models can carry
+        // global scopes — e.g. PaymentMethod's BelongsToCompany — that reference
+        // columns this migration hasn't created yet). Use the query builder
+        // directly against the tables instead; the data transformation below is
+        // otherwise unchanged from the original Eloquent version.
+        $paymentMethods = DB::table('payment_methods')->get();
 
         DB::statement('SET FOREIGN_KEY_CHECKS=0;');
         DB::table('payment_methods')->truncate();
@@ -26,11 +28,13 @@ return new class extends Migration
             $table->foreignId('company_id')->nullable()->after('myfatoorah_id')->constrained('companies')->onDelete('set null');
         });
 
-        $companies = Company::all();
+        $companies = DB::table('companies')->get();
+
+        $now = now();
 
         foreach($companies as $company) {
             foreach($paymentMethods as $method) {
-                PaymentMethod::create([
+                DB::table('payment_methods')->insert([
                     'myfatoorah_id' => $method->id,
                     'company_id' => $company->id,
                     'arabic_name' => $method->arabic_name,
@@ -45,10 +49,12 @@ return new class extends Migration
                     'charge_type' => $method->charge_type,
                     'description' => $method->description,
                     'image' => $method->image,
+                    'created_at' => $now,
+                    'updated_at' => $now,
                 ]);
            }
         }
-     
+
     }
 
     /**

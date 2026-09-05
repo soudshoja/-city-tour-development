@@ -1152,6 +1152,17 @@ return [
         // rejects the whole import, see BankStatementImporter). 'debit'/'credit' are both
         // required as HEADER columns even though any given row only ever populates one of them.
         'required_columns' => ['value_date', 'debit', 'credit'],
+        // Post-sign-off fix (T9 §12 note 2): a Kuwaiti bank export's date column is dd/mm/yyyy,
+        // not the ISO shape `Carbon::parse()` guesses at. `date_format` is CONFIG with a
+        // per-import override in the UI (same L15 convention as `columns` above); every candidate
+        // format is tried strictly (`Carbon::createFromFormat`, no silent rollover/guessing) —
+        // the primary format first, then each fallback in the order listed, first strict match
+        // wins. A value that matches none of them rejects the whole import (BankStatementImportRejected,
+        // 422 over HTTP — never a 500, never a silent misread). An XLSX date-formatted cell (a
+        // numeric Excel serial, not a string) bypasses this list entirely and is converted via
+        // PhpSpreadsheet's own Shared\Date — see BankStatementImporter::resolveDateCell().
+        'date_format' => 'd/m/Y',
+        'date_format_fallbacks' => ['Y-m-d', 'd-m-Y', 'd/m/Y H:i'],
         // L16: bank match tolerance 0.001 KWD on base amounts, date window ±3 days.
         'match_tolerance' => 0.001,
         'date_window_days' => 3,

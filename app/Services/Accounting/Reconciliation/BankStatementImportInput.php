@@ -14,6 +14,9 @@ final class BankStatementImportInput
      * @param  array<string,string>|null  $columnMapOverride  per-import override merged onto
      *                                                        config('accounting.bank_statements.columns') (L15) — only the keys present override;
      *                                                        anything absent falls back to the config default.
+     * @param  string|null  $dateFormatOverride  per-import override of config('accounting.bank_statements.date_format')
+     *                                           (post-sign-off fix, T9 §12 note 2) — a `Carbon::createFromFormat` pattern
+     *                                           tried strictly before the configured fallback list; null keeps the config default.
      */
     public function __construct(
         public readonly int $companyId,
@@ -28,5 +31,6 @@ final class BankStatementImportInput
         public readonly ?float $openingBalance = null,
         public readonly ?float $closingBalance = null,
         public readonly ?int $importedBy = null,
+        public readonly ?string $dateFormatOverride = null,
     ) {}
 }

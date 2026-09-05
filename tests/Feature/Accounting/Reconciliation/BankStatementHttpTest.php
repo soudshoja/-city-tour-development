@@ -162,6 +162,50 @@ class BankStatementHttpTest extends AccountingTestCase
         $exceptionsResponse->assertJsonStructure(['report' => ['ledger_balance', 'statement_closing_balance', 'difference']]);
     }
 
+    // ── Post-sign-off fix (T9 §12 note 2 + note 3) ──────────────────────────────────────────────
+
+    /**
+     * The exact defect from the sign-off packet: a bare `Carbon::parse()` threw an uncaught
+     * `QueryException` (HTTP 500, not this endpoint's own controlled 422/201) on a Kuwaiti bank
+     * export's dd/mm/yyyy value-date column. `date_format` now defaults to `d/m/Y` — this must
+     * import cleanly (201 Created, the endpoint's real success code — never a 500).
+     */
+    public function test_dd_mm_yyyy_csv_imports_successfully_not_a_500(): void
+    {
+        [$company, , $leaf] = $this->makeCompanyWithBankLeaf();
+        $admin = User::factory()->create(['role_id' => Role::ADMIN]);
+        session(['company_id' => $company->id]);
+
+        $csv = "Value Date,Debit,Credit\n25/03/2026,,10.000\n";
+        $file = UploadedFile::fake()->createWithContent('ddmmyyyy.csv', $csv);
+
+        $response = $this->actingAs($admin)->postJson(route('accounting.reconciliation.bank-statements.import'), [
+            'file' => $file, 'bank_account_id' => $leaf->id, 'statement_currency' => 'KWD',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertSame('2026-03-25', BankStatementImport::withoutGlobalScopes()->findOrFail($response->json('import.id'))->lines->first()->value_date->toDateString());
+    }
+
+    /** Sign-off packet §12 note 3: `opening_balance` is already stored by the importer but was never HTTP-accepted. */
+    public function test_opening_balance_is_accepted_over_http(): void
+    {
+        [$company, , $leaf] = $this->makeCompanyWithBankLeaf();
+        $admin = User::factory()->create(['role_id' => Role::ADMIN]);
+        session(['company_id' => $company->id]);
+
+        $csv = "Value Date,Debit,Credit\n2026-08-01,,10.000\n";
+        $file = UploadedFile::fake()->createWithContent('opening.csv', $csv);
+
+        $response = $this->actingAs($admin)->postJson(route('accounting.reconciliation.bank-statements.import'), [
+            'file' => $file, 'bank_account_id' => $leaf->id, 'statement_currency' => 'KWD',
+            'opening_balance' => '1000.000',
+        ]);
+
+        $response->assertStatus(201);
+        $this->assertEqualsWithDelta(1000.0, $response->json('import.opening_balance'), 0.0001);
+    }
+
     public function test_a_statement_import_is_inaccessible_to_a_different_companys_admin(): void
     {
         [$companyA, , $leafA] = $this->makeCompanyWithBankLeaf();

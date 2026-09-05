@@ -335,4 +335,116 @@ class BankStatementImporterTest extends AccountingTestCase
             @unlink($path);
         }
     }
+
+    // ── Post-sign-off fix (T9 §12 note 2): dd/mm/yyyy date parsing ─────────────────────────────
+
+    /** Default date_format is `d/m/Y` — the shape a Kuwaiti bank export uses. */
+    public function test_default_date_format_parses_dd_mm_yyyy(): void
+    {
+        [$company, $leaf] = $this->makeCompanyWithBankLeaf();
+        $path = $this->writeCsv(self::DEFAULT_HEADER, [
+            ['25/03/2026', '25/03/2026', 'a', 'REF-DF1', '', '', '', '10.000', '10.000'],
+        ]);
+
+        $import = $this->importer()->import(new BankStatementImportInput(
+            companyId: $company->id, bankAccountId: $leaf->id, absoluteFilePath: $path,
+            fileName: 'ddmmyyyy.csv', statementCurrency: 'KWD',
+        ));
+
+        $this->assertSame('2026-03-25', $import->lines->first()->value_date->toDateString());
+
+        @unlink($path);
+    }
+
+    /**
+     * The exact defect from the sign-off packet §12 note 2: `03/04/2026` under dd/mm/yyyy is
+     * 3 April — NOT 4 March, which is what a bare `Carbon::parse()` used to silently misread it
+     * as for every day-of-month <= 12.
+     */
+    public function test_default_date_format_reads_day_before_month_not_the_other_way_round(): void
+    {
+        [$company, $leaf] = $this->makeCompanyWithBankLeaf();
+        $path = $this->writeCsv(self::DEFAULT_HEADER, [
+            ['03/04/2026', '03/04/2026', 'a', 'REF-DF2', '', '', '', '10.000', '10.000'],
+        ]);
+
+        $import = $this->importer()->import(new BankStatementImportInput(
+            companyId: $company->id, bankAccountId: $leaf->id, absoluteFilePath: $path,
+            fileName: 'ddmmyyyy2.csv', statementCurrency: 'KWD',
+        ));
+
+        $this->assertSame('2026-04-03', $import->lines->first()->value_date->toDateString());
+
+        @unlink($path);
+    }
+
+    /** An explicit `dateFormatOverride` — the "part of the configurable column mapping" this fix adds — reads ISO dates. */
+    public function test_iso_date_format_via_explicit_override(): void
+    {
+        [$company, $leaf] = $this->makeCompanyWithBankLeaf();
+        $path = $this->writeCsv(self::DEFAULT_HEADER, [
+            ['2026-03-25', '2026-03-25', 'a', 'REF-DF3', '', '', '', '10.000', '10.000'],
+        ]);
+
+        $import = $this->importer()->import(new BankStatementImportInput(
+            companyId: $company->id, bankAccountId: $leaf->id, absoluteFilePath: $path,
+            fileName: 'iso.csv', statementCurrency: 'KWD', dateFormatOverride: 'Y-m-d',
+        ));
+
+        $this->assertSame('2026-03-25', $import->lines->first()->value_date->toDateString());
+
+        @unlink($path);
+    }
+
+    /**
+     * An unparseable date rejects the WHOLE import with a clear, per-row message — never a bare
+     * `QueryException`/HTTP 500 from a NULL `value_date` reaching the insert (the sign-off
+     * packet's own probed defect). Nothing is persisted.
+     */
+    public function test_an_unparseable_date_rejects_the_whole_import_with_a_clear_message(): void
+    {
+        [$company, $leaf] = $this->makeCompanyWithBankLeaf();
+        $path = $this->writeCsv(self::DEFAULT_HEADER, [
+            ['not-a-date', '', 'a', 'REF-DF4', '', '', '', '10.000', '10.000'],
+        ]);
+
+        try {
+            $this->importer()->import(new BankStatementImportInput(
+                companyId: $company->id, bankAccountId: $leaf->id, absoluteFilePath: $path,
+                fileName: 'bad-date.csv', statementCurrency: 'KWD',
+            ));
+            $this->fail('Expected BankStatementImportRejected.');
+        } catch (BankStatementImportRejected $e) {
+            $this->assertStringContainsString('row 1', $e->getMessage());
+            $this->assertStringContainsString('value_date', $e->getMessage());
+            $this->assertStringContainsString('not-a-date', $e->getMessage());
+        } finally {
+            $this->assertSame(0, BankStatementImport::withoutGlobalScopes()->where('company_id', $company->id)->count());
+            @unlink($path);
+        }
+    }
+
+    /** Keeps a genuine XLSX date-typed cell (a numeric Excel serial, never a string) working under the new strict-format path. */
+    public function test_xlsx_numeric_date_serial_still_parses(): void
+    {
+        [$company, $leaf] = $this->makeCompanyWithBankLeaf();
+        $path = tempnam(sys_get_temp_dir(), 'bsi_test_').'.xlsx';
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray(self::DEFAULT_HEADER, null, 'A1');
+        $sheet->setCellValue('A2', \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel(new \DateTime('2026-03-25')));
+        $sheet->getStyle('A2')->getNumberFormat()->setFormatCode('dd/mm/yyyy');
+        $sheet->fromArray(['', 'Deposit', 'REF-DF5', '', '', '', '10.000', '10.000'], null, 'B2');
+        (new Xlsx($spreadsheet))->save($path);
+
+        $import = $this->importer()->import(new BankStatementImportInput(
+            companyId: $company->id, bankAccountId: $leaf->id, absoluteFilePath: $path,
+            fileName: 'serial.xlsx', statementCurrency: 'KWD',
+        ));
+
+        $this->assertCount(1, $import->lines);
+        $this->assertSame('2026-03-25', $import->lines->first()->value_date->toDateString());
+
+        @unlink($path);
+    }
 }

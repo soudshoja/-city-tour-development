@@ -390,8 +390,12 @@ class ReconciliationController extends Controller
             'statement_reference' => ['nullable', 'string', 'max:160'],
             'statement_from' => ['nullable', 'date'],
             'statement_to' => ['nullable', 'date'],
+            'opening_balance' => ['nullable', 'numeric'],
             'closing_balance' => ['nullable', 'numeric'],
             'column_map' => ['nullable', 'array'],
+            // Post-sign-off fix (T9 §12 note 2): per-import override of
+            // config('accounting.bank_statements.date_format'), same L15 convention as column_map.
+            'date_format' => ['nullable', 'string', 'max:40'],
         ], [
             'file.mimes' => 'The statement must be a CSV or Excel (.xlsx/.xls) file.',
             'file.max' => 'The file must not exceed 10MB.',
@@ -410,8 +414,10 @@ class ReconciliationController extends Controller
                 statementReference: $data['statement_reference'] ?? null,
                 statementFrom: $data['statement_from'] ?? null,
                 statementTo: $data['statement_to'] ?? null,
+                openingBalance: isset($data['opening_balance']) ? (float) $data['opening_balance'] : null,
                 closingBalance: isset($data['closing_balance']) ? (float) $data['closing_balance'] : null,
                 importedBy: Auth::id(),
+                dateFormatOverride: $data['date_format'] ?? null,
             ));
         } catch (BankStatementImportConflict $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 409);

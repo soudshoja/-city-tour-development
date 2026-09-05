@@ -7,7 +7,6 @@ namespace App\Services\Accounting\Reconciliation;
 use App\Models\Account;
 use App\Models\BankStatementImport;
 use App\Models\BankStatementImportLine;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 
@@ -62,6 +61,11 @@ final class BankStatementImporter
         }
 
         $columnMap = $this->resolveColumnMap($input->columnMapOverride);
+        $dateFormat = $input->dateFormatOverride ?? (string) config('accounting.bank_statements.date_format', 'd/m/Y');
+        $dateFormatFallbacks = array_values(array_unique(array_filter(
+            (array) config('accounting.bank_statements.date_format_fallbacks', ['Y-m-d', 'd-m-Y', 'd/m/Y H:i']),
+            fn ($f) => $f !== $dateFormat
+        )));
         $grid = $this->readGrid($input->absoluteFilePath, $input->fileName);
 
         if (count($grid) === 0) {
@@ -87,7 +91,7 @@ final class BankStatementImporter
             if ($this->isBlankRow($rawRow)) {
                 continue;
             }
-            $parsedRows[] = $this->parseRow($rowNo, $rawRow, $columnIndex, $header);
+            $parsedRows[] = $this->parseRow($rowNo, $rawRow, $columnIndex, $header, $dateFormat, $dateFormatFallbacks);
         }
 
         if ($parsedRows === []) {
@@ -265,9 +269,10 @@ final class BankStatementImporter
      * @param  array<int,mixed>  $rawRow
      * @param  array<string,int>  $columnIndex
      * @param  array<int,mixed>  $header
+     * @param  array<int,string>  $dateFormatFallbacks
      * @return array<string,mixed>
      */
-    private function parseRow(int $rowNo, array $rawRow, array $columnIndex, array $header): array
+    private function parseRow(int $rowNo, array $rawRow, array $columnIndex, array $header, string $dateFormat, array $dateFormatFallbacks): array
     {
         $cell = function (string $key) use ($rawRow, $columnIndex): ?string {
             if (! isset($columnIndex[$key])) {
@@ -279,15 +284,28 @@ final class BankStatementImporter
             return $value === null || $value === '' ? null : (string) $value;
         };
 
+        // Un-stringified — value_date/posting_date need to know whether the raw grid cell was a
+        // genuine XLSX numeric (Excel serial date) BEFORE $cell() casts everything to string.
+        $rawCell = function (string $key) use ($rawRow, $columnIndex): mixed {
+            if (! isset($columnIndex[$key])) {
+                return null;
+            }
+
+            return $rawRow[$columnIndex[$key]] ?? null;
+        };
+
         $raw = [];
         foreach ($header as $i => $label) {
             $raw[(string) $label] = $rawRow[$i] ?? null;
         }
 
+        $valueDate = $this->resolveDateCell($rawCell('value_date'), 'value_date', $rowNo, $dateFormat, $dateFormatFallbacks)
+            ?? $this->resolveDateCell($rawCell('posting_date'), 'posting_date', $rowNo, $dateFormat, $dateFormatFallbacks);
+
         return [
             'row_no' => $rowNo,
-            'value_date' => $this->parseDate($cell('value_date')) ?? $this->parseDate($cell('posting_date')),
-            'posting_date' => $this->parseDate($cell('posting_date')),
+            'value_date' => $valueDate,
+            'posting_date' => $this->resolveDateCell($rawCell('posting_date'), 'posting_date', $rowNo, $dateFormat, $dateFormatFallbacks),
             'description' => $cell('description'),
             'reference' => $cell('reference'),
             'auth_no' => $cell('auth_no'),
@@ -310,17 +328,61 @@ final class BankStatementImporter
         return round((float) $normalized, 3);
     }
 
-    private function parseDate(?string $value): ?string
+    /**
+     * Post-sign-off fix (T9 §12 note 2): resolves ONE date cell to a `Y-m-d` string, or throws.
+     * Two paths:
+     *
+     *   - **XLSX numeric cell** (a genuine Excel date, read as a raw int/float serial by
+     *     {@see RawGridImport} — `Excel::toArray()` never string-formats a date-typed cell on its
+     *     own): converted via PhpSpreadsheet's own `Shared\Date`, independent of `$format`/
+     *     `$fallbacks` entirely — the file's own date typing is authoritative here, there is no
+     *     "wrong format" for a real Excel date serial.
+     *   - **Everything else (CSV string, or an XLSX text-typed cell)**: tried strictly against
+     *     `$format`, then each of `$fallbacks` in order — `DateTime::createFromFormat('!'.$fmt,
+     *     ...)` (the leading `!` resets every field the format doesn't mention, so a bare `Y-m-d`
+     *     match never bleeds in today's time-of-day) with `DateTime::getLastErrors()` checked, so
+     *     `31/02/2026` (no such day) or a component landing out of range is rejected rather than
+     *     silently rolled over into March — first strict match wins.
+     *
+     * A raw value that is present but matches NEITHER path throws {@see BankStatementImportRejected}
+     * naming the row, the column, the offending value and the formats tried — this is the ONLY
+     * per-row problem this importer rejects on (every other blank/absent cell is tolerated), and it
+     * aborts the whole import (never a partial import, never a 500 — the existing whole-file
+     * rejection policy this class already applies to a missing required column or an unreadable
+     * file). An absent/blank cell is not an error here — the caller decides whether that's fatal
+     * (value_date has no column to fall back to further; posting_date is optional).
+     */
+    private function resolveDateCell(mixed $raw, string $columnKey, int $rowNo, string $format, array $fallbacks): ?string
     {
-        if ($value === null) {
+        if ($raw === null || (is_string($raw) && trim($raw) === '')) {
             return null;
         }
 
-        try {
-            return Carbon::parse($value)->toDateString();
-        } catch (\Throwable) {
-            return null;
+        if (is_int($raw) || is_float($raw)) {
+            try {
+                return \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject((float) $raw)->format('Y-m-d');
+            } catch (\Throwable) {
+                throw new BankStatementImportRejected(
+                    "Statement row {$rowNo}: {$columnKey} value '{$raw}' is not a valid Excel date serial."
+                );
+            }
         }
+
+        $value = trim((string) $raw);
+
+        foreach ([$format, ...$fallbacks] as $fmt) {
+            $candidate = \DateTime::createFromFormat('!'.$fmt, $value);
+            $errors = \DateTime::getLastErrors();
+            $clean = $errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0);
+            if ($candidate !== false && $clean) {
+                return $candidate->format('Y-m-d');
+            }
+        }
+
+        throw new BankStatementImportRejected(
+            "Statement row {$rowNo}: {$columnKey} value '{$value}' does not match the configured date format ".
+            "'{$format}' or its fallback(s) (".implode(', ', $fallbacks).'). Fix the file, or set an explicit date_format for this import.'
+        );
     }
 
     /**

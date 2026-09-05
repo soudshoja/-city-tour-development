@@ -232,7 +232,14 @@ final class GatewaySettlementService
         $companyId = (int) $settlement->company_id;
         $idempotencyKey = self::idempotencyKeyFor($gatewayKey, $settlement->payout_reference);
 
-        $this->assertSettleable(
+        // Loop-3 re-verification: keep the coverage the guard actually VALIDATED and sweep exactly
+        // that set. Re-querying the pool after the document posts made the validated set and the
+        // swept set two different reads: a receipt landing in between (a gateway webhook capturing
+        // a payment while an operator records a payout) shifts the greedy walk onto a different
+        // subset, so the document drains `gross` while marking a set that no longer sums to it —
+        // the same strand/double-move corruption Guard B exists to refuse, reintroduced through a
+        // TOCTOU window rather than through a bad payout.
+        $validatedCoverage = $this->assertSettleable(
             companyId: $companyId,
             gateway: $gatewayKey,
             payoutReference: (string) $settlement->payout_reference,
@@ -334,7 +341,7 @@ final class GatewaySettlementService
         $settlement->transaction_id = $posted->transaction->id;
         $settlement->save();
 
-        $this->skipDailyReleaseForSettledPayments($settlement);
+        $this->skipDailyReleaseForSettledPayments($validatedCoverage['ids']);
 
         AccountingLog::write(
             action: 'gateway_settlement_posted',
@@ -388,6 +395,12 @@ final class GatewaySettlementService
      * double-moving the difference. Refused as the spec's "unmatched case", never absorbed.
      * Only applies when a pending pool exists -- with no local linkage there is nothing to align
      * against and Guard A is the protection.
+     *
+     * Returns the coverage it validated (Guard B's own read of the pending pool) so that
+     * {@see self::post()} sweeps EXACTLY the payments the guard passed, instead of re-deriving
+     * them from a second, later read of a pool that may have moved underneath it.
+     *
+     * @return array{ids: list<int>, covered: float, pending: float}
      */
     private function assertSettleable(
         int $companyId,
@@ -396,9 +409,9 @@ final class GatewaySettlementService
         string $payoutDate,
         float $gross,
         float $recognisedFee,
-    ): void {
+    ): array {
         if (! $this->seam->isEnabledFor($companyId)) {
-            return;
+            return ['ids' => [], 'covered' => 0.0, 'pending' => 0.0];
         }
 
         $tolerance = (float) config('accounting.engine.balance_tolerance', 0.001);
@@ -428,6 +441,8 @@ final class GatewaySettlementService
                 $coverage['pending'],
             );
         }
+
+        return $coverage;
     }
 
     /**
@@ -515,18 +530,20 @@ final class GatewaySettlementService
      * payment was released" and either rounding of it corrupts clearing (stranded money one way,
      * double-moved money the other). So by the time this runs, `covered` is known to equal `gross`
      * to the fils, and marking those ids is an exact statement of what the GWS document moved.
+     *
+     * Loop-3 re-verification: the ids are the ones Guard B VALIDATED, handed down from
+     * {@see self::assertSettleable()}, not a fresh query run after the document posted. The old
+     * re-query reopened the very hole Guard B closes whenever a receipt for this gateway landed
+     * between the two reads (a webhook capture during an operator's payout entry): the greedy walk
+     * would then settle on a different subset, and the document would drain `gross` while marking
+     * a set that no longer sums to it.
+     *
+     * @param  list<int>  $validatedIds
      */
-    private function skipDailyReleaseForSettledPayments(GatewaySettlement $settlement): void
+    private function skipDailyReleaseForSettledPayments(array $validatedIds): void
     {
-        $coverage = $this->resolvePaymentCoverage(
-            (int) $settlement->company_id,
-            (string) $settlement->gateway,
-            (string) $settlement->payout_date,
-            (float) $settlement->gross,
-        );
-
-        if ($coverage['ids'] !== []) {
-            Payment::withoutGlobalScopes()->whereIn('id', $coverage['ids'])->update(['completed' => 1]);
+        if ($validatedIds !== []) {
+            Payment::withoutGlobalScopes()->whereIn('id', $validatedIds)->update(['completed' => 1]);
         }
     }
 

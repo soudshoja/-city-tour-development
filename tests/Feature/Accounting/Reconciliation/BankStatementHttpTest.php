@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\CoaSeeder;
 use Illuminate\Http\UploadedFile;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -25,10 +26,13 @@ use Tests\Support\AccountingTestCase;
  */
 class BankStatementHttpTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     /** @return array{0: Company, 1: Branch, 2: Account} */
     private function makeCompanyWithBankLeaf(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
         $owner = User::factory()->create();
         $branch = Branch::factory()->create(['company_id' => $company->id, 'user_id' => $owner->id]);

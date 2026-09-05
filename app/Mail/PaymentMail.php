@@ -36,16 +36,25 @@ class PaymentMail extends Mailable
 
         switch ($this->type) {
             case PaymentMailTypeEnum::PAYMENT_LINK:
-                throw new Exception('Payment link email not implemented yet.');
-                break; // not implemented yet
+                // A payment link with no URL is not a mail, it is a bug: the
+                // gateway either has not been initiated yet or the charge
+                // failed. Refusing here is louder than sending a dead link.
+                if (blank($payment->payment_url)) {
+                    throw new Exception(
+                        "Payment {$payment->id} has no payment_url; the gateway charge has not been initiated."
+                    );
+                }
 
-                // $subject = 'Your Payment Link';
-                // $view = 'email.payment-link';
-                // $data = [
-                //     'paymentUrl' => $payment->payment_url,
-                //     'amount' => $payment->amount,
-                // ];
-                // break;
+                $company = $payment->agent?->branch?->company;
+
+                $subject = 'Your payment link from ' . ($company->name ?? config('app.name'));
+                $view = 'email.payment-link';
+                $data = [
+                    'paymentUrl' => $payment->payment_url,
+                    'company' => $company,
+                    'payment' => $payment,
+                ];
+                break;
 
             case PaymentMailTypeEnum::PAYMENT_SUCCESS:
                 $subject = 'Payment Successful - ' . $payment->voucher_number;
@@ -64,16 +73,24 @@ class PaymentMail extends Mailable
                 break;
 
             case PaymentMailTypeEnum::PAYMENT_FAILURE:
-                throw new Exception('Payment failure email not implemented yet.');
-                break; // not implemented yet
+                $company = $payment->agent?->branch?->company;
 
-                // $subject = 'Payment Failed';
-                // $view = 'email.payment.failure';
-                // $data = [
-                //     'amount' => $payment->amount,
-                //     'errorMessage' => $payment->error_message,
-                // ];
-                // break;
+                $subject = 'Payment could not be completed - ' . $payment->voucher_number;
+                $view = 'email.payment.failure';
+                $data = [
+                    'payment' => $payment,
+                    'company' => $company,
+                    // A failed payment keeps its link until it expires, so the
+                    // client can simply try again rather than ask for a new one.
+                    'paymentUrl' => $payment->expiry_date && $payment->expiry_date->isFuture()
+                        ? $payment->payment_url
+                        : null,
+                ];
+                break;
+        }
+
+        if ($view === '') {
+            throw new Exception('No template is defined for payment mail type ' . $this->type->value . '.');
         }
 
         return $this->subject($subject)

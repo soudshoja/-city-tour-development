@@ -65,7 +65,7 @@ class Tap
 
         $data = [
             'amount' => number_format((float) $request->input('finalAmount'), 3, '.', ''),
-            'currency' => 'KWD',
+            'currency' => $payment->currency ?: 'KWD',
             'save_card' => false,
             'customer' => [
                 'first_name' => $request->input('client_name'),

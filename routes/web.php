@@ -980,8 +980,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/uPayment-error', [PaymentController::class, 'handleUPaymentError'])->name('uPayment.error')->withoutMiddleware(['auth']);
         Route::get('/uPayment-noti', [PaymentController::class, 'handleUPaymentNoti'])->name('uPayment.notifications')->withoutMiddleware(['auth']);
 
-        Route::get('/hesabe-callback', [PaymentController::class, 'handleHesabeResponse'])->name('hesabe.response');
-        Route::get('/hesabe-error', [PaymentController::class, 'handleHesabeFailure'])->name('hesabe.failure');
+        // The payer returning from Hesabe is not logged in -- these two were the
+        // only gateway return routes in this group still behind `auth`, so every
+        // real Hesabe payment bounced to the login page instead of completing.
+        // The handler does not trust the query string: it re-enquires the
+        // transaction with Hesabe before writing anything (PaymentController
+        // handleHesabeResponse), which is what makes the open route safe.
+        Route::get('/hesabe-callback', [PaymentController::class, 'handleHesabeResponse'])->name('hesabe.response')->withoutMiddleware(['auth']);
+        Route::get('/hesabe-error', [PaymentController::class, 'handleHesabeFailure'])->name('hesabe.failure')->withoutMiddleware(['auth']);
 
         Route::get('/knet-response', [PaymentController::class, 'handleKnetResponse'])->name('knet.response')->withoutMiddleware(['auth']);
         Route::get('/knet-error', [PaymentController::class, 'handleKnetError'])->name('knet.error')->withoutMiddleware(['auth']);

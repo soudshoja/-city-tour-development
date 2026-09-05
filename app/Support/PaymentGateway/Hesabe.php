@@ -137,7 +137,7 @@ class Hesabe
 
         $requestData = [
             'amount'        => number_format((float) $request->final_amount, 3, '.', ''),
-            'currency'      => 'KWD',
+            'currency'      => $payment->currency ?: 'KWD',
             'merchantCode' => $this->merchantCode,
             'paymentType' => $myfatoorahId,
             'orderReferenceNumber' => $orderReference,

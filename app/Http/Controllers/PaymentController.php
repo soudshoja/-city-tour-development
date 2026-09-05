@@ -1215,13 +1215,20 @@ class PaymentController extends Controller
         $partial = InvoicePartial::findOrFail($invoicePartialId);
         $originalAmount = $partial->amount;
 
+        // The invoice knows what it is denominated in; stamping KWD here was
+        // producing KWD payment rows for non-KWD invoices, and the gateways that
+        // do honour currency (MyFatoorah, UPayment) then charged in KWD.
+        $paymentCurrency = $invoice->currency
+            ?? $invoice->agent->branch->company->currency
+            ?? 'KWD';
+
         $payment = Payment::create([
             'company_id' => $invoice->agent->branch->company_id,
             'voucher_number' => $voucherNumber,
             'from' => $invoice->client->full_name,
             'pay_to' => $invoice->agent->branch->company->name,
             'created_by' => Auth::id(),
-            'currency' => 'KWD',
+            'currency' => $paymentCurrency,
             'payment_date' => Carbon::now(),
             'service_charge' => $finalAmount - $originalAmount,
             'amount' => $originalAmount,
@@ -2031,7 +2038,8 @@ class PaymentController extends Controller
                 'auth_code' => $authCode,
                 'from' => $client->full_name,
                 'pay_to' => $agent->branch->company->name,
-                'currency' => 'KWD',
+                'currency' => $request->input('currency')
+                    ?: ($agent->branch->company->currency ?? 'KWD'),
                 'payment_date' => $request->input('transaction_date') ? Carbon::parse($request->input('transaction_date')) : Carbon::now(),
                 'amount' => $request->amount,
                 'service_charge' => 0,
@@ -2277,7 +2285,7 @@ class PaymentController extends Controller
                     'auth_code' => $authCode,
                     'from' => $row['customer_name'] ?? 'Unknown',
                     'pay_to' => $agent->branch->company->name,
-                    'currency' => 'KWD',
+                    'currency' => trim($row['currency'] ?? '') ?: ($agent->branch->company->currency ?? 'KWD'),
                     'payment_date' => $paidDate,
                     'amount' => $row['invoice_value'] ?? $row['customer_service'] ?? 0,
                     'service_charge' => 0,
@@ -2997,7 +3005,9 @@ class PaymentController extends Controller
                 'invoice_reference' => $invoiceReference,
                 'from' => $client->full_name,
                 'pay_to' => $agent->branch->company->name,
-                'currency' => 'KWD',
+                // Validated above as `currency`, then discarded until now.
+                'currency' => $request->input('currency')
+                    ?: ($agent->branch->company->currency ?? 'KWD'),
                 'payment_date' => Carbon::now(),
                 'amount' => $totalAmount,
                 'service_charge' => $serviceCharge,

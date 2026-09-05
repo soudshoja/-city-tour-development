@@ -229,7 +229,24 @@ class FixedAssetController extends Controller
         $nbv = $service->nbv($fixedAsset);
 
         $engineEnabled = app(PostingSeam::class)->isEnabledFor($companyId);
-        $bankLeaves = $this->bankOnlyLeaves($companyId);
+
+        // Verifier fix (adversarial pass, T10, defect: N+1): bankOnlyLeaves() -> AccountResolver's
+        // bankCashLeafIds()/assertUnderBankGroup() walk the company's ENTIRE account tree one
+        // parent_id lookup at a time per candidate (confirmed 767 queries on a 171-account fixture
+        // COA, on every single show() page load, regardless of schedule row count). Only the
+        // Capitalise panel (draft) and the Dispose panel (isDisposable()) ever render this dropdown
+        // — a disposed/otherwise non-actionable asset pays this cost for a dropdown nothing shows.
+        // Skipping the call outright for those assets, and caching the result briefly per company
+        // for the assets that DO need it, are both safe, T10-local changes: neither touches
+        // AccountResolver (a shared, heavily-reused service other controllers also call) nor
+        // changes what account ids are ever offered — only how often the expensive walk reruns.
+        $bankLeaves = ($fixedAsset->status === FixedAsset::STATUS_DRAFT || $fixedAsset->isDisposable())
+            ? \Illuminate\Support\Facades\Cache::remember(
+                "fixed-assets.bank-only-leaves.{$companyId}",
+                60,
+                fn () => $this->bankOnlyLeaves($companyId)
+            )
+            : collect();
 
         return view('accounting.fixed-assets.show', [
             'companyId' => $companyId,

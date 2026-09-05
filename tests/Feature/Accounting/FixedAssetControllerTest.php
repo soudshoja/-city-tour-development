@@ -19,6 +19,7 @@ use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -246,6 +247,64 @@ class FixedAssetControllerTest extends AccountingTestCase
         $this->assertSame($depreciation->transaction_id, $schedule[0]['transaction_id']);
         $this->assertFalse($schedule[1]['posted']);
         $response->assertSee('#'.$depreciation->transaction_id, false);
+    }
+
+    public function test_show_escapes_an_asset_name_containing_a_script_tag(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $asset = $this->makeActiveAsset($company, ['name' => '<script>alert(1)</script>']);
+
+        $response = $this->actingAs($admin)->get(route('accounting.fixed-assets.show', $asset));
+
+        $response->assertOk();
+        $response->assertDontSee('<script>alert(1)</script>', false);
+        $response->assertSee('&lt;script&gt;', false);
+    }
+
+    /**
+     * Verifier pinning test (adversarial pass, T10): show()'s bank/cash-leaf dropdown lookup
+     * (bankOnlyLeaves()) walks the company's WHOLE chart of accounts one parent_id lookup at a
+     * time (AccountResolver::bankCashLeafIds()/assertUnderBankGroup() -- shared, not this
+     * controller's own algorithm) -- confirmed 767 queries on a single show() call against a
+     * 171-account fixture COA, independent of schedule row count (identical on a 1-row and a
+     * 60-row schedule). The fix keeps that walk (touching AccountResolver is out of this
+     * controller's scope and risks every other caller, e.g. Reconciliation) but (a) skips it
+     * entirely for a disposed asset, which never renders the dropdown, and (b) caches the result
+     * per company for 60s so repeat page views absorb the cost once. This pins the caching half:
+     * a second show() call for the same company must cost meaningfully fewer queries than the
+     * first. The COLD first-call cost itself remains a real, reported finding -- not fixed here.
+     */
+    public function test_show_bank_leaf_lookup_is_cached_across_repeat_views(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $asset = $this->makeActiveAsset($company);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($admin)->get(route('accounting.fixed-assets.show', $asset));
+        $firstCallQueries = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($admin)->get(route('accounting.fixed-assets.show', $asset));
+        $secondCallQueries = count(DB::getQueryLog());
+        DB::disableQueryLog();
+
+        $this->assertLessThan($firstCallQueries, $secondCallQueries, 'a repeat show() view for the same company should be cheaper once the bank-leaf lookup is cached');
+    }
+
+    public function test_disposed_asset_show_page_hides_the_dispose_panel_and_skips_the_bank_leaf_lookup(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $asset = $this->makeActiveAsset($company, ['useful_life_months' => 2, 'cost' => 100, 'salvage' => 0]);
+        $this->assets()->dispose($asset, Carbon::create(2026, 2, 1), 50.0, userId: $admin->id);
+
+        $response = $this->actingAs($admin)->get(route('accounting.fixed-assets.show', $asset));
+
+        $response->assertOk();
+        $response->assertDontSee('Dispose asset', false);
+        $response->assertSee('Disposed', false);
     }
 
     public function test_depreciate_form_renders_a_dry_run_preview_without_posting(): void

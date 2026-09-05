@@ -6,6 +6,8 @@ namespace Tests\Feature\Accounting;
 
 use App\Models\Account;
 use App\Models\AccountingPeriod;
+use App\Models\BankStatementImport;
+use App\Models\BankStatementImportLine;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\FixedAsset;
@@ -21,6 +23,7 @@ use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PostedDocument;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\RealisedFxService;
+use App\Services\Accounting\Reconciliation\BankStatementMatcher;
 use App\Services\Accounting\Reports\EquityChangesReportService;
 use App\Services\Accounting\YearEndCloseService;
 use App\Services\TrialBalanceService;
@@ -455,6 +458,170 @@ class PhaseGateIntegratedScenarioTest extends AccountingTestCase
             'gate:dividend'
         );
         $this->assertSame('3200', $dividends->code, 'DIVIDENDS_PAID must resolve to the 3200 leaf.');
+
+        // ── 5b. LANE H (T9) — a bank statement over this same year's real bank movements ───────
+        //
+        // PHASE GATE DELTA (lane H merge, tip 6cce9953). Lane H landed after the gate ran, so the
+        // one thing no lane-local suite can see — a bank statement reconciled against the SAME
+        // ledger every other lane posted into, inside the year that is about to be closed — is
+        // proved here. Three oracles: (i) matched/unmatched states are sane against real
+        // movements; (ii) the running-balance reconciliation identity ties the statement's own
+        // closing balance to the ledger-derived bank balance; (iii) the close that follows is
+        // completely unaffected by reconciliation state — every (a)–(f) assertion below runs
+        // unchanged with four bank lines now carrying `reconciled = 1`.
+        $bankLedgerLines = JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('company_id', $this->company->id)->where('account_id', $bank->id)
+            ->orderBy('posting_date')->get();
+        $this->assertCount(
+            5,
+            $bankLedgerLines,
+            'Precondition: the year put exactly five movements through the bank leaf (injection, capitalisation, FC payment, income, dividend).'
+        );
+
+        $statementImport = BankStatementImport::create([
+            'company_id' => $this->company->id,
+            'bank_account_id' => $bank->id,
+            'file_name' => 'gate-2026.csv',
+            'statement_currency' => 'KWD',
+            'statement_from' => Carbon::create(self::YEAR, 1, 1),
+            'statement_to' => Carbon::create(self::YEAR, 12, 31),
+            'opening_balance' => 0.000,
+            // 5000 in − 310 out + 2000 in − 200 out − 45 bank charge = 6445.000. NOT the ledger's
+            // own 5290.000: the bank never saw the 1200.000 asset purchase (paid from a different
+            // instrument) and the ledger never saw the 45.000 charge. That gap is the whole point.
+            'closing_balance' => 6445.000,
+            'content_hash' => hash('sha256', 'gate-2026'),
+            'column_map' => ['date' => 0, 'description' => 1, 'debit' => 2, 'credit' => 3],
+            'status' => BankStatementImport::STATUS_STAGED,
+        ]);
+
+        // Statement convention (BankStatementMatcher::ledgerColumnFor): statement CREDIT is money
+        // in (ledger debit), statement DEBIT is money out (ledger credit).
+        $statementRows = [
+            [1, Carbon::create(self::YEAR, 1, 5), 0.0, 5000.000, 'Capital injection', 5000.000],
+            [2, Carbon::create(self::YEAR, 3, 1), 310.000, 0.0, 'FC supplier payment', 4690.000],
+            [3, Carbon::create(self::YEAR, 5, 10), 0.0, 2000.000, 'Service income', 6690.000],
+            [4, Carbon::create(self::YEAR, 9, 1), 200.000, 0.0, 'Dividend', 6490.000],
+            // No ledger counterpart anywhere — the statement-side exception.
+            [5, Carbon::create(self::YEAR, 11, 20), 45.000, 0.0, 'Bank charges', 6445.000],
+        ];
+        foreach ($statementRows as [$rowNo, $valueDate, $debit, $credit, $label, $running]) {
+            BankStatementImportLine::create([
+                'import_id' => $statementImport->id, 'row_no' => $rowNo, 'value_date' => $valueDate,
+                'posting_date' => $valueDate, 'description' => $label, 'debit' => $debit, 'credit' => $credit,
+                'running_balance' => $running, 'state' => BankStatementImportLine::STATE_UNMATCHED,
+            ]);
+        }
+
+        $ledgerStateBeforeMatch = $this->trialBalanceSnapshot();
+        $linesBeforeMatch = JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('company_id', $this->company->id)->count();
+        $documentsBeforeMatch = Transaction::withoutGlobalScopes()->whereNull('deleted_at')
+            ->where('company_id', $this->company->id)->count();
+
+        $matcher = app(BankStatementMatcher::class);
+        $matchResult = $matcher->match($statementImport->refresh());
+
+        // (i) States. Four rows have a real ledger counterpart; the bank charge has none.
+        $this->assertSame(4, $matchResult->matched, 'Lane H must match the four statement rows that have real ledger movements.');
+        $this->assertSame(0, $matchResult->disputed, 'No amount differs, so nothing may be disputed.');
+        $this->assertSame(1, $matchResult->unmatchedStatement, 'The bank charge has no ledger counterpart and must stay unmatched.');
+
+        $statementLines = $statementImport->lines()->orderBy('row_no')->get();
+        $this->assertSame(
+            [
+                BankStatementImportLine::STATE_MATCHED,
+                BankStatementImportLine::STATE_MATCHED,
+                BankStatementImportLine::STATE_MATCHED,
+                BankStatementImportLine::STATE_MATCHED,
+                BankStatementImportLine::STATE_UNMATCHED,
+            ],
+            $statementLines->pluck('state')->all()
+        );
+        // Each matched row must name the ledger line whose amount and direction it mirrors — a
+        // count alone would pass even if every row matched the wrong movement.
+        $bankById = $bankLedgerLines->keyBy('id');
+        foreach ($statementLines->take(4) as $matchedRow) {
+            $counterpart = $bankById[(int) $matchedRow->matched_journal_entry_id] ?? null;
+            $this->assertNotNull($counterpart, 'A matched statement row must name a line on THIS bank leaf.');
+            $this->assertEqualsWithDelta(
+                round((float) $matchedRow->credit - (float) $matchedRow->debit, 3),
+                round((float) $counterpart->debit - (float) $counterpart->credit, 3),
+                0.001,
+                'A matched statement row must mirror its ledger line in both amount and direction.'
+            );
+            $this->assertEqualsWithDelta(0.0, (float) $matchedRow->difference, 0.001);
+        }
+        $this->assertSame(
+            4,
+            $statementLines->take(4)->pluck('matched_journal_entry_id')->unique()->count(),
+            'Two statement rows must never consume the same ledger line.'
+        );
+
+        // The capitalisation is the ONE bank movement the statement never carried.
+        $unmatchedLedger = $matcher->unmatchedLedgerLines($statementImport);
+        $this->assertCount(1, $unmatchedLedger, 'Exactly one bank movement (the 1200.000 asset purchase) is missing from the statement.');
+        $this->assertEqualsWithDelta(1200.0, (float) $unmatchedLedger->first()->credit, 0.001);
+
+        // (ii) The running-balance reconciliation. Derived independently here, then required to
+        // agree with the service's own report:
+        //     ledger balance = statement closing + unmatched-statement net + unmatched-ledger net
+        // = 6445.000 + 45.000 (a charge the ledger never saw) − 1200.000 (a payment the bank
+        // statement never saw) = 5290.000, which is the bank leaf's real derived balance.
+        $derivedBankBalance = round(
+            (float) $bankLedgerLines->sum('debit') - (float) $bankLedgerLines->sum('credit'),
+            3
+        );
+        $this->assertEqualsWithDelta(5290.0, $derivedBankBalance, 0.001, 'Derived bank balance = 5000 − 1200 − 310 + 2000 − 200.');
+
+        $report = $matcher->reconciliationReport($statementImport->refresh());
+        $this->assertEqualsWithDelta($derivedBankBalance, (float) $report['ledger_balance'], 0.001, 'The report must derive the bank balance from journal lines, never from accounts.actual_balance.');
+        $this->assertEqualsWithDelta(6445.0, (float) $report['statement_closing_balance'], 0.001);
+        $this->assertSame(1, (int) $report['unmatched_statement_count']);
+        $this->assertEqualsWithDelta(45.0, (float) $report['unmatched_statement_net'], 0.001);
+        $this->assertSame(1, (int) $report['unmatched_ledger_count']);
+        $this->assertEqualsWithDelta(-1200.0, (float) $report['unmatched_ledger_net'], 0.001);
+        $this->assertEqualsWithDelta(
+            (float) $report['ledger_balance'],
+            round((float) $report['statement_closing_balance'] + (float) $report['unmatched_statement_net'] + (float) $report['unmatched_ledger_net'], 3),
+            0.001,
+            'The reconciliation must close: statement closing + both exception nets = the derived ledger balance.'
+        );
+        $this->assertEqualsWithDelta(-1155.0, (float) $report['difference'], 0.001, 'The unexplained difference is exactly the two exception nets.');
+
+        // (iii) Read-and-propose only: matching wrote no ledger.
+        $this->assertSame($linesBeforeMatch, JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')->where('company_id', $this->company->id)->count(), 'Bank-statement matching must never write a journal line.');
+        $this->assertSame($documentsBeforeMatch, Transaction::withoutGlobalScopes()->whereNull('deleted_at')->where('company_id', $this->company->id)->count(), 'Bank-statement matching must never post a document.');
+        $this->assertSame($ledgerStateBeforeMatch, $this->trialBalanceSnapshot(), 'Bank-statement matching must not move the trial balance.');
+
+        // Approving every proposal flips reconciliation state on four of the five bank lines. The
+        // close that follows must not notice: reconciliation is metadata, never money.
+        $reconciler = User::factory()->create(['role_id' => \App\Models\Role::ADMIN]);
+        $bankStatementProposals = \App\Models\ReconciliationProposal::withoutGlobalScopes()
+            ->where('company_id', $this->company->id)
+            ->where('kind', \App\Models\ReconciliationProposal::KIND_BANK_STATEMENT)
+            ->orderBy('id')->get();
+        $this->assertCount(4, $bankStatementProposals, 'One proposal per matched statement row.');
+
+        foreach ($bankStatementProposals as $bankStatementProposal) {
+            app(\App\Services\Accounting\ReconciliationProposalService::class)->approve($bankStatementProposal, $reconciler);
+        }
+
+        $this->assertSame(
+            4,
+            JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
+                ->where('company_id', $this->company->id)->where('account_id', $bank->id)
+                ->where('reconciled', 1)->count(),
+            'All four matched bank lines must now be reconciled.'
+        );
+        $this->assertSame($linesBeforeMatch, JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')->where('company_id', $this->company->id)->count(), 'Approval must never write a journal line.');
+        $this->assertSame($ledgerStateBeforeMatch, $this->trialBalanceSnapshot(), 'Approval must not move the trial balance — reconciliation state is not money.');
+        $this->assertEqualsWithDelta(
+            $derivedBankBalance,
+            round((float) $matcher->reconciliationReport($statementImport->refresh())['ledger_balance'], 3),
+            0.001,
+            'The derived bank balance must be identical before and after approval.'
+        );
 
         // ── 6. Independent expectations, computed from raw journal_entries only ────────────────
         $yearStart = Carbon::create(self::YEAR, 1, 1)->startOfDay();

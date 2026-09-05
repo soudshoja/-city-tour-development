@@ -11,6 +11,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\TestCase;
 
 /**
@@ -31,9 +32,20 @@ use Tests\TestCase;
 class ReportControllerProfitLossPostingDateTest extends TestCase
 {
     use RefreshDatabase;
+    use GrantsAccountingModule;
+
+    protected function tearDown(): void
+    {
+        Company::forgetModuleCache();
+        parent::tearDown();
+    }
 
     private function makeAuthorizedAdmin(Company $company): User
     {
+        // ReportPolicy::viewProfitLoss() gates on Modules::ACCOUNTING first (fails closed with no
+        // module.accounting Setting row) -- see GrantsAccountingModule's own docblock.
+        $this->grantAccountingModule($company);
+
         Permission::firstOrCreate(['name' => 'view profit loss', 'group' => 'report']);
         $admin = User::factory()->create(['role_id' => Role::ADMIN]);
         $admin->givePermissionTo('view profit loss');

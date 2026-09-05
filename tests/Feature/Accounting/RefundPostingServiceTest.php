@@ -1317,6 +1317,16 @@ class RefundPostingServiceTest extends AccountingTestCase
         $this->enableEngine($company);
         $this->trackCompanyForInvariants($company->id);
 
+        // config/accounting.php's reminders.default_enabled ships every kind OFF as of
+        // commit 9585098d5 ("kinds ship OFF; tests opt in") -- the listener still needs an
+        // explicit per-company opt-in row to create anything.
+        \App\Models\Setting::create([
+            'company_id' => $company->id,
+            'key' => 'accounting.reminders.commission_unearned.enabled',
+            'value' => true,
+            'type' => 'boolean',
+        ]);
+
         $this->postRealSale($company, $agent, $client, $supplier, $task, $invoice, $invoiceDetail, 100.000, 60.000);
         $commissionTransaction = $this->postRealCommission($company, $agent, $invoice, $invoiceDetail, $task, 6.000);
 

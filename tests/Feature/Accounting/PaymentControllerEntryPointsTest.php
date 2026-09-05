@@ -850,18 +850,28 @@ class PaymentControllerEntryPointsTest extends AccountingTestCase
                 'Transaction' => [
                     'Status' => $invoiceStatus,
                     'PaymentId' => 'MFPAY-1',
+                    // Read by handleWebhookFatoorah()'s $txnData['Id']/['PaymentMethod'] when
+                    // it builds InvoiceTransactions from the signed body (see Amount.* note
+                    // below) — plus AuthorizationId, which processMyFatoorahPaymentCompletion()
+                    // prefers over PaymentId for $payment->auth_code.
+                    'Id' => 'MFTXN-1',
+                    'PaymentMethod' => 'KNET',
+                    'AuthorizationId' => 'AUTH-WH-1',
                 ],
-                // NOT part of MyFatoorah's real webhook wire shape — flagged as a separate,
-                // pre-existing, out-of-scope bug in the W2 entry-points report:
-                // handleWebhookFatoorah() passes `$payload['Data']` straight into
-                // processMyFatoorahPaymentCompletion(), which actually reads flat
-                // InvoiceValue/InvoiceTransactions/InvoiceReference/InvoiceId/InvoiceStatus
-                // keys (the shape MyFatoorah::getPaymentStatus() returns, not the webhook's
-                // own nested Data.Invoice.*/Data.Transaction.* shape). On HEAD this means
-                // every real successful-payment webhook delivery throws "Undefined array key
-                // InvoiceValue" and 500s BEFORE ever reaching this lane's own D4 catch —
-                // added here purely so this test can reach and prove that catch's own
-                // mechanics in isolation from that unrelated defect.
+                // This nested Data.Amount.* shape (not the flat InvoiceValue/InvoiceTransactions/
+                // etc keys below) IS MyFatoorah's real webhook wire shape. handleWebhookFatoorah()
+                // reads ValueInBaseCurrency/ValueInDisplayCurrency straight from the signed body
+                // to avoid a second, rate-limited GetPaymentStatus call (see its own docblock) —
+                // supplying it here routes this test through that primary branch, exactly as a
+                // real MyFatoorah delivery would, instead of falling back to the (un-faked,
+                // network-reaching) GetPaymentStatus() lookup.
+                'Amount' => [
+                    'ValueInBaseCurrency' => 100.00,
+                    'ValueInDisplayCurrency' => 100.00,
+                ],
+                // Flat legacy keys: not part of the real webhook wire shape, and no longer read
+                // by handleWebhookFatoorah() now that Data.Amount.* is present above — kept only
+                // so a future regression back to the old flat-key parsing still finds a value.
                 'InvoiceValue' => 100.00,
                 'InvoiceTransactions' => [['AuthorizationId' => 'AUTH-WH-1']],
                 'InvoiceReference' => (string) $payment->payment_reference,
@@ -892,6 +902,11 @@ class PaymentControllerEntryPointsTest extends AccountingTestCase
     {
         $secret = 'mf-webhook-test-secret';
         config(['services.myfatoorah.webhook_secret_key' => $secret]);
+        // Defensive: with Data.Amount.* present above, handleWebhookFatoorah() takes the
+        // primary (signed-body) branch and never calls MyFatoorah::getPaymentStatus() -- but
+        // fake the host anyway so a regression back to the fallback branch fails loudly
+        // instead of making a real network call in CI.
+        Http::fake(['*myfatoorah.com*' => Http::response(['IsSuccess' => false, 'Message' => 'unfaked fallback call'], 500)]);
         $tenant = $this->makeTenant();
         $company = $tenant['company'];
         [$invoice] = $this->makeInvoice($tenant, 100.00);
@@ -918,6 +933,11 @@ class PaymentControllerEntryPointsTest extends AccountingTestCase
     {
         $secret = 'mf-webhook-test-secret-2';
         config(['services.myfatoorah.webhook_secret_key' => $secret]);
+        // Defensive: with Data.Amount.* present above, handleWebhookFatoorah() takes the
+        // primary (signed-body) branch and never calls MyFatoorah::getPaymentStatus() -- but
+        // fake the host anyway so a regression back to the fallback branch fails loudly
+        // instead of making a real network call in CI.
+        Http::fake(['*myfatoorah.com*' => Http::response(['IsSuccess' => false, 'Message' => 'unfaked fallback call'], 500)]);
         $tenant = $this->makeTenant();
         $company = $tenant['company'];
         [$invoice] = $this->makeInvoice($tenant, 100.00);

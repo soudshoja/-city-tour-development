@@ -53,6 +53,14 @@ class InvoiceProformaLockTest extends TestCase
         $owner = User::factory()->create(['role_id' => Role::COMPANY]);
         $company = Company::factory()->create(['user_id' => $owner->id]);
 
+        // InvoicePolicy::update() dropped the `roles('admin')` truthy-collection bug
+        // (commit 0f38dec2f) that used to grant every authenticated user update access
+        // regardless of role. A Role::COMPANY owner now needs the real 'update invoice'
+        // permission — mirroring EntitySeeder, which assigns every Permission to the
+        // seeded 'company' Spatie role for a real company owner.
+        \App\Models\Permission::firstOrCreate(['name' => 'update invoice', 'guard_name' => 'web']);
+        $owner->givePermissionTo('update invoice');
+
         // AgentFactory defaults type_id = 1 and agents.type_id is an FK into agent_type.
         // AgentType::$fillable is ['name'] — an 'id' attribute is silently dropped on create,
         // so never force an id; use the row's real id.

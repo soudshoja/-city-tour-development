@@ -62,6 +62,15 @@ class ArchitectureTest extends TestCase
         'Console/Commands/FixProfitAndCommission.php',
         'Console/Commands/UpdateOldTaskToTransaction.php',
 
+        // Same one-off/manual-only category as the block above -- these 3 predate this
+        // rebuild's base (9af11f181, prod-drift sync 254bb45a8) and were never in the ratchet's
+        // original allow-list because that list was authored against a different base that
+        // did not carry these files. Re-confirmed absent from both routes/console.php and
+        // app/Console/Kernel.php's schedule during the feat/accounting-dev-line rebuild.
+        'Console/Commands/AccountingRepair.php',
+        'Console/Commands/AssignTaskPaymentMethod.php',
+        'Console/Commands/FixProfitLossEntries.php',
+
         // Live/scheduled commands whose raw writes are gated.
         // CheckMyFatoorahPayments: its own topup branch now delegates to
         // ClientController::addCredit() (which is itself $legacy-gated, see below); its

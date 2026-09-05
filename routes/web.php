@@ -353,6 +353,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/charge-rules/{chargeRule}/deactivate', [SupplierController::class, 'chargeRuleDeactivate'])->name('charge-rules.deactivate');
         Route::post('/{supplier}/charge-rules', [SupplierController::class, 'chargeRuleStore'])->name('charge-rules.store');
 
+        // T14 -- Supplier bank details per currency (accounting-builds PLAN.md §5 T14; L18).
+        // Literal segments registered ahead of the '/{suppliersId}' wildcard below, same
+        // convention as status-map/charge-rules above.
+        Route::put('/bank-details/{bankDetail}', [SupplierController::class, 'bankDetailUpdate'])->name('bank-details.update');
+        Route::post('/bank-details/{bankDetail}/deactivate', [SupplierController::class, 'bankDetailDeactivate'])->name('bank-details.deactivate');
+        Route::post('/{supplier}/bank-details', [SupplierController::class, 'bankDetailStore'])->name('bank-details.store');
+
         Route::get('/{suppliersId}', [SupplierController::class, 'show'])->name('show');
         // Ledger/journal endpoints inside the otherwise task_uploader-mapped
         // 'suppliers' prefix — gate only these two, not the whole group.
@@ -1426,6 +1433,9 @@ Route::group([
     Route::get('/fetch-journals-by-date', [BankPaymentController::class, 'fetchPaymentsByDate'])->name('fetchPaymentsByDate');
     Route::get('/fetch-journals-view', [BankPaymentController::class, 'fetchJournalEntriesByIds'])->name('fetch-journals');
     Route::post('/{id}/decline-reconcile', [BankPaymentController::class, 'declineReconcile'])->name('decline-reconcile');
+    // T14 -- live supplier-bank-detail lookup for the create/edit screens' Alpine.js (see
+    // BankPaymentController::resolveSupplierBankAjax()'s own docblock).
+    Route::get('/resolve-supplier-bank', [BankPaymentController::class, 'resolveSupplierBankAjax'])->name('resolve-supplier-bank');
 });
 
 /*

@@ -14,8 +14,12 @@ use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use App\Models\Supplier;
+use App\Models\SupplierBankDetail;
 use App\Models\SupplierCompany;
 use App\Models\SupplierCredential;
+use App\Rules\ValidIban;
+use App\Rules\ValidSwiftBic;
+use App\Services\Accounting\AccountingLog;
 use App\Models\SystemLog;
 use App\Models\Task;
 use App\Models\SupplierSurcharge;
@@ -223,6 +227,17 @@ class SupplierController extends Controller
             ->orderBy('charge_kind')
             ->get();
 
+        // T14 "Supplier bank details per currency" (L18) -- every row for this supplier+company,
+        // active and deactivated alike (the card partial shows both, per the status-map card's own
+        // convention), newest currency first then default-first so the active default per
+        // currency reads at the top of its group.
+        $bankDetailRows = SupplierBankDetail::where('company_id', $companyId)
+            ->where('supplier_id', $supplier->id)
+            ->orderBy('currency')
+            ->orderByDesc('is_default')
+            ->orderByDesc('is_active')
+            ->get();
+
         $canManageSupplier = Gate::allows('update', Supplier::class);
 
         return view('suppliers.show', compact(
@@ -236,6 +251,7 @@ class SupplierController extends Controller
             'statusMapRows',
             'unmappedStatuses',
             'chargeRuleRows',
+            'bankDetailRows',
             'canManageSupplier',
             'hasAccountingModule'
         ));
@@ -1578,5 +1594,202 @@ class SupplierController extends Controller
             ->get();
 
         return view('suppliers.charge-rules-defaults', compact('rows', 'companyId'));
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────────────────
+    // T14 "Supplier bank details per currency" (accounting-builds PLAN.md §5 T14; L18). CRUD for
+    // `supplier_bank_details`, embedded in the supplier master screen (suppliers.show), mirroring
+    // the status-map / charge-rule editors' own add/edit/deactivate convention above. Master data
+    // only -- never touches PostingSeam/journal_entries. Every create/update/deactivate writes an
+    // AccountingAuditLog row via AccountingLog::write() (subject_type = 'supplier_bank_detail',
+    // transaction_id = null -- this is master data, not a ledger document), reusing the ONE
+    // audit mechanism the accounting engine already writes through rather than inventing a
+    // second one. See AccountingAuditLog::subjectUrl()'s 'supplier_bank_detail' match arm for the
+    // Log Center's deep link back to this supplier's page.
+    // ────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * @return array<string, array<int, mixed>>
+     */
+    private function bankDetailValidationRules(): array
+    {
+        return [
+            'currency' => ['required', 'string', 'size:3', 'alpha'],
+            'bank_name' => ['required', 'string', 'max:191'],
+            'beneficiary_name' => ['required', 'string', 'max:191'],
+            'account_number' => ['nullable', 'string', 'max:100'],
+            'iban' => ['nullable', 'string', 'max:50', new ValidIban],
+            'swift_bic' => ['required', 'string', 'max:20', new ValidSwiftBic],
+            'bank_country' => ['required', 'string', 'max:100'],
+            'intermediary_bank_name' => ['nullable', 'string', 'max:191'],
+            'intermediary_swift_bic' => ['nullable', 'string', 'max:20', new ValidSwiftBic],
+            'notes' => ['nullable', 'string'],
+            'is_default' => ['nullable', 'boolean'],
+        ];
+    }
+
+    /**
+     * "Setting a new default demotes the old one" (T14 spec, MP-14 mutation proof list) -- rather
+     * than let a second DEFAULT+active row for the same (supplier, currency) hit the DB-level
+     * `supplier_bank_details_default_group_unique` violation, this demotes whatever row currently
+     * holds that slot FIRST, inside the same transaction as the write that claims it, so marking
+     * a row default is a normal one-click action, not an error the user has to route around by
+     * hand. The DB constraint stays the backstop for anything that reaches the table without going
+     * through this path (see {@see self::friendlyBankDetailDbError()} and
+     * `SupplierBankDetailTest::test_db_level_constraint_rejects_a_second_default_bypassing_the_controller_demote_flow`).
+     */
+    private function demoteExistingDefault(int $supplierId, string $currency, ?int $exceptId, int $companyId): void
+    {
+        SupplierBankDetail::where('company_id', $companyId)
+            ->where('supplier_id', $supplierId)
+            ->where('currency', $currency)
+            ->where('is_default', true)
+            ->when($exceptId !== null, fn ($q) => $q->where('id', '!=', $exceptId))
+            ->update(['is_default' => false, 'updated_by' => Auth::id()]);
+    }
+
+    /**
+     * `POST /suppliers/{supplier}/bank-details` -- add a currency's remittance details.
+     */
+    public function bankDetailStore(Request $request, Supplier $supplier): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+        $validated = $request->validate($this->bankDetailValidationRules());
+        $validated['currency'] = mb_strtoupper($validated['currency']);
+        $wantsDefault = (bool) ($validated['is_default'] ?? false);
+
+        try {
+            $row = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $companyId, $supplier, $wantsDefault) {
+                if ($wantsDefault) {
+                    $this->demoteExistingDefault($supplier->id, $validated['currency'], null, $companyId);
+                }
+
+                return SupplierBankDetail::create(array_merge($validated, [
+                    'company_id' => $companyId,
+                    'supplier_id' => $supplier->id,
+                    'is_default' => $wantsDefault,
+                    'is_active' => true,
+                    'created_by' => Auth::id(),
+                    'updated_by' => Auth::id(),
+                ]));
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            return $this->friendlyBankDetailDbError($e);
+        }
+
+        AccountingLog::write(
+            action: 'create',
+            companyId: $companyId,
+            subjectType: 'supplier_bank_detail',
+            subjectId: $row->id,
+            after: $row->only(array_keys($this->bankDetailValidationRules())),
+            actorId: Auth::id(),
+            actorType: 'user',
+        );
+
+        return back()->with('success', 'Bank details added.');
+    }
+
+    /**
+     * `PUT /suppliers/bank-details/{bankDetail}` -- edit an existing currency row.
+     */
+    public function bankDetailUpdate(Request $request, SupplierBankDetail $bankDetail): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+        abort_unless($bankDetail->company_id === $companyId, 403);
+
+        $validated = $request->validate($this->bankDetailValidationRules());
+        $validated['currency'] = mb_strtoupper($validated['currency']);
+        $wantsDefault = (bool) ($validated['is_default'] ?? false);
+
+        $before = $bankDetail->only(array_keys($this->bankDetailValidationRules()));
+
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $wantsDefault, $bankDetail, $companyId) {
+                if ($wantsDefault) {
+                    $this->demoteExistingDefault($bankDetail->supplier_id, $validated['currency'], $bankDetail->id, $companyId);
+                }
+
+                $bankDetail->update(array_merge($validated, [
+                    'is_default' => $wantsDefault,
+                    'updated_by' => Auth::id(),
+                ]));
+            });
+        } catch (\Illuminate\Database\QueryException $e) {
+            return $this->friendlyBankDetailDbError($e);
+        }
+
+        AccountingLog::write(
+            action: 'update',
+            companyId: $companyId,
+            subjectType: 'supplier_bank_detail',
+            subjectId: $bankDetail->id,
+            before: $before,
+            after: $bankDetail->fresh()->only(array_keys($this->bankDetailValidationRules())),
+            actorId: Auth::id(),
+            actorType: 'user',
+        );
+
+        return back()->with('success', 'Bank details updated.');
+    }
+
+    /**
+     * `POST /suppliers/bank-details/{bankDetail}/deactivate` -- soft toggle (is_active), never a
+     * hard delete, per L18's own text. Reactivating a row can itself collide with the DB-level
+     * default-per-currency guard if another row already holds that (supplier, currency)'s default
+     * slot -- surfaced as the same friendly message as store()/update().
+     */
+    public function bankDetailDeactivate(SupplierBankDetail $bankDetail): \Illuminate\Http\RedirectResponse
+    {
+        Gate::authorize('update', Supplier::class);
+
+        $companyId = getCompanyId(Auth::user());
+        abort_unless($bankDetail->company_id === $companyId, 403);
+
+        $before = ['is_active' => $bankDetail->is_active];
+
+        try {
+            $bankDetail->update([
+                'is_active' => ! $bankDetail->is_active,
+                'updated_by' => Auth::id(),
+            ]);
+        } catch (\Illuminate\Database\QueryException $e) {
+            return $this->friendlyBankDetailDbError($e);
+        }
+
+        AccountingLog::write(
+            action: $bankDetail->is_active ? 'reactivate' : 'deactivate',
+            companyId: $companyId,
+            subjectType: 'supplier_bank_detail',
+            subjectId: $bankDetail->id,
+            before: $before,
+            after: ['is_active' => $bankDetail->is_active],
+            actorId: Auth::id(),
+            actorType: 'user',
+        );
+
+        return back()->with('success', $bankDetail->is_active ? 'Bank details reactivated.' : 'Bank details deactivated.');
+    }
+
+    /**
+     * Translates the DB-level `supplier_bank_details_default_group_unique` violation (a second
+     * DEFAULT+active row for the same supplier+currency) into the friendly validation message the
+     * spec asks for ("surfaced as a friendly validation message rather than a raw SQL error"),
+     * rather than letting the QueryException bubble up as a 500. Any other QueryException is
+     * re-thrown -- this is a narrow, named translation, not a blanket error swallower.
+     */
+    private function friendlyBankDetailDbError(\Illuminate\Database\QueryException $e): \Illuminate\Http\RedirectResponse
+    {
+        if (str_contains($e->getMessage(), 'supplier_bank_details_default_group_unique')) {
+            throw ValidationException::withMessages([
+                'is_default' => 'This supplier already has a default bank detail for this currency. Remove the other default first.',
+            ]);
+        }
+
+        throw $e;
     }
 }

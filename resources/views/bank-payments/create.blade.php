@@ -73,7 +73,7 @@
 
                     <div class="mt-4">
                         <label for="pay_from_account" class="mb-1 block text-sm font-medium text-gray-700">Pay from <span class="text-red-500">*</span></label>
-                        <select id="pay_from_account" name="pay_from_account" required class="w-full max-w-sm rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500">
+                        <select id="pay_from_account" name="pay_from_account" x-model="payFromAccountId" @change="resolveAllBankDetails" required class="w-full max-w-sm rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="">Select bank account</option>
                             @foreach ($bankAccounts as $bank)
                                 <option value="{{ $bank->id }}" {{ (string) old('pay_from_account') === (string) $bank->id ? 'selected' : '' }}>
@@ -110,7 +110,7 @@
                                 <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                                     <div>
                                         <label class="mb-1 block text-xs font-medium text-gray-600">Line type</label>
-                                        <select :name="`items[${index}][type_selector]`" x-model="item.type_selector"
+                                        <select :name="`items[${index}][type_selector]`" x-model="item.type_selector" @change="resolveBankDetail(index)"
                                                 class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500">
                                             <option value="account">Account</option>
                                             <option value="supplier">Supplier</option>
@@ -119,13 +119,35 @@
                                     </div>
                                     <div class="sm:col-span-1 lg:col-span-2">
                                         <label class="mb-1 block text-xs font-medium text-gray-600">Account</label>
-                                        <select :name="`items[${index}][account_id]`" x-model="item.account_id" required
+                                        <select :name="`items[${index}][account_id]`" x-model="item.account_id" @change="resolveBankDetail(index)" required
                                                 class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500">
                                             <option value="">Select account</option>
                                             <template x-for="acc in accounts" :key="acc.id">
                                                 <option :value="acc.id" x-text="acc.label"></option>
                                             </template>
                                         </select>
+                                    </div>
+
+                                    {{-- T14 -- auto-selected remittance details for a supplier line, resolved from
+                                         BankPaymentController::resolveSupplierBankAjax() for the voucher's payment
+                                         currency (the pay-from bank account's own currency). Never blocks saving --
+                                         a missing-currency row surfaces a warning only (L18's own "gap-report
+                                         convention, not a silent fallback to another currency's details"). --}}
+                                    <div class="sm:col-span-2 lg:col-span-4" x-show="item.bankResolution && item.bankResolution.is_supplier_target" x-cloak>
+                                        <template x-if="item.bankResolution && item.bankResolution.found">
+                                            <div class="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+                                                <span class="font-semibold">Remittance details (<span x-text="item.bankResolution.currency"></span>, default on file):</span>
+                                                <span x-text="item.bankResolution.bank_detail?.bank_name"></span> &middot;
+                                                <span x-text="item.bankResolution.bank_detail?.beneficiary_name"></span> &middot;
+                                                <span class="font-mono" x-text="item.bankResolution.bank_detail?.iban || item.bankResolution.bank_detail?.account_number"></span> &middot;
+                                                <span class="font-mono" x-text="item.bankResolution.bank_detail?.swift_bic"></span>
+                                            </div>
+                                        </template>
+                                        <template x-if="item.bankResolution && !item.bankResolution.found">
+                                            <div class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                                                No bank details on file for <span x-text="item.bankResolution.supplier_name"></span> in <span x-text="item.bankResolution.currency"></span>. The voucher can still be saved; add remittance details on the supplier's page first if this payment needs them.
+                                            </div>
+                                        </template>
                                     </div>
                                     <div>
                                         <label class="mb-1 block text-xs font-medium text-gray-600">Amount (KWD)</label>
@@ -301,10 +323,11 @@
                 approvalThreshold: config.approvalThreshold,
                 accounts: config.accounts || [],
                 agents: config.agents || [],
-                items: [{ key: 1, type_selector: 'account', account_id: '', agent_id: '', credit: 0, cheque_no: '', cheque_date: '', bank_name: '', auth_no: '', bank_charge_amount: '', remarks: '' }],
+                items: [{ key: 1, type_selector: 'account', account_id: '', agent_id: '', credit: 0, cheque_no: '', cheque_date: '', bank_name: '', auth_no: '', bank_charge_amount: '', remarks: '', bankResolution: null }],
                 nextKey: 2,
                 totalAmount: 0,
                 submitting: false,
+                payFromAccountId: {{ Illuminate\Support\Js::from(old('pay_from_account', '')) }},
 
                 reconcileFrom: '',
                 reconcileTo: '',
@@ -316,7 +339,7 @@
                 reconcileAccountId: '',
 
                 addItem() {
-                    this.items.push({ key: this.nextKey++, type_selector: 'account', account_id: '', agent_id: '', credit: 0, cheque_no: '', cheque_date: '', bank_name: '', auth_no: '', bank_charge_amount: '', remarks: '' });
+                    this.items.push({ key: this.nextKey++, type_selector: 'account', account_id: '', agent_id: '', credit: 0, cheque_no: '', cheque_date: '', bank_name: '', auth_no: '', bank_charge_amount: '', remarks: '', bankResolution: null });
                 },
                 removeItem(index) {
                     this.items.splice(index, 1);
@@ -324,6 +347,26 @@
                 },
                 recalc() {
                     this.totalAmount = this.items.reduce((sum, item) => sum + (parseFloat(item.credit) || 0), 0);
+                },
+                // T14 -- resolve one line's supplier default bank details for the current
+                // pay-from currency. A non-'supplier' line or an empty account clears the panel
+                // rather than calling the endpoint. Never blocks the form -- a fetch failure just
+                // leaves the panel empty.
+                resolveBankDetail(index) {
+                    const item = this.items[index];
+                    if (!item || item.type_selector !== 'supplier' || !item.account_id) {
+                        if (item) item.bankResolution = null;
+                        return;
+                    }
+                    const params = new URLSearchParams({ account_id: item.account_id });
+                    if (this.payFromAccountId) params.set('pay_from_account_id', this.payFromAccountId);
+                    fetch(`/bank-payments/resolve-supplier-bank?${params.toString()}`, { headers: { 'Accept': 'application/json' } })
+                        .then(r => r.json())
+                        .then(data => { item.bankResolution = data; })
+                        .catch(() => { item.bankResolution = null; });
+                },
+                resolveAllBankDetails() {
+                    this.items.forEach((item, index) => this.resolveBankDetail(index));
                 },
                 onTypeChange() {
                     if (this.bankpaymenttype === 'PaymentByDate') {

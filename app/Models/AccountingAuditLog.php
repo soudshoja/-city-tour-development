@@ -110,6 +110,13 @@ class AccountingAuditLog extends Model
             'refund' => $this->urlFor(Refund::class, 'refunds.show', fn ($m) => [
                 'companyId' => $m->company_id, 'refundNumber' => $m->refund_number,
             ]),
+            // T14 "Supplier bank details per currency" (L18) -- subject_id names the
+            // supplier_bank_details row; the deep link is the OWNING supplier's master screen
+            // (there is no standalone bank-detail page), same "resolve the row, then build the
+            // URL from it" shape as invoice/refund above.
+            'supplier_bank_detail' => $this->urlFor(SupplierBankDetail::class, 'suppliers.show', fn ($m) => [
+                'suppliersId' => $m->supplier_id,
+            ]),
             'accounting_period' => \Illuminate\Support\Facades\Route::has('accounting.periods.index')
                 ? route('accounting.periods.index') : null,
             default => null,

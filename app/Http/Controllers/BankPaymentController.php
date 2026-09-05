@@ -13,6 +13,8 @@ use App\Models\Company;
 use App\Models\JournalEntry;
 use App\Models\Refund;
 use App\Models\Role;
+use App\Models\Supplier;
+use App\Models\SupplierBankDetail;
 use App\Models\Transaction;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\ChequeImageStore;
@@ -416,6 +418,12 @@ class BankPaymentController extends Controller
         $canReconcile = Gate::allows('reconcile', $bankPayment);
         $canEditFields = Gate::allows('update', $bankPayment) && ($bankPayment->isPending() || (! $isLocked && ! $isReconciled));
 
+        // T14 -- server-side resolution for the voucher AS SAVED (the JS endpoint re-resolves
+        // live if the user changes the target/pay-from account before submitting; see
+        // resolveSupplierBankAjax()'s own docblock for why create() cannot do the same
+        // server-side).
+        $supplierBankResolution = $this->resolveSupplierBankDetail($bankPayment->targetAccount, $bankPayment->payFromAccount);
+
         return view('bank-payments.edit', compact(
             'companies',
             'bankPayment',
@@ -435,6 +443,7 @@ class BankPaymentController extends Controller
             'canReverse',
             'canReconcile',
             'canEditFields',
+            'supplierBankResolution',
         ));
     }
 
@@ -1432,6 +1441,90 @@ class BankPaymentController extends Controller
             'remarks_internal' => $remarksInternal,
             'remarks_fl' => $remarksFl,
         ];
+    }
+
+    // ────────────────────────────────────────────────────────────────────────────────────────
+    // T14 "Supplier bank details per currency" (accounting-builds PLAN.md §5 T14; L18). The
+    // supplier payment voucher (create/store/edit/update) auto-selects the target supplier's
+    // DEFAULT SupplierBankDetail for the voucher's PAYMENT CURRENCY -- resolved as the `currency`
+    // column of the `pay_from_account` (the bank leaf being paid FROM; per L18 this is the "our
+    // own bank Account rows carry a currency column" signal), never a separate input the form
+    // asks for. A null Account currency means the company base currency (config
+    // 'accounting.base_currency', 'KWD'). Master data only -- this never writes a journal_entries
+    // line and never changes what `store()`/`update()` post; it is purely a display-time lookup
+    // for the voucher screen and the remittance/print view (see class docblock's own "gap-report
+    // convention, not a silent fallback to another currency's details").
+    // ────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * @return array{supplier: ?Supplier, currency: string, detail: ?SupplierBankDetail, isSupplierTarget: bool}
+     */
+    private function resolveSupplierBankDetail(?Account $targetAccount, ?Account $payFromAccount): array
+    {
+        $currency = $payFromAccount?->currency ?: config('accounting.base_currency', 'KWD');
+
+        $supplier = ($targetAccount !== null && $targetAccount->supplier_id !== null)
+            ? Supplier::find($targetAccount->supplier_id)
+            : null;
+
+        return [
+            'supplier' => $supplier,
+            'currency' => $currency,
+            'detail' => $supplier?->defaultBankDetailFor($currency),
+            'isSupplierTarget' => $supplier !== null,
+        ];
+    }
+
+    /**
+     * `GET /bank-payments/resolve-supplier-bank` -- the live lookup the create/edit screens'
+     * Alpine.js calls whenever a line's target account and/or the voucher's pay-from (bank)
+     * account changes, so the auto-selected remittance details and the missing-currency warning
+     * stay correct as the user edits the form BEFORE submitting (create()'s items are added
+     * dynamically client-side, so this cannot be fully pre-computed server-side the way edit()'s
+     * single fixed voucher can be).
+     */
+    public function resolveSupplierBankAjax(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $validated = $request->validate([
+            'account_id' => ['required', 'integer', 'exists:accounts,id'],
+            'pay_from_account_id' => ['nullable', 'integer', 'exists:accounts,id'],
+        ]);
+
+        $companyId = getCompanyId(Auth::user());
+
+        $targetAccount = Account::withoutGlobalScopes()
+            ->where('id', $validated['account_id'])
+            ->where('company_id', $companyId)
+            ->first();
+
+        $payFromAccount = isset($validated['pay_from_account_id'])
+            ? Account::withoutGlobalScopes()->where('id', $validated['pay_from_account_id'])->where('company_id', $companyId)->first()
+            : null;
+
+        $resolved = $this->resolveSupplierBankDetail($targetAccount, $payFromAccount);
+
+        if (! $resolved['isSupplierTarget']) {
+            return response()->json(['is_supplier_target' => false]);
+        }
+
+        $detail = $resolved['detail'];
+
+        return response()->json([
+            'is_supplier_target' => true,
+            'currency' => $resolved['currency'],
+            'supplier_name' => $resolved['supplier']?->name,
+            'found' => $detail !== null,
+            'bank_detail' => $detail === null ? null : [
+                'bank_name' => $detail->bank_name,
+                'beneficiary_name' => $detail->beneficiary_name,
+                'account_number' => $detail->account_number,
+                'iban' => $detail->iban,
+                'swift_bic' => $detail->swift_bic,
+                'bank_country' => $detail->bank_country,
+                'intermediary_bank_name' => $detail->intermediary_bank_name,
+                'intermediary_swift_bic' => $detail->intermediary_swift_bic,
+            ],
+        ]);
     }
 
     // ────────────────────────────────────────────────────────────────────────────────────────

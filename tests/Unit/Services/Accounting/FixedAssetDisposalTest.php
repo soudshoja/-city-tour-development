@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Accounting;
 
+use App\Exceptions\Accounting\BankLeafCurrencyMismatchException;
 use App\Models\Account;
 use App\Models\Company;
 use App\Models\FixedAsset;
@@ -150,6 +151,34 @@ class FixedAssetDisposalTest extends AccountingTestCase
 
         $this->assertNotNull($bankLine, 'Proceeds must land on the explicit bank leaf.');
         $this->assertSame(650.0, (float) $bankLine->debit);
+    }
+
+    /**
+     * accounting-builds Wave 3 lane I item A1 (T10 §12 / Lane B sign-off finding): the proceeds
+     * leaf on a disposal is validated by the same
+     * {@see \App\Services\Accounting\AccountResolver::assertUnderBankGroup()} currency guard as
+     * capitalise() — a USD-denominated bank leaf for a KWD asset's disposal proceeds must be
+     * rejected.
+     */
+    public function test_dispose_via_explicit_bank_account_rejects_a_usd_bank_leaf(): void
+    {
+        $company = $this->makeEngineOnCompany();
+        $asset = $this->makeAssetWithTwoMonthsDepreciated($company);
+        $bankAccount = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1201')->firstOrFail();
+        $bankAccount->currency = 'USD';
+        $bankAccount->save();
+
+        try {
+            $this->service()->dispose($asset, Carbon::create(2026, 3, 15), 650.000, $bankAccount->id);
+            $this->fail('Expected BankLeafCurrencyMismatchException.');
+        } catch (BankLeafCurrencyMismatchException $e) {
+            $this->assertSame($bankAccount->id, $e->accountId);
+            $this->assertSame('USD', $e->accountCurrency);
+            $this->assertSame('KWD', $e->documentCurrency);
+        }
+
+        $asset->refresh();
+        $this->assertSame(FixedAsset::STATUS_ACTIVE, $asset->status, 'A currency-refused dispose() must post nothing and leave the asset undisposed.');
     }
 
     /**

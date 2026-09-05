@@ -149,8 +149,11 @@ final class GatewaySettlementService
         // Structural validation ALWAYS runs, regardless of engine state — there is no legacy
         // codepath for this brand-new feature to preserve, so a bad bank leaf is a data problem
         // to refuse immediately (MP-7-2: this is the check that must exist for post() to ever
-        // refuse an invalid bank account).
-        $this->accountResolver->assertUnderBankGroup($bankAccountId, $companyId);
+        // refuse an invalid bank account). Wave 3 lane I item A1: pass $requestedCurrency
+        // explicitly (already asserted == $baseCurrency above) so a non-base-currency LEAF is
+        // refused here with its own BankLeafCurrencyMismatchException, distinct from — and never
+        // reached in the same call as — the non-base-currency SETTLEMENT refusal above.
+        $this->accountResolver->assertUnderBankGroup($bankAccountId, $companyId, $requestedCurrency);
 
         $channel = $settlementChannel ?? self::channelFor($gatewayKey, null);
 

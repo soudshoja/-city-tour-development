@@ -1051,6 +1051,30 @@ return [
         // (HH:MM-HH:MM); a generator that would land inside it shifts scheduled_at forward to the
         // window's end. Null (both empty) disables the shift entirely -- the P2.5.I default.
         'quiet_hours' => ['start' => null, 'end' => null],
+        // Backlog safety fence (2026-09-02 hotfix): the reminder-engine-v2 migrations are pending
+        // in production, so SendReminders' due-reminders query (no lower bound, no cap) would fire
+        // the entire accumulated backlog to customers/staff in one minute the first time
+        // process:reminder --proceed runs after they land. Guards live here, not in a migration.
+        'send' => [
+            // Global kill switch. FALSE by default -- process:reminder --proceed must be
+            // explicitly re-armed (REMINDERS_SEND_ENABLED=true) before it will send anything.
+            'enabled' => (bool) env('REMINDERS_SEND_ENABLED', false),
+            // Pending rows scheduled further than this many hours in the past are treated as
+            // expired backlog, not "still due" -- cancelled rather than sent.
+            'max_age_hours' => (int) env('REMINDERS_SEND_MAX_AGE_HOURS', 48),
+            // Hard per-run cap on how many reminders one --proceed invocation will send, oldest
+            // eligible first. Independent of groupCapReached()'s own per-group number_of_reminder
+            // cap.
+            'max_per_run' => (int) env('REMINDERS_SEND_MAX_PER_RUN', 50),
+        ],
+        'generate' => [
+            // GenerateHoldDeadlineReminders (reminder:generate-deadlines) scans ALL on-hold/
+            // confirmed tasks with a deadline_at, with no lower bound -- a first run against
+            // existing production data would backfill reminders for deadlines long past. A
+            // computed scheduled_at older than now minus this many hours is skipped instead of
+            // created.
+            'stale_after_hours' => (int) env('REMINDERS_GENERATE_STALE_AFTER_HOURS', 24),
+        ],
     ],
 
     /*

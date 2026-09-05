@@ -62,6 +62,18 @@ class SendReminders extends Command
 
         try {
             if ($proceed) {
+                // Safety fence (2026-09-02 hotfix): default-OFF kill switch. Checked BEFORE
+                // cancelStaleReminders() (which mutates rows) so a disabled sender genuinely
+                // touches nothing -- not even the stale-cancel pass.
+                if (! config('accounting.reminders.send.enabled', false)) {
+                    $dueCount = $this->dueRemindersQuery()->count();
+                    $message = "reminder send disabled by REMINDERS_SEND_ENABLED; {$dueCount} due rows would have been processed";
+                    $this->warn($message);
+                    Log::info('reminder.send_disabled', ['due_count' => $dueCount]);
+
+                    return 0;
+                }
+
                 $cancelled = $this->cancelStaleReminders();
                 if ($cancelled > 0) {
                     $this->info("Cancelled {$cancelled} stale pending reminder(s) whose target already resolved.");
@@ -69,33 +81,8 @@ class SendReminders extends Command
                 }
             }
 
-            $dueReminders = Reminder::where('status', 'pending')
-                ->where(function ($query) {
-                    $query->whereHas('payment', function ($q) {
-                        $q->where('status', '!=', 'completed');
-                    })
-                        ->orWhereHas('invoice', function ($q) {
-                            $q->where('status', '!=', 'completed');
-                        })
-                    // W6.U "Reminders" (owner addition, 2026-08-28): a target_type='task' row
-                    // carries neither invoice_id nor payment_id, so without this branch the
-                    // whereHas()/orWhereHas() pair above always excludes it -- the exact gap
-                    // w6-brief.md flags ("this is the exact spot ... or new task reminders will
-                    // silently fail to send"). No open/closed guard is applied here for task
-                    // reminders (unlike the invoice/payment branches above) because a ticketing
-                    // deadline reminder has no "already settled" state to check against --
-                    // reminder:generate-deadlines is itself the only writer of these rows and is
-                    // idempotent per (task_id, offset).
-                        ->orWhere('target_type', 'task')
-                    // P2.5.I: 'client' (statement_balance) and 'agent' (commission_unearned)
-                    // targets carry no invoice_id/payment_id either -- same gap, same fix. Both
-                    // kinds' own generator/listener is itself the sole writer and is
-                    // idempotent (dedupe_key), so no extra open/closed guard is needed here.
-                        ->orWhereIn('target_type', ['client', 'agent'])
-                        ->orWhere('reminder_kind', Reminder::KIND_PAYMENT_LINK_UNINVOICED);
-                })
-                ->where('is_active', true)
-                ->where('scheduled_at', '<=', Carbon::now())
+            $dueReminders = $this->dueRemindersQuery()
+                ->orderBy('scheduled_at')
                 ->with(['client', 'agent', 'invoice', 'payment', 'task'])
                 ->get();
 
@@ -146,6 +133,9 @@ class SendReminders extends Command
             }
 
             if ($proceed) {
+                $dueReminders = $this->applySendWindow($dueReminders);
+                $dueReminders = $this->applyPerRunCap($dueReminders);
+
                 $this->processReminders($dueReminders, $registry);
             }
 
@@ -160,6 +150,106 @@ class SendReminders extends Command
         }
 
         return 0;
+    }
+
+    /**
+     * Shared due-reminders WHERE clause (status/target-type/is_active/scheduled_at<=now), reused
+     * by the disabled-sender count and the actual due-reminders fetch so the two never drift.
+     */
+    private function dueRemindersQuery()
+    {
+        return Reminder::where('status', 'pending')
+            ->where(function ($query) {
+                $query->whereHas('payment', function ($q) {
+                    $q->where('status', '!=', 'completed');
+                })
+                    ->orWhereHas('invoice', function ($q) {
+                        $q->where('status', '!=', 'completed');
+                    })
+                // W6.U "Reminders" (owner addition, 2026-08-28): a target_type='task' row
+                // carries neither invoice_id nor payment_id, so without this branch the
+                // whereHas()/orWhereHas() pair above always excludes it -- the exact gap
+                // w6-brief.md flags ("this is the exact spot ... or new task reminders will
+                // silently fail to send"). No open/closed guard is applied here for task
+                // reminders (unlike the invoice/payment branches above) because a ticketing
+                // deadline reminder has no "already settled" state to check against --
+                // reminder:generate-deadlines is itself the only writer of these rows and is
+                // idempotent per (task_id, offset).
+                    ->orWhere('target_type', 'task')
+                // P2.5.I: 'client' (statement_balance) and 'agent' (commission_unearned)
+                // targets carry no invoice_id/payment_id either -- same gap, same fix. Both
+                // kinds' own generator/listener is itself the sole writer and is
+                // idempotent (dedupe_key), so no extra open/closed guard is needed here.
+                    ->orWhereIn('target_type', ['client', 'agent'])
+                    ->orWhere('reminder_kind', Reminder::KIND_PAYMENT_LINK_UNINVOICED);
+            })
+            ->where('is_active', true)
+            ->where('scheduled_at', '<=', Carbon::now());
+    }
+
+    /**
+     * Safety fence (2026-09-02 hotfix): a pending row already past due but scheduled further back
+     * than `accounting.reminders.send.max_age_hours` is stale backlog, not "still worth sending"
+     * -- e.g. the entire accumulated backlog that would exist the first time this command runs
+     * after the reminder-engine-v2 migrations land in production. Cancelled (reusing the existing
+     * STATUS_CANCELLED + error_message columns, no new enum value) rather than sent.
+     *
+     * @param  \Illuminate\Support\Collection<int, Reminder>  $dueReminders
+     * @return \Illuminate\Support\Collection<int, Reminder> the remaining, in-window reminders.
+     */
+    private function applySendWindow($dueReminders)
+    {
+        $maxAgeHours = (int) config('accounting.reminders.send.max_age_hours', 48);
+        $cutoff = Carbon::now()->subHours($maxAgeHours);
+
+        [$expired, $eligible] = $dueReminders->partition(
+            fn (Reminder $reminder) => Carbon::parse($reminder->scheduled_at)->lt($cutoff)
+        );
+
+        if ($expired->isNotEmpty()) {
+            foreach ($expired as $reminder) {
+                $reminder->update([
+                    'status' => Reminder::STATUS_CANCELLED,
+                    'error_message' => 'expired: outside send window',
+                ]);
+            }
+
+            $this->info("Expired {$expired->count()} reminder(s) outside the {$maxAgeHours}h send window; cancelled.");
+            Log::info('reminder.expired_outside_window', [
+                'count' => $expired->count(),
+                'max_age_hours' => $maxAgeHours,
+            ]);
+        }
+
+        return $eligible->values();
+    }
+
+    /**
+     * Safety fence (2026-09-02 hotfix): hard per-run cap on how many reminders one --proceed
+     * invocation will send, oldest-eligible-first (the incoming collection is already ordered by
+     * scheduled_at ASC from the due-reminders query). Independent of groupCapReached()'s own
+     * per-group `number_of_reminder` cap -- left untouched. Anything beyond the cap is simply left
+     * `pending` for the next run, never touched here.
+     *
+     * @param  \Illuminate\Support\Collection<int, Reminder>  $dueReminders
+     * @return \Illuminate\Support\Collection<int, Reminder>
+     */
+    private function applyPerRunCap($dueReminders)
+    {
+        $maxPerRun = (int) config('accounting.reminders.send.max_per_run', 50);
+
+        if ($maxPerRun <= 0 || $dueReminders->count() <= $maxPerRun) {
+            return $dueReminders;
+        }
+
+        $remaining = $dueReminders->count() - $maxPerRun;
+        $this->info("capped: {$remaining} remaining");
+        Log::info('reminder.send_capped', [
+            'processed' => $maxPerRun,
+            'remaining' => $remaining,
+        ]);
+
+        return $dueReminders->take($maxPerRun);
     }
 
     /**

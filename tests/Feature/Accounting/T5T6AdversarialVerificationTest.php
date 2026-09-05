@@ -1,0 +1,714 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Tests\Feature\Accounting;
+
+use App\Models\Account;
+use App\Models\AccountingPeriod;
+use App\Models\Branch;
+use App\Models\Company;
+use App\Models\JournalEntry;
+use App\Models\SystemAccount;
+use App\Models\Transaction;
+use App\Models\User;
+use App\Services\Accounting\AccountResolver;
+use App\Services\Accounting\Reports\EquityChangesReportService;
+use App\Services\Accounting\YearEndCloseService;
+use App\Services\TrialBalanceService;
+use Database\Seeders\CoaSeeder;
+use Database\Seeders\SystemAccountsSeeder;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
+use Tests\Support\AccountingTestCase;
+
+/**
+ * ADVERSARIAL VERIFICATION scratch suite for T5/T6 (accounting-builds phase, review-packets/
+ * T5-T6-equity.md). Not part of the builder's own suite — written by the independent verifier.
+ */
+class T5T6AdversarialVerificationTest extends AccountingTestCase
+{
+    private function service(): YearEndCloseService
+    {
+        return app(YearEndCloseService::class);
+    }
+
+    private function equity(): EquityChangesReportService
+    {
+        return app(EquityChangesReportService::class);
+    }
+
+    private function trialBalance(): TrialBalanceService
+    {
+        return app(TrialBalanceService::class);
+    }
+
+    private function resolver(): AccountResolver
+    {
+        return app(AccountResolver::class);
+    }
+
+    /** @return array{0: Company, 1: Branch} */
+    private function makeEngineOnCompany(): array
+    {
+        $company = Company::factory()->create();
+        CoaSeeder::run($company->id);
+        (new SystemAccountsSeeder)->run();
+
+        $owner = User::factory()->create();
+        $branch = Branch::factory()->create(['company_id' => $company->id, 'user_id' => $owner->id]);
+
+        config(['accounting.engine.enabled' => true]);
+        Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
+
+        $this->trackCompanyForInvariants($company->id);
+
+        return [$company, $branch];
+    }
+
+    protected function tearDown(): void
+    {
+        config(['accounting.engine.enabled' => false]);
+        parent::tearDown();
+    }
+
+    private function lockAllMonths(Company $company, int $year): void
+    {
+        for ($m = 1; $m <= 12; $m++) {
+            AccountingPeriod::create(['company_id' => $company->id, 'year' => $year, 'month' => $m, 'status' => AccountingPeriod::STATUS_LOCKED]);
+        }
+    }
+
+    private function makeLine(Transaction $txn, Company $company, Branch $branch, Account $account, float $debit, float $credit, Carbon $date): JournalEntry
+    {
+        return JournalEntry::create([
+            'transaction_id' => $txn->id, 'company_id' => $company->id, 'branch_id' => $branch->id,
+            'account_id' => $account->id, 'transaction_date' => $date, 'posting_date' => $date,
+            'description' => 'Test line', 'debit' => $debit, 'credit' => $credit, 'name' => $account->name,
+            'type' => 'test', 'currency' => 'KWD', 'exchange_rate' => 1, 'amount' => max($debit, $credit),
+            'voucher_number' => 'TST', 'type_reference_id' => $company->id,
+        ]);
+    }
+
+    private function postPlAndAr(Company $company, Branch $branch, int $year, float $income, float $expense): void
+    {
+        $incomeAccount = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '4133')->firstOrFail();
+        $expenseAccount = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '5222')->firstOrFail();
+        $ar = $this->resolver()->resolve('RECEIVABLE_CONTROL', $company->id);
+        $date = Carbon::create($year, 6, 15);
+
+        $total = $income + $expense;
+        $txn = Transaction::forceCreate([
+            'company_id' => $company->id, 'branch_id' => $branch->id, 'entity_id' => $company->id, 'entity_type' => 'company',
+            'transaction_type' => 'JV', 'amount' => $total, 'description' => 'PL fixture', 'reference_type' => 'Invoice',
+            'reference_number' => 'PL-'.uniqid(), 'name' => 'PL fixture', 'transaction_date' => $date, 'posting_date' => $date,
+            'doc_type' => 'JV', 'doc_year' => $year, 'posting_status' => 'posted',
+            'total_debit' => $total, 'total_credit' => $total, 'idempotency_key' => uniqid('pl:'),
+        ]);
+
+        $this->makeLine($txn, $company, $branch, $ar, $income, 0, $date);
+        $this->makeLine($txn, $company, $branch, $incomeAccount, 0, $income, $date);
+        $this->makeLine($txn, $company, $branch, $expenseAccount, $expense, 0, $date);
+        $this->makeLine($txn, $company, $branch, $ar, 0, $expense, $date);
+    }
+
+    private function postDividendPayment(Company $company, Branch $branch, int $year, float $amount, ?Carbon $date = null): Account
+    {
+        return $this->postDividendPaymentOn($company, $branch, $this->resolver()->resolve('DIVIDENDS_PAID', $company->id), $year, $amount, $date);
+    }
+
+    /** Same fixture, but against an explicitly chosen account (a child of 3200, a duplicate row). */
+    private function postDividendPaymentOn(Company $company, Branch $branch, Account $dividends, int $year, float $amount, ?Carbon $date = null): Account
+    {
+        $bank = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1201')->firstOrFail();
+        $date ??= Carbon::create($year, 9, 1);
+
+        $txn = Transaction::forceCreate([
+            'company_id' => $company->id, 'branch_id' => $branch->id, 'entity_id' => $company->id, 'entity_type' => 'company',
+            'transaction_type' => 'JV', 'amount' => $amount, 'description' => 'Dividend payment fixture', 'reference_type' => 'Payment',
+            'reference_number' => 'DIV-'.uniqid(), 'name' => 'Dividend payment fixture', 'transaction_date' => $date, 'posting_date' => $date,
+            'doc_type' => 'JV', 'doc_year' => $year, 'posting_status' => 'posted',
+            'total_debit' => $amount, 'total_credit' => $amount, 'idempotency_key' => uniqid('div:'),
+        ]);
+
+        $this->makeLine($txn, $company, $branch, $dividends, $amount, 0, $date);
+        $this->makeLine($txn, $company, $branch, $bank, 0, $amount, $date);
+
+        return $dividends;
+    }
+
+    // ── (1) Dividend in a LOSS year — sign checks ──────────────────────────────────────────────
+
+    public function test_dividend_sweep_in_a_loss_making_year(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        // Loss: expense (300) > income (100) => net_profit = -200.
+        $this->postPlAndAr($company, $branch, 2026, income: 100, expense: 300);
+        $dividendsAccount = $this->postDividendPayment($company, $branch, 2026, 50);
+
+        $result = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($result['success']);
+        $this->assertEqualsWithDelta(-200.0, $result['net_profit'], 0.001, 'Loss year net_profit must be negative and untouched by the dividend sweep.');
+
+        $lines = JournalEntry::withoutGlobalScopes()->where('transaction_id', $result['transaction']->id)->get();
+        $this->assertEqualsWithDelta((float) $lines->sum('debit'), (float) $lines->sum('credit'), 0.001);
+
+        $dividendSweepLine = $lines->firstWhere('account_id', $dividendsAccount->id);
+        $this->assertNotNull($dividendSweepLine);
+        $this->assertEqualsWithDelta(50.0, (float) $dividendSweepLine->credit, 0.001, 'Dividend sweep must still credit 3200 by 50 regardless of the P&L sign.');
+
+        $retainedEarnings = $this->resolver()->resolve('RETAINED_EARNINGS', $company->id);
+        $reLines = $lines->where('account_id', $retainedEarnings->id);
+        $reNet = (float) $reLines->sum('credit') - (float) $reLines->sum('debit');
+        // -200 (loss) - 50 (dividend) = -250: RE goes MORE negative, not less.
+        $this->assertEqualsWithDelta(-250.0, $reNet, 0.001, 'A loss-making year that still pays a dividend must make Retained Earnings MORE negative (loss + dividend both reduce RE).');
+    }
+
+    // ── (2) Zero dividends — no sweep line at all (not a 0-amount line) ───────────────────────
+
+    public function test_zero_dividends_produces_no_dividend_sweep_lines(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        // No dividend payment posted at all this year.
+
+        $result = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($result['success']);
+
+        $dividendsAccount = $this->resolver()->resolve('DIVIDENDS_PAID', $company->id);
+        $lines = JournalEntry::withoutGlobalScopes()->where('transaction_id', $result['transaction']->id)->get();
+        $dividendLines = $lines->where('account_id', $dividendsAccount->id);
+        $this->assertCount(0, $dividendLines, 'A year with zero dividend movement must post NO lines on 3200 at all -- not a 0.00 line.');
+
+        // Exactly 3 lines total: Income leaf, Expense leaf, Retained Earnings (net-profit only).
+        $this->assertCount(3, $lines);
+    }
+
+    // ── (3) 3200 with an accidental CREDIT balance (refund of dividends) — sign generality ────
+
+    public function test_dividend_account_with_a_credit_balance_is_swept_generically(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+
+        $dividends = $this->resolver()->resolve('DIVIDENDS_PAID', $company->id);
+        $bank = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1201')->firstOrFail();
+        $date = Carbon::create(2026, 9, 1);
+        // A REFUND of a previously paid dividend: Dr bank / Cr 3200 -- an accidental CREDIT
+        // balance on a normally debit-normal leaf.
+        $txn = Transaction::forceCreate([
+            'company_id' => $company->id, 'branch_id' => $branch->id, 'entity_id' => $company->id, 'entity_type' => 'company',
+            'transaction_type' => 'JV', 'amount' => 60, 'description' => 'Dividend refund fixture', 'reference_type' => 'Payment',
+            'reference_number' => 'DIVR-'.uniqid(), 'name' => 'Dividend refund fixture', 'transaction_date' => $date, 'posting_date' => $date,
+            'doc_type' => 'JV', 'doc_year' => 2026, 'posting_status' => 'posted',
+            'total_debit' => 60, 'total_credit' => 60, 'idempotency_key' => uniqid('divr:'),
+        ]);
+        $this->makeLine($txn, $company, $branch, $bank, 60, 0, $date);
+        $this->makeLine($txn, $company, $branch, $dividends, 0, 60, $date);
+
+        $result = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($result['success']);
+        $this->assertEqualsWithDelta(300.0, $result['net_profit'], 0.001);
+
+        $lines = JournalEntry::withoutGlobalScopes()->where('transaction_id', $result['transaction']->id)->get();
+        $this->assertEqualsWithDelta((float) $lines->sum('debit'), (float) $lines->sum('credit'), 0.001, 'Document must still balance for a credit-balance dividend leaf.');
+
+        $dividendSweepLine = $lines->firstWhere('account_id', $dividends->id);
+        $this->assertNotNull($dividendSweepLine);
+        // Mirrored: a net CREDIT balance is zeroed with a DEBIT sweep line (not a credit).
+        $this->assertEqualsWithDelta(60.0, (float) $dividendSweepLine->debit, 0.001, 'A credit-balance 3200 leaf must be zeroed with a DEBIT sweep line, not assumed debit-normal.');
+        $this->assertEqualsWithDelta(0.0, (float) $dividendSweepLine->credit, 0.001);
+
+        $retainedEarnings = $this->resolver()->resolve('RETAINED_EARNINGS', $company->id);
+        $reLines = $lines->where('account_id', $retainedEarnings->id);
+        $reNet = (float) $reLines->sum('credit') - (float) $reLines->sum('debit');
+        // 300 (profit) + 60 (dividend refund credited back) = 360.
+        $this->assertEqualsWithDelta(360.0, $reNet, 0.001, 'A dividend refund (credit balance on 3200) must INCREASE Retained Earnings, not decrease it.');
+    }
+
+    // ── (4) Two companies closing the SAME year — scoping ──────────────────────────────────────
+
+    public function test_two_companies_close_the_same_year_independently(): void
+    {
+        [$companyA, $branchA] = $this->makeEngineOnCompany();
+        [$companyB, $branchB] = $this->makeEngineOnCompany();
+
+        $this->lockAllMonths($companyA, 2026);
+        $this->lockAllMonths($companyB, 2026);
+
+        $this->postPlAndAr($companyA, $branchA, 2026, income: 500, expense: 200);
+        $this->postDividendPayment($companyA, $branchA, 2026, 100);
+
+        $this->postPlAndAr($companyB, $branchB, 2026, income: 900, expense: 100);
+        $this->postDividendPayment($companyB, $branchB, 2026, 700);
+
+        $resultA = $this->service()->run($companyA->id, 2026, null);
+        $resultB = $this->service()->run($companyB->id, 2026, null);
+
+        $this->assertTrue($resultA['success']);
+        $this->assertTrue($resultB['success']);
+        $this->assertEqualsWithDelta(300.0, $resultA['net_profit'], 0.001);
+        $this->assertEqualsWithDelta(800.0, $resultB['net_profit'], 0.001);
+        $this->assertNotSame($resultA['transaction']->id, $resultB['transaction']->id);
+
+        $linesA = JournalEntry::withoutGlobalScopes()->where('transaction_id', $resultA['transaction']->id)->get();
+        $linesB = JournalEntry::withoutGlobalScopes()->where('transaction_id', $resultB['transaction']->id)->get();
+        $this->assertEqualsWithDelta((float) $linesA->sum('debit'), (float) $linesA->sum('credit'), 0.001);
+        $this->assertEqualsWithDelta((float) $linesB->sum('debit'), (float) $linesB->sum('credit'), 0.001);
+
+        // No cross-company leakage: company A's YEC lines only touch company A's accounts.
+        $dividendsA = $this->resolver()->resolve('DIVIDENDS_PAID', $companyA->id);
+        $dividendsB = $this->resolver()->resolve('DIVIDENDS_PAID', $companyB->id);
+        $this->assertNull($linesA->firstWhere('account_id', $dividendsB->id));
+        $this->assertNull($linesB->firstWhere('account_id', $dividendsA->id));
+    }
+
+    // ── (5) Late dividend posted into an already-closed year: PeriodGuard shift behaviour ─────
+
+    public function test_late_dividend_posted_after_close_shifts_into_next_open_year_and_reclose_is_still_a_no_op(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+
+        $close2026 = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($close2026['success']);
+        $this->assertEqualsWithDelta(300.0, $close2026['net_profit'], 0.001);
+
+        // A dividend dated INSIDE 2026 (Dec 20), posted AFTER 2026 has already been closed (all
+        // months locked). Posted via the real engine seam (PostingService), not a raw fixture, so
+        // PeriodGuard's shift-on-locked-period behaviour actually fires.
+        $dividends = $this->resolver()->resolve('DIVIDENDS_PAID', $company->id);
+        $bankAccount = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1201')->firstOrFail();
+
+        $draft = new \App\Services\Accounting\DocumentDraft(
+            companyId: $company->id,
+            branchId: $branch->id,
+            docType: 'JV',
+            subType: null,
+            docDate: Carbon::create(2026, 12, 20),
+            narration: 'Late dividend payment, posted after 2026 close',
+            lines: [
+                new \App\Services\Accounting\LineDraft(purposeCode: '', accountId: $dividends->id, side: 'debit', amount: 40.0, currency: 'KWD', originalAmount: 40.0, exchangeRate: 1.0, transactionType: 'JV', description: 'late dividend'),
+                new \App\Services\Accounting\LineDraft(purposeCode: '', accountId: $bankAccount->id, side: 'credit', amount: 40.0, currency: 'KWD', originalAmount: 40.0, exchangeRate: 1.0, transactionType: 'JV', description: 'late dividend'),
+            ],
+            idempotencyKey: 'late-div:'.$company->id.':'.uniqid(),
+            userId: null,
+            allowLockedPeriods: false,
+        );
+
+        $posted = app(\App\Services\Accounting\PostingService::class)->post($draft, null);
+        $this->assertNotNull($posted->transaction);
+
+        $line = JournalEntry::withoutGlobalScopes()->where('transaction_id', $posted->transaction->id)->where('account_id', $dividends->id)->first();
+        $this->assertNotNull($line);
+        $this->assertSame(2026, (int) Carbon::parse($line->transaction_date)->format('Y'), 'transaction_date (docDate) must remain 2026, the date it was actually dated for.');
+        $this->assertSame(2027, (int) Carbon::parse($line->posting_date)->format('Y'), 'posting_date must be SHIFTED to 2027 (the next open period) since 2026 is locked and no override was requested.');
+
+        // Re-closing 2026 must still be a pure no-op — the late dividend landed in 2027's
+        // posting_date bucket, so 2026's own YEC query (COALESCE(posting_date, transaction_date))
+        // never sees it.
+        $reclose2026 = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($reclose2026['already_closed']);
+        $this->assertSame($close2026['transaction']->id, $reclose2026['transaction']->id);
+        $this->assertSame(1, Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('doc_type', 'YEC')->whereYear('transaction_date', 2026)->count());
+
+        // The 2027 statement (unclosed) must show the late dividend as 2027's own dividend
+        // movement -- proving the shift is picked up correctly downstream by the read layer too.
+        $statement2027 = $this->equity()->generate($company->id, 2027);
+        $this->assertEqualsWithDelta(40.0, $statement2027['dividends_paid_this_year'], 0.001, 'The late dividend, shifted to 2027 posting_date, must appear as 2027 dividend movement in the equity statement, not disappear or double-count into 2026.');
+    }
+
+    // ── (6) T6: capital injection + profit + dividends + OBE residual, full reconciliation ────
+
+    public function test_full_component_reconciliation_with_capital_profit_dividends_and_obe(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+
+        // Opening Balance Equity residual, posted BEFORE the fiscal year even starts (2025), so
+        // it shows up purely as OPENING equity for 2026, not movement.
+        $obe = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '3300')->firstOrFail();
+        $bank = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1201')->firstOrFail();
+        $preDate = Carbon::create(2025, 6, 1);
+        $preTxn = Transaction::forceCreate([
+            'company_id' => $company->id, 'branch_id' => $branch->id, 'entity_id' => $company->id, 'entity_type' => 'company',
+            'transaction_type' => 'JV', 'amount' => 250, 'description' => 'OBE residual fixture', 'reference_type' => 'Payment',
+            'reference_number' => 'OBE-'.uniqid(), 'name' => 'OBE residual fixture', 'transaction_date' => $preDate, 'posting_date' => $preDate,
+            'doc_type' => 'JV', 'doc_year' => 2025, 'posting_status' => 'posted',
+            'total_debit' => 250, 'total_credit' => 250, 'idempotency_key' => uniqid('obe:'),
+        ]);
+        $this->makeLine($preTxn, $company, $branch, $bank, 250, 0, $preDate);
+        $this->makeLine($preTxn, $company, $branch, $obe, 0, 250, $preDate);
+
+        $this->lockAllMonths($company, 2026);
+        $capital = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '3100')->firstOrFail();
+        $capDate = Carbon::create(2026, 2, 1);
+        $capTxn = Transaction::forceCreate([
+            'company_id' => $company->id, 'branch_id' => $branch->id, 'entity_id' => $company->id, 'entity_type' => 'company',
+            'transaction_type' => 'JV', 'amount' => 1200, 'description' => 'Capital injection', 'reference_type' => 'Payment',
+            'reference_number' => 'CAP-'.uniqid(), 'name' => 'Capital injection', 'transaction_date' => $capDate, 'posting_date' => $capDate,
+            'doc_type' => 'JV', 'doc_year' => 2026, 'posting_status' => 'posted',
+            'total_debit' => 1200, 'total_credit' => 1200, 'idempotency_key' => uniqid('cap:'),
+        ]);
+        $this->makeLine($capTxn, $company, $branch, $bank, 1200, 0, $capDate);
+        $this->makeLine($capTxn, $company, $branch, $capital, 0, 1200, $capDate);
+
+        $this->postPlAndAr($company, $branch, 2026, income: 700, expense: 250);
+        $this->postDividendPayment($company, $branch, 2026, 120);
+
+        $close = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($close['success']);
+
+        $statement = $this->equity()->generate($company->id, 2026);
+        $this->assertEqualsWithDelta(250.0, $statement['components']['opening_balance_equity']['opening'], 0.001);
+        $this->assertEqualsWithDelta(1200.0, $statement['components']['capital']['movement'], 0.001);
+        $this->assertEqualsWithDelta(450.0, $statement['net_profit'], 0.001);
+        $this->assertEqualsWithDelta(120.0, $statement['dividends_paid_this_year'], 0.001);
+
+        $this->assertTrue($statement['checks']['ties_to_next_year_opening'], 'Full multi-component year must reconcile to the fils post-close.');
+        $this->assertEqualsWithDelta(0.0, $statement['checks']['difference'], 0.001);
+
+        // Cross-check against the balance sheet's own equity total via TrialBalanceService
+        // directly (Equity root subtotal), independent of the report service's own arithmetic.
+        $nextYearOpening = $this->trialBalance()->getOpeningBalances($company->id, Carbon::create(2027, 1, 1));
+        $equityLeafCodes = ['3100', '3200', '3300', '3400'];
+        $bsEquityTotal = 0.0;
+        foreach ($equityLeafCodes as $code) {
+            $acct = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', $code)->firstOrFail();
+            $row = $nextYearOpening[$acct->id] ?? ['opening_debit' => 0.0, 'opening_credit' => 0.0];
+            $bsEquityTotal += (float) $row['opening_credit'] - (float) $row['opening_debit'];
+        }
+        $this->assertEqualsWithDelta($bsEquityTotal, $statement['closing_equity_total'], 0.001, 'Statement closing equity total must reconcile to the fils against a directly-computed balance-sheet equity total (independent derivation from raw ledger, bypassing the report service entirely).');
+    }
+
+    // -- (7) POST-FIX RE-VERIFICATION (independent Opus pass, 2026-09-02) ----------------------
+    //
+    // The Sonnet verifier's fix (commit 0236537b) made an UNMAPPED `DIVIDENDS_PAID` purpose mean
+    // "zero dividend movement". That is the right call ONLY while the unmapped leaf carries no
+    // money. It is NOT guaranteed that a real company is mapped: SystemAccountsSeeder::mapByCode()
+    // SKIPS (reports, never fails) when code 3200 is missing, duplicated, or has grown children,
+    // and `DIVIDENDS_PAID` itself was only introduced by T0a (ca093323) -- so EVERY company that
+    // existed before T0a is unmapped until SystemAccountsSeeder is re-run. For such a company,
+    // "unmapped = zero" silently drops a REAL dividend balance out of the close forever: the YEC
+    // document is posted without the sweep, Retained Earnings is overstated by the dividend, and
+    // run()'s "a YEC already exists" idempotency short-circuit makes it unrecoverable by simply
+    // re-running the close. Year-end close must therefore REFUSE (blocking, nothing posted --
+    // recoverable) rather than silently under-post.
+
+    private function unmapDividends(Company $company): void
+    {
+        SystemAccount::where('company_id', $company->id)
+            ->where('purpose_code', 'DIVIDENDS_PAID')
+            ->delete();
+    }
+
+    public function test_close_refuses_when_dividends_paid_carries_a_balance_but_has_no_purpose_mapping(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->postDividendPayment($company, $branch, 2026, 100);
+        $this->unmapDividends($company);
+
+        $result = $this->service()->run($company->id, 2026, null);
+
+        $this->assertFalse($result['success'], 'A company whose 3200 carries real dividend money but has no DIVIDENDS_PAID mapping must NOT close silently -- the sweep would be dropped and Retained Earnings overstated forever.');
+        $this->assertNull($result['transaction'], 'Nothing may be posted when the close is refused -- the state must stay recoverable.');
+        $this->assertNotEmpty($result['blocking']);
+        $this->assertStringContainsString('DIVIDENDS_PAID', implode(' | ', $result['blocking']));
+
+        $this->assertSame(0, Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('doc_type', 'YEC')->count(), 'A refused close must leave no YEC document behind.');
+    }
+
+    public function test_close_is_still_a_clean_no_op_when_dividends_paid_is_unmapped_but_carries_nothing(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->unmapDividends($company);
+
+        $result = $this->service()->run($company->id, 2026, null);
+
+        $this->assertTrue($result['success'], "An unmapped DIVIDENDS_PAID with NO money on the leaf must remain a clean no-op (the Sonnet fix's own case) -- the new guard must not over-block.");
+        $this->assertSame([], $result['blocking']);
+        $this->assertNotNull($result['transaction']);
+        $this->assertEqualsWithDelta(300.0, (float) $result['net_profit'], 0.001);
+    }
+
+    public function test_mapping_the_purpose_after_a_refused_close_lets_the_close_sweep_the_dividends(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $dividends = $this->postDividendPayment($company, $branch, 2026, 100);
+        $this->unmapDividends($company);
+
+        $refused = $this->service()->run($company->id, 2026, null);
+        $this->assertFalse($refused['success']);
+
+        // The operator does what the blocking message tells them to: re-run the registry seeder.
+        (new SystemAccountsSeeder)->run();
+
+        $result = $this->service()->run($company->id, 2026, null);
+
+        $this->assertTrue($result['success'], 'Once the mapping exists the very same close must succeed -- the guard must be RECOVERABLE, never a dead end.');
+        $lines = JournalEntry::withoutGlobalScopes()->where('transaction_id', $result['transaction']->id)->get();
+        $sweep = $lines->firstWhere('account_id', $dividends->id);
+        $this->assertNotNull($sweep, 'The dividend sweep must actually post after the mapping is restored.');
+        $this->assertEqualsWithDelta(100.0, (float) $sweep->credit, 0.001);
+    }
+
+    public function test_equity_statement_still_reports_real_dividends_for_a_company_with_no_dividends_mapping(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->postDividendPayment($company, $branch, 2026, 100);
+        $this->unmapDividends($company);
+
+        // The T5 fix made the WRITE path survive an unmapped purpose; the sibling READ report must
+        // not still hard-crash (UnmappedPurposeException -> HTTP 500) on the exact same company --
+        // least of all this one, the misconfigured company whose unswept dividends the statement
+        // is the only place to SEE. It degrades to the leaf's own structural code, the same way it
+        // already reads 3100/3300 (accepted read-layer ruling, packet section 9).
+        $statement = $this->equity()->generate($company->id, 2026);
+
+        $this->assertEqualsWithDelta(100.0, $statement['dividends_paid_this_year'], 0.001, "An unmapped DIVIDENDS_PAID must not zero out the statement's dividend figure -- the money is still on the leaf.");
+        $this->assertEqualsWithDelta(300.0, $statement['net_profit'], 0.001);
+        $this->assertSame('3200', $statement['components']['dividends_paid']['code']);
+        $this->assertSame('3400', $statement['components']['retained_earnings']['code']);
+
+        // Pre-close vs post-close consistency on this SAME (unmapped-then-mapped) company.
+        (new SystemAccountsSeeder)->run();
+        $close = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($close['success']);
+
+        $post = $this->equity()->generate($company->id, 2026);
+        $this->assertEqualsWithDelta($statement['net_profit'], $post['net_profit'], 0.001);
+        $this->assertEqualsWithDelta($statement['dividends_paid_this_year'], $post['dividends_paid_this_year'], 0.001);
+        $this->assertEqualsWithDelta($statement['closing_equity_total'], $post['closing_equity_total'], 0.001);
+        $this->assertTrue($post['checks']['ties_to_next_year_opening']);
+    }
+
+    // -- (8) FINAL RE-VERIFICATION (loop 3, independent Opus pass, 2026-09-02) ------------------
+    //
+    // Two questions the loop-2 gate left open, both settled here by test:
+    //
+    //   (a) MOVEMENT vs BALANCE. The gate fires on the 3200 subtree's YEAR MOVEMENT, never on a
+    //       balance carried in from an earlier year. That is the right criterion because a
+    //       correctly MAPPED company does not sweep a carried balance either -- L9 defines the
+    //       sweep on the year's movement -- so the unmapped company loses nothing the mapping
+    //       would have saved. Gating on balance would refuse a close a correct company sails
+    //       through, and the guard's own remedy would not clear it. Pinned below.
+    //
+    //   (b) THE REMEDY MUST ACTUALLY WORK. The loop-2 message said flatly "re-run
+    //       SystemAccountsSeeder". SystemAccountsSeeder::mapByCode() REFUSES code 3200 when it is
+    //       duplicated ("ambiguous") or has grown children ("group account, not a leaf") -- the two
+    //       states the gate's own subtree walk exists to catch -- so for exactly those companies
+    //       the seeder re-run changes nothing and the next close refuses again, forever. Pinned
+    //       below: the message must name the remedy that works, and that remedy must clear it.
+
+    private function makeDividendChild(Company $company, Account $parent, string $code = '3201', string $suffix = 'A'): Account
+    {
+        return Account::withoutGlobalScopes()->create([
+            'name' => 'Dividends Paid - Shareholder '.$suffix,
+            'code' => $code,
+            'level' => (int) $parent->level + 1,
+            'parent_id' => $parent->id,
+            'root_id' => $parent->root_id,
+            'company_id' => $company->id,
+            'account_type' => $parent->account_type,
+            'report_type' => $parent->report_type,
+            'actual_balance' => 0,
+            'budget_balance' => 0,
+            'variance' => 0,
+        ]);
+    }
+
+    private function mapDividendsTo(Company $company, Account $account): void
+    {
+        SystemAccount::where('company_id', $company->id)->where('purpose_code', 'DIVIDENDS_PAID')->delete();
+        SystemAccount::create([
+            'company_id' => $company->id,
+            'purpose_code' => 'DIVIDENDS_PAID',
+            'service_type' => null,
+            'account_id' => $account->id,
+        ]);
+    }
+
+    public function test_a_carried_dividend_balance_with_no_movement_is_treated_identically_mapped_or_not(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $dividends = $this->resolver()->resolve('DIVIDENDS_PAID', $company->id);
+
+        // A dividend paid in 2025 on a year that is never closed -- the balance carries into 2026,
+        // which has no dividend movement of its own.
+        $this->postDividendPayment($company, $branch, 2025, 100, Carbon::create(2025, 9, 1));
+
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+
+        $mappedClose = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($mappedClose['success'], 'A carried balance with no movement must not block a correctly mapped close.');
+
+        $mappedLines = JournalEntry::withoutGlobalScopes()->where('transaction_id', $mappedClose['transaction']->id)->get();
+        $this->assertNull(
+            $mappedLines->firstWhere('account_id', $dividends->id),
+            'THE RULING: a MAPPED company does not sweep a balance carried in from an earlier year either -- the sweep is defined on the YEAR MOVEMENT (L9). This is why the mapping gate is gated on movement and not on balance: unmapped and mapped behave identically here, so there is nothing for the gate to protect.'
+        );
+
+        $opening2027 = $this->trialBalance()->getOpeningBalances($company->id, Carbon::create(2027, 1, 1)->startOfDay());
+        $this->assertEqualsWithDelta(
+            100.0,
+            (float) $opening2027->get($dividends->id)['opening_debit'] - (float) $opening2027->get($dividends->id)['opening_credit'],
+            0.001,
+            'The carried balance survives the close under the MAPPED configuration too -- clearing it is a backfill question (packet section 10.8), not something this gate can or should do.'
+        );
+
+        // Same company, mapping removed: still no block, because there is still no movement.
+        $this->unmapDividends($company);
+        Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('doc_type', 'YEC')->forceDelete();
+        JournalEntry::withoutGlobalScopes()->where('company_id', $company->id)->where('type', 'YEAR_END_CLOSE')->forceDelete();
+
+        $unmappedClose = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($unmappedClose['success'], 'A carried balance with no movement must not block an UNMAPPED close either -- the gate must be exactly as permissive as the mapped path.');
+        $this->assertSame([], $unmappedClose['blocking']);
+    }
+
+    public function test_refusal_message_names_a_remedy_that_works_when_3200_has_grown_children(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $parent = $this->resolver()->resolve('DIVIDENDS_PAID', $company->id);
+        $child = $this->makeDividendChild($company, $parent);
+
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->postDividendPaymentOn($company, $branch, $child, 2026, 100);
+        $this->unmapDividends($company);
+
+        $refused = $this->service()->run($company->id, 2026, null);
+        $this->assertFalse($refused['success']);
+        $message = implode(' | ', $refused['blocking']);
+
+        $this->assertStringContainsString('group account', $message, 'The message must diagnose WHY the purpose is unmapped, not just that it is.');
+        $this->assertStringContainsString('will NOT help', $message, 'It must say plainly that re-running SystemAccountsSeeder does not fix this state -- mapByCode() skips a code that has grown children, so the loop-2 wording ("re-run SystemAccountsSeeder") sent the operator into an endless refusal.');
+        $this->assertStringContainsString((string) $child->id, $message, 'It must name the child leaf that actually carries the dividends, so the operator knows what to map.');
+
+        // Doing what the OLD message said changes nothing -- this is the dead end, pinned.
+        (new SystemAccountsSeeder)->run();
+        $this->assertFalse(
+            SystemAccount::where('company_id', $company->id)->where('purpose_code', 'DIVIDENDS_PAID')->exists(),
+            'Re-running the seeder leaves this company unmapped -- mapByCode() skips a group account.'
+        );
+        $this->assertFalse($this->service()->run($company->id, 2026, null)['success']);
+
+        // Doing what the NEW message says clears it and actually sweeps.
+        $this->mapDividendsTo($company, $child);
+        $result = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($result['success'], 'The remedy the message names must clear the block.');
+
+        $sweep = JournalEntry::withoutGlobalScopes()->where('transaction_id', $result['transaction']->id)->get()->firstWhere('account_id', $child->id);
+        $this->assertNotNull($sweep, 'And the sweep must then actually post against the child leaf.');
+        $this->assertEqualsWithDelta(100.0, (float) $sweep->credit, 0.001);
+    }
+
+    public function test_close_refuses_when_the_mapping_points_at_the_group_and_the_money_is_on_a_child(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $parent = $this->resolver()->resolve('DIVIDENDS_PAID', $company->id);
+        $child = $this->makeDividendChild($company, $parent);
+
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->postDividendPaymentOn($company, $branch, $child, 2026, 100);
+
+        // The mapping EXISTS but points at the 3200 group, not the child holding the money. The
+        // sweep only ever queries the mapped account's own lines, so without this arm the close
+        // would sail through and drop the 100 exactly as silently as the unmapped case would --
+        // and this is the state an operator reaches by half-following the refusal message above.
+        $this->mapDividendsTo($company, $parent);
+
+        $result = $this->service()->run($company->id, 2026, null);
+
+        $this->assertFalse($result['success'], 'A mapping that covers only part of the 3200 subtree must block for the same reason no mapping at all does: the rest of the subtree would be silently left behind.');
+        $this->assertNull($result['transaction']);
+        $this->assertStringContainsString('silently left behind', implode(' | ', $result['blocking']));
+        $this->assertStringContainsString('100.000', implode(' | ', $result['blocking']), 'The message must name the amount at risk.');
+        $this->assertSame(0, Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('doc_type', 'YEC')->count());
+
+        // Re-pointing the mapping at the account that carries the money clears it.
+        $this->mapDividendsTo($company, $child);
+        $this->assertTrue($this->service()->run($company->id, 2026, null)['success']);
+    }
+
+    public function test_close_refuses_when_a_sibling_dividend_leaf_sits_outside_the_mapping(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $parent = $this->resolver()->resolve('DIVIDENDS_PAID', $company->id);
+        $shareholderA = $this->makeDividendChild($company, $parent, '3201', 'A');
+        $shareholderB = $this->makeDividendChild($company, $parent, '3202', 'B');
+
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->postDividendPaymentOn($company, $branch, $shareholderA, 2026, 100);
+        $this->postDividendPaymentOn($company, $branch, $shareholderB, 2026, 40);
+
+        // The GENUINELY silent case: the mapping points at a real leaf, so AccountResolver is
+        // perfectly happy (no NonLeafAccountException to save us) and the close would post -- but
+        // the sweep only ever zeroes the mapped leaf, so shareholder B's 40 would be left on the
+        // ledger with Retained Earnings overstated by exactly that, and nothing anywhere would say
+        // so. This is the same failure the unmapped gate exists to prevent, on the mapped path.
+        $this->mapDividendsTo($company, $shareholderA);
+
+        $result = $this->service()->run($company->id, 2026, null);
+
+        $this->assertFalse($result['success'], 'A sibling dividend leaf outside the mapping must block the close -- its movement would be silently dropped.');
+        $this->assertNull($result['transaction']);
+        $this->assertStringContainsString('40.000', implode(' | ', $result['blocking']), 'The message must name the amount that would be left behind, not the whole subtree movement.');
+        $this->assertSame(0, Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('doc_type', 'YEC')->count());
+    }
+
+    public function test_refusal_message_diagnoses_a_duplicate_3200_instead_of_blaming_the_seeder(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $dividends = $this->resolver()->resolve('DIVIDENDS_PAID', $company->id);
+
+        $duplicate = Account::withoutGlobalScopes()->create([
+            'name' => 'Dividends Paid (duplicate)',
+            'code' => '3200',
+            'level' => $dividends->level,
+            'parent_id' => $dividends->parent_id,
+            'root_id' => $dividends->root_id,
+            'company_id' => $company->id,
+            'account_type' => $dividends->account_type,
+            'report_type' => $dividends->report_type,
+            'actual_balance' => 0,
+            'budget_balance' => 0,
+            'variance' => 0,
+        ]);
+
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->postDividendPayment($company, $branch, 2026, 100);
+        $this->unmapDividends($company);
+
+        $refused = $this->service()->run($company->id, 2026, null);
+        $this->assertFalse($refused['success']);
+        $message = implode(' | ', $refused['blocking']);
+
+        $this->assertStringContainsString('share code', $message, 'A duplicated 3200 is the seeder\'s other skip reason and must be diagnosed as such.');
+        $this->assertStringContainsString('will NOT help', $message);
+        $this->assertStringContainsString((string) $dividends->id, $message, 'Both candidate ids must be named so the operator can pick the one carrying the money.');
+
+        $this->mapDividendsTo($company, $dividends);
+        $this->assertTrue($this->service()->run($company->id, 2026, null)['success'], 'Mapping onto the money-carrying row must clear the block.');
+
+        // The duplicate is a deliberate fixture, not a product state: remove it so the suite's own
+        // "no duplicate account codes" invariant (tests/Support/AccountingInvariants.php) still
+        // holds at teardown.
+        $duplicate->forceDelete();
+    }
+}

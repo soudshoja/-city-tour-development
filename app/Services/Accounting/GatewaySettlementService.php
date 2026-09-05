@@ -212,6 +212,8 @@ final class GatewaySettlementService
         $companyId = (int) $settlement->company_id;
         $idempotencyKey = self::idempotencyKeyFor($gatewayKey, $settlement->payout_reference);
 
+        $this->assertNotOverSettled($settlement);
+
         $clearingAmount = round((float) $settlement->gross - (float) $settlement->recognised_fee, 3);
         $trueUp = round((float) $settlement->fee - (float) $settlement->recognised_fee, 3);
 
@@ -321,21 +323,98 @@ final class GatewaySettlementService
     }
 
     /**
-     * MP-7-3-adjacent non-double-move guard: marks every still-unswept `Payment` row this
-     * payout-driven settlement now covers as `completed = 1`, the SAME flag
-     * `PaymentReleaseToCompanyBankAccProcess`'s own daily grouping query filters on. See this
-     * class's own docblock ("Daily clearing->bank JV non-double-move") for the full reasoning —
-     * this is a Payment-status write, never a `journal_entries`/`transactions` write, so it does
-     * not go through PostingSeam and is not in ArchitectureTest's raw-writer scope.
+     * Verifier fix (T7 adversarial review, defect #2): refuses to post a settlement whose `gross`
+     * exceeds the total still-pending (`completed=0`) local `Payment` rows for this gateway/
+     * company dated on/before the payout date, WHEN that pending pool is non-empty — "over-
+     * settlement -> exception, not a negative clearing" (coordinator prompt). Deliberately skips
+     * the check when the pending pool is empty (0.000): a from-scratch manual/CSV settlement with
+     * no local `Payment` linkage at all has nothing to reconcile against, the same "0 when
+     * unknown" shape `recognisedFee` already documents (L11/Q1) — this is what keeps the
+     * service's own isolated posting-shape tests (which post settlements against companies with
+     * no receipt history at all) meaningful in isolation, while still catching the real
+     * operational case: a payout that claims to have collected more than the company's own
+     * receipts show as outstanding for it.
      */
-    private function skipDailyReleaseForSettledPayments(GatewaySettlement $settlement): void
+    private function assertNotOverSettled(GatewaySettlement $settlement): void
     {
-        Payment::withoutGlobalScopes()
+        $tolerance = (float) config('accounting.engine.balance_tolerance', 0.001);
+
+        $pendingTotal = (float) Payment::withoutGlobalScopes()
             ->where('company_id', $settlement->company_id)
             ->where('completed', 0)
             ->whereRaw('UPPER(payment_gateway) = ?', [$settlement->gateway])
             ->whereDate('payment_date', '<=', $settlement->payout_date)
-            ->update(['completed' => 1]);
+            ->sum('amount');
+
+        if ($pendingTotal <= 0.0005) {
+            return;
+        }
+
+        if ((float) $settlement->gross > $pendingTotal + $tolerance) {
+            throw new \App\Exceptions\Accounting\GatewayOverSettledException(
+                $settlement->gateway,
+                $settlement->payout_reference,
+                (float) $settlement->gross,
+                $pendingTotal,
+            );
+        }
+    }
+
+    /**
+     * MP-7-3-adjacent non-double-move guard: marks the still-unswept `Payment` rows this
+     * payout-driven settlement actually COVERS as `completed = 1`, the SAME flag
+     * `PaymentReleaseToCompanyBankAccProcess`'s own daily grouping query filters on. See this
+     * class's own docblock ("Daily clearing->bank JV non-double-move") for the full reasoning —
+     * this is a Payment-status write, never a `journal_entries`/`transactions` write, so it does
+     * not go through PostingSeam and is not in ArchitectureTest's raw-writer scope.
+     *
+     * Verifier fix (T7 adversarial review, defect #1): the original version marked EVERY
+     * completed=0 payment for this gateway dated on/before the payout date, with no regard for
+     * how much money the payout actually reported (`gross`). A payout that only covers PART of
+     * the pending clearing balance for that date window — a real, spec-required case ("residual
+     * stays in clearing", coordinator prompt) — would silently sweep the residual payments too,
+     * permanently orphaning their money: neither this settlement's own GWS document (which only
+     * drains `gross - recognised_fee`) nor the daily job (which now skips them, `completed=1`)
+     * ever moves it from clearing to bank again. Greedily consumes the eligible pool, ordered
+     * oldest-first (`payment_date`, then `id` for determinism), up to `gross` (the payout's own
+     * reported total, matching the amount `Payment.amount` is denominated in — the same figure
+     * the pre-existing happy-path test already balances 1:1 against two 50.000 payments summing
+     * to a 100.000 gross) — never marking a payment once the running total would exceed it. Any
+     * remainder in the eligible pool is left `completed=0`: still visible to the daily job, and
+     * still available to a later settlement's own sweep.
+     */
+    private function skipDailyReleaseForSettledPayments(GatewaySettlement $settlement): void
+    {
+        $tolerance = (float) config('accounting.engine.balance_tolerance', 0.001);
+        $budget = (float) $settlement->gross;
+
+        $eligible = Payment::withoutGlobalScopes()
+            ->where('company_id', $settlement->company_id)
+            ->where('completed', 0)
+            ->whereRaw('UPPER(payment_gateway) = ?', [$settlement->gateway])
+            ->whereDate('payment_date', '<=', $settlement->payout_date)
+            ->orderBy('payment_date')
+            ->orderBy('id')
+            ->get(['id', 'amount']);
+
+        $coveredIds = [];
+        $runningTotal = 0.0;
+
+        foreach ($eligible as $payment) {
+            $amount = (float) $payment->amount;
+            $projected = round($runningTotal + $amount, 3);
+
+            if ($projected > $budget + $tolerance) {
+                break;
+            }
+
+            $coveredIds[] = $payment->id;
+            $runningTotal = $projected;
+        }
+
+        if ($coveredIds !== []) {
+            Payment::withoutGlobalScopes()->whereIn('id', $coveredIds)->update(['completed' => 1]);
+        }
     }
 
     public static function idempotencyKeyFor(string $gateway, string $payoutReference): string

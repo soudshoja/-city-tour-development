@@ -456,6 +456,25 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/get-invoices-by-JournalEntry', [AccountingController::class, 'getInvoicesByJournalEntry'])->name('get.invoices.by.JournalEntry');
     });
 
+    // accounting-builds T10 (Lane G) — the fixed-asset register's HTTP surface. Per-action
+    // authorization is Gate::authorize('view'|'manage', FixedAsset::class) inside the controller
+    // itself (App\Policies\FixedAssetPolicy) — the route middleware only gates module visibility,
+    // the same split every other accounting screen's routes in this file already use. The
+    // '/depreciate' and '/create' routes are declared BEFORE the '/{fixedAsset}' wildcard so
+    // neither literal segment is ever swallowed by route-model-binding.
+    Route::prefix('accounting/fixed-assets')->name('accounting.fixed-assets.')->middleware(['module:accounting'])->group(function () {
+        Route::get('/depreciate', [\App\Http\Controllers\Accounting\FixedAssetController::class, 'depreciateForm'])->name('depreciate');
+        Route::post('/depreciate', [\App\Http\Controllers\Accounting\FixedAssetController::class, 'depreciateRun'])->name('depreciate.run');
+        Route::get('/', [\App\Http\Controllers\Accounting\FixedAssetController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\Accounting\FixedAssetController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\Accounting\FixedAssetController::class, 'store'])->name('store');
+        Route::get('/{fixedAsset}/edit', [\App\Http\Controllers\Accounting\FixedAssetController::class, 'edit'])->name('edit');
+        Route::put('/{fixedAsset}', [\App\Http\Controllers\Accounting\FixedAssetController::class, 'update'])->name('update');
+        Route::post('/{fixedAsset}/capitalise', [\App\Http\Controllers\Accounting\FixedAssetController::class, 'capitalise'])->name('capitalise');
+        Route::post('/{fixedAsset}/dispose', [\App\Http\Controllers\Accounting\FixedAssetController::class, 'dispose'])->name('dispose');
+        Route::get('/{fixedAsset}', [\App\Http\Controllers\Accounting\FixedAssetController::class, 'show'])->name('show');
+    });
+
     // P2.5.C (p2_5-brief.md §P2.5.C) — period-control screen. Gated the same
     // 'module:accounting' way as every other accounting screen in this file; per-action
     // authorization is Gate::authorize('view'|'close'|'reopen', AccountingPeriod::class) inside

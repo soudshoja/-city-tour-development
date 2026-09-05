@@ -130,6 +130,220 @@ class ArchitectureTest extends TestCase
     ];
 
     /**
+     * PHASE GATE (accounting-builds) T12 ratchet extension — GATE-REPORT §3's first recorded
+     * pre-existing gap: "the scan has no coverage at all for raw `accounts`-table writes ... both
+     * predate the phase." Deliberately scoped to the UPDATE path only, not accounts CREATE:
+     * account creation already has its own dedicated (if currently flag-disabled) guard --
+     * {@see \App\Observers\AccountObserver}'s `creating` backstop, which throws when
+     * config('accounting.account_observer.enabled') is on and the write did not go through
+     * {@see \App\Services\Accounting\AccountService::create()}. There is no equivalent mechanism
+     * anywhere for a raw UPDATE of an existing account's identity fields (code, name, ...) -- a
+     * query-builder bulk update (`DB::table('accounts')->update(...)` or
+     * `Account::where(...)->update(...)`) never fires Eloquent model events, so the observer above
+     * cannot see it even if it were enabled. That is the actual gap: zero coverage of any kind for
+     * this write shape, at any time.
+     *
+     * The census below is the complete list at P2/gate time -- confirmed by a whole-repo scan
+     * (`grep -rn "DB::table('accounts')"` plus a multi-line query-builder `->update(` scan) that
+     * every raw `DB::table('accounts')` call site other than the two allow-listed below is a READ
+     * (`->first()`, `->get()`, `->pluck()`, `->max()`, `->find()`) or an INSERT
+     * (`->insertGetId()`, e.g. AgentController's auto-numbered agent-profit/AR leaves -- a
+     * long-standing, separately-documented legacy pattern per AccountObserver's own docblock,
+     * "~10 still-unrefactored legacy Account::create() call sites ... keeps working exactly as
+     * before" -- not an update, and not this rule's concern).
+     */
+    private const ALLOW_LISTED_RAW_ACCOUNTS_WRITER_FILES = [
+        // EnsureSystemLeaves::renumberGatewayFeeRecoveryLeaf() (private helper, ~line 1256):
+        // `DB::table('accounts')->where('id', $child->id)->update(['code' => '4131']);`.
+        // In-file comment immediately above the call: "Plain UPDATE, not
+        // AccountService::create()/createSystemLeaf() -- this is a renumber of an EXISTING leaf,
+        // not the creation of a new one; AccountService's contract has no 'renumber' operation."
+        // Guarded by its own collision check (refuses if code 4131 already used by another
+        // account for the company) immediately before the raw update.
+        'Console/Commands/EnsureSystemLeaves.php',
+        // SupplierController::updateSupplier() (~line 394):
+        // `Account::where('name', 'LIKE', "%{$oldName}%")->update(['name' => $newName]);` --
+        // bulk-renames every Account whose name contains the old supplier name when a supplier is
+        // renamed. Legacy denormalisation-sync pre-dating AccountService; GATE-REPORT §3 named
+        // this as a pre-existing gap, not a defect this phase fixes.
+        'Http/Controllers/SupplierController.php',
+    ];
+
+    /**
+     * Two-sided, same shape as {@see self::test_no_journal_entry_writes_outside_engine()}: a hit
+     * in a file not on the allow-list fails the build (new/regressed raw accounts write), and an
+     * allow-listed file with no hit also fails (stale entry).
+     */
+    public function test_no_raw_accounts_table_updates_outside_engine(): void
+    {
+        $result = $this->scanForRawAccountsWriters();
+
+        $message = '';
+
+        if (! empty($result['unlisted'])) {
+            $message .= 'Raw accounts-table update(s) found outside App\\Services\\Accounting\\ in '
+                .'file(s) NOT on the allow-list (new/regressed raw accounts writer -- route this '
+                .'write through AccountService, or if genuinely gated/pre-existing, add the file to '
+                ."ArchitectureTest::ALLOW_LISTED_RAW_ACCOUNTS_WRITER_FILES with a note explaining "
+                ."why):\n".implode("\n", $result['unlisted'])."\n";
+        }
+
+        if (! empty($result['stale'])) {
+            $message .= 'Allow-listed accounts-writer file(s) with NO raw-update hit found (stale '
+                .'allow-list entry -- remove from '
+                ."ArchitectureTest::ALLOW_LISTED_RAW_ACCOUNTS_WRITER_FILES):\n"
+                .implode("\n", $result['stale']);
+        }
+
+        $this->assertTrue(empty($result['unlisted']) && empty($result['stale']), $message);
+    }
+
+    /**
+     * PHASE GATE (accounting-builds) T12 — mutation proof for the accounts-writer ratchet above,
+     * same construction as {@see self::test_the_raw_writer_ratchet_actually_bites_a_synthetic_violation()}:
+     * builds a throwaway tree carrying both raw-write shapes (DB::table('accounts')->update(...)
+     * and Account::where(...)->update(...)) plus the sole-writer exemption and a clean file, and
+     * asserts the scanner reports exactly what it should.
+     */
+    public function test_the_accounts_writer_ratchet_actually_bites_a_synthetic_violation(): void
+    {
+        $root = sys_get_temp_dir().'/arch-accounts-ratchet-mutation-'.uniqid();
+
+        $violations = [
+            'Console/Commands/ProbeDbTableAccountsUpdate.php' => "DB::table('accounts')->where('id', 1)->update(['code' => '9999']);",
+            'Http/Controllers/ProbeAccountWhereUpdate.php' => "Account::where('name', 'LIKE', '%x%')->update(['name' => 'y']);",
+        ];
+
+        try {
+            foreach ($violations as $relative => $body) {
+                $path = $root.'/'.$relative;
+                @mkdir(dirname($path), 0777, true);
+                file_put_contents($path, "<?php\n\n".$body."\n");
+            }
+
+            // The engine's own directory is the sole allowed writer: an identical violation here
+            // must NOT be reported.
+            $enginePath = $root.'/Services/Accounting/ProbeEngineAccountsWriter.php';
+            @mkdir(dirname($enginePath), 0777, true);
+            file_put_contents($enginePath, "<?php\n\nDB::table('accounts')->where('id', 1)->update(['code' => '9999']);\n");
+
+            // A file with no raw write at all must not be reported either.
+            $cleanPath = $root.'/Http/Controllers/ProbeAccountsClean.php';
+            file_put_contents($cleanPath, "<?php\n\n\$x = 1;\n");
+
+            $result = $this->scanForRawAccountsWriters($root);
+
+            $reported = array_map(
+                fn (string $p): string => ltrim(str_replace('\\', '/', substr(str_replace('\\', '/', $p), strlen(str_replace('\\', '/', $root)))), '/'),
+                $result['unlisted']
+            );
+            sort($reported);
+
+            foreach (array_keys($violations) as $relative) {
+                $this->assertContains(
+                    $relative,
+                    $reported,
+                    "The accounts-writer ratchet did NOT flag {$relative}. The regex for this write "
+                    .'shape has stopped matching, so this class of unguarded accounts write would '
+                    .'now reach production with a green CI. Fix the pattern in scanForRawAccountsWriters().'
+                );
+            }
+
+            $this->assertNotContains(
+                'Services/Accounting/ProbeEngineAccountsWriter.php',
+                $reported,
+                'The accounts-writer ratchet flagged a write inside the engine\'s own directory, '
+                .'which is the sole allowed writer.'
+            );
+
+            $this->assertNotContains(
+                'Http/Controllers/ProbeAccountsClean.php',
+                $reported,
+                'The accounts-writer ratchet flagged a file containing no raw write at all.'
+            );
+        } finally {
+            $this->removeDirectory($root);
+        }
+    }
+
+    /**
+     * Same shape as {@see self::scanForRawLedgerWriters()}, scoped to the two raw-update
+     * shapes named in this rule's own docblock above: a whole-table `DB::table('accounts')`
+     * query-builder update, or an `Account::` query-builder (where/whereIn/whereNotIn/orWhere)
+     * bulk update. Both bypass Eloquent model events, so {@see \App\Observers\AccountObserver}
+     * (which only fires on `creating`) cannot see either shape regardless of its own flag.
+     *
+     * @return array{unlisted: string[], stale: string[]}
+     */
+    private function scanForRawAccountsWriters(?string $rootDir = null): array
+    {
+        $appDir = $rootDir ?? base_path('app');
+        $allowedDir = rtrim(str_replace('\\', '/', $appDir), '/').'/Services/Accounting';
+        $appDirNormalized = rtrim(str_replace('\\', '/', $appDir), '/');
+
+        $patterns = [
+            // DB::table('accounts')->...->update(...) -- whole-table query-builder update.
+            '/DB::table\(\s*[\'"]accounts[\'"]\s*\)[^;]*?->\s*update\s*\(/s',
+            // Account::where(...)/whereIn(...)/whereNotIn(...)/orWhere(...)->update(...) --
+            // Eloquent query-builder bulk update (skips per-model events, unlike ->save()).
+            '/Account::(?:where|whereIn|whereNotIn|orWhere)\([^;]*?\)\s*->\s*update\s*\(/s',
+        ];
+
+        $unlisted = [];
+        $hitAllowListed = [];
+
+        if (! is_dir($appDir)) {
+            return ['unlisted' => $unlisted, 'stale' => self::ALLOW_LISTED_RAW_ACCOUNTS_WRITER_FILES];
+        }
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($appDir, FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || strtolower($file->getExtension()) !== 'php') {
+                continue;
+            }
+
+            $realPath = $file->getRealPath();
+            $normalizedPath = str_replace('\\', '/', $realPath);
+
+            if (str_starts_with($normalizedPath, $allowedDir)) {
+                continue;
+            }
+
+            $contents = file_get_contents($realPath);
+            if ($contents === false) {
+                continue;
+            }
+
+            $hit = false;
+            foreach ($patterns as $pattern) {
+                if (preg_match($pattern, $contents) === 1) {
+                    $hit = true;
+                    break;
+                }
+            }
+
+            if (! $hit) {
+                continue;
+            }
+
+            $relativePath = ltrim(substr($normalizedPath, strlen($appDirNormalized)), '/');
+
+            if (in_array($relativePath, self::ALLOW_LISTED_RAW_ACCOUNTS_WRITER_FILES, true)) {
+                $hitAllowListed[$relativePath] = true;
+            } else {
+                $unlisted[] = $realPath;
+            }
+        }
+
+        $stale = array_values(array_diff(self::ALLOW_LISTED_RAW_ACCOUNTS_WRITER_FILES, array_keys($hitAllowListed)));
+
+        return ['unlisted' => $unlisted, 'stale' => $stale];
+    }
+
+    /**
      * The live P2-exit ratchet. Fails when a raw-writer hit appears in a file not on
      * {@see self::ALLOW_LISTED_RAW_WRITER_FILES} (new/regressed unguarded writer), and also fails
      * when an allow-listed file no longer produces a hit (stale entry -- the list must shrink as
@@ -159,6 +373,111 @@ class ArchitectureTest extends TestCase
     }
 
     /**
+     * PHASE GATE (accounting-builds) — the mutation proof PLAN.md's T12 named as MP-12-1 ("insert
+     * a JournalEntry::create into FixedAssetController -> ArchitectureTest fails; proves the
+     * ratchet still bites for new files") and which was never built, because T12 was never
+     * started.
+     *
+     * Why it matters: the app tree currently has ZERO real violations of this rule, so
+     * test_no_journal_entry_writes_outside_engine() above passes whether the scanner works or
+     * not. A regex that silently stopped matching — an escaping slip, a refactor that renamed
+     * JournalEntry, a `continue` in the wrong branch — would look exactly like a clean codebase.
+     * Nothing in CI could tell the difference. This test is what tells the difference: it builds a
+     * throwaway tree containing the violation MP-12-1 describes and asserts the scanner reports
+     * it, so a broken guard fails here loudly instead of passing quietly everywhere.
+     *
+     * All five raw-writer shapes are probed, plus both sides of the decision the scanner makes
+     * about a hit: inside app/Services/Accounting it is the sole allowed writer and must be
+     * ignored; outside it and off the allow-list it must be reported.
+     */
+    public function test_the_raw_writer_ratchet_actually_bites_a_synthetic_violation(): void
+    {
+        $root = sys_get_temp_dir().'/arch-ratchet-mutation-'.uniqid();
+
+        // Every shape the live scanner claims to catch, one file each. If any regex has rotted,
+        // its file goes missing from the reported set and this test names exactly which one.
+        $violations = [
+            'Http/Controllers/Accounting/FixedAssetController.php' => 'JournalEntry::create([1]);',
+            'Http/Controllers/ProbeNewJournalEntry.php' => '$e = new JournalEntry([1]);',
+            'Http/Controllers/ProbeInsert.php' => 'JournalEntry::insert([1]);',
+            'Http/Controllers/ProbeDebitUpdate.php' => "JournalEntry::where('id', 1)->update(['debit' => 1]);",
+            'Console/Commands/ProbeTransactionCreate.php' => 'Transaction::create([1]);',
+        ];
+
+        try {
+            foreach ($violations as $relative => $body) {
+                $path = $root.'/'.$relative;
+                @mkdir(dirname($path), 0777, true);
+                file_put_contents($path, "<?php\n\n".$body."\n");
+            }
+
+            // The engine's own directory is the sole allowed writer: an identical violation here
+            // must NOT be reported. Without this leg, a scanner that flagged everything
+            // unconditionally would still satisfy the assertions above.
+            $enginePath = $root.'/Services/Accounting/ProbeEngineWriter.php';
+            @mkdir(dirname($enginePath), 0777, true);
+            file_put_contents($enginePath, "<?php\n\nJournalEntry::create([1]);\n");
+
+            // A file with no raw write at all must not be reported either.
+            $cleanPath = $root.'/Http/Controllers/ProbeClean.php';
+            file_put_contents($cleanPath, "<?php\n\n\$x = 1;\n");
+
+            $result = $this->scanForRawLedgerWriters($root);
+
+            $reported = array_map(
+                fn (string $p): string => ltrim(str_replace('\\', '/', substr(str_replace('\\', '/', $p), strlen(str_replace('\\', '/', $root)))), '/'),
+                $result['unlisted']
+            );
+            sort($reported);
+
+            foreach (array_keys($violations) as $relative) {
+                $this->assertContains(
+                    $relative,
+                    $reported,
+                    "The raw-writer ratchet did NOT flag {$relative}. The regex for this write shape "
+                    .'has stopped matching, so this class of unguarded ledger write would now reach '
+                    .'production with a green CI. Fix the pattern in scanForRawLedgerWriters().'
+                );
+            }
+
+            $this->assertNotContains(
+                'Services/Accounting/ProbeEngineWriter.php',
+                $reported,
+                'The ratchet flagged a write inside the engine\'s own directory, which is the sole '
+                .'allowed writer — the exemption branch is broken and the live test would now fail '
+                .'against legitimate engine code.'
+            );
+
+            $this->assertNotContains(
+                'Http/Controllers/ProbeClean.php',
+                $reported,
+                'The ratchet flagged a file containing no raw ledger write at all.'
+            );
+        } finally {
+            // Always clean up: a leaked probe file under a real path would poison every later run.
+            $this->removeDirectory($root);
+        }
+    }
+
+    private function removeDirectory(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($items as $item) {
+            $item->isDir() ? @rmdir($item->getRealPath()) : @unlink($item->getRealPath());
+        }
+
+        @rmdir($dir);
+    }
+
+    /**
      * Grep-style static scan over app/ for the raw ledger-write shapes file 11's C2 names,
      * excluding the engine's own directory (app/Services/Accounting), which is the one place
      * allowed to write journal_entries/transactions directly. Deliberately a lightweight regex
@@ -168,10 +487,16 @@ class ArchitectureTest extends TestCase
      * @return array{unlisted: string[], stale: string[]} 'unlisted' = absolute paths with a hit
      *   not on the allow-list; 'stale' = allow-list entries (relative paths) with no hit.
      */
-    private function scanForRawLedgerWriters(): array
+    private function scanForRawLedgerWriters(?string $rootDir = null): array
     {
-        $appDir = base_path('app');
-        $allowedDir = str_replace('\\', '/', base_path('app/Services/Accounting'));
+        // PHASE GATE (accounting-builds T12/MP-12-1): $rootDir exists ONLY so the mutation proof
+        // below can point this same scanner at a synthetic tree and prove it actually bites. It
+        // defaults to base_path('app'), so the live ratchet above is byte-identical in behaviour
+        // to what it was before this parameter existed. Both the "sole writer" exemption and the
+        // relative-path the allow-list is matched on are derived FROM the root, so a synthetic
+        // tree reproduces the real decision logic rather than a lookalike of it.
+        $appDir = $rootDir ?? base_path('app');
+        $allowedDir = rtrim(str_replace('\\', '/', $appDir), '/').'/Services/Accounting';
         $appDirNormalized = rtrim(str_replace('\\', '/', $appDir), '/');
 
         $patterns = [
@@ -428,12 +753,70 @@ class ArchitectureTest extends TestCase
     }
 
     /**
+     * PHASE GATE (accounting-builds) T12 — mutation proof for the settlement_channel post-hoc
+     * rule above, closing GATE-REPORT §3's second recorded gap ("the settlement_channel and
+     * reconciled post-hoc-update rules in ArchitectureTest still have no mutation proof ... same
+     * silent-rot exposure" as the raw-writer rule GATE-3 already fixed). Same synthetic-tree
+     * construction as {@see self::test_the_raw_writer_ratchet_actually_bites_a_synthetic_violation()}:
+     * plants the exact forbidden shape, an engine-directory write (which this rule does NOT
+     * exempt — settlement_channel has exactly one legitimate writer, PostingService's own INSERT,
+     * which this ->update() pattern never matches regardless of directory), and a clean file.
+     */
+    public function test_the_settlement_channel_ratchet_actually_bites_a_synthetic_violation(): void
+    {
+        $root = sys_get_temp_dir().'/arch-settlement-channel-ratchet-mutation-'.uniqid();
+
+        $violationPath = $root.'/Http/Controllers/ProbeSettlementChannelUpdate.php';
+
+        try {
+            @mkdir(dirname($violationPath), 0777, true);
+            file_put_contents(
+                $violationPath,
+                "<?php\n\n\$je->where('id', 1)->update(['settlement_channel' => 'wire']);\n"
+            );
+
+            $cleanPath = $root.'/Http/Controllers/ProbeSettlementChannelClean.php';
+            file_put_contents($cleanPath, "<?php\n\n\$x = 1;\n");
+
+            // Normalise both sides to forward slashes before comparing -- getRealPath() returns
+            // OS-native separators (backslash on Windows), while $violationPath/$cleanPath above
+            // are built with a literal forward slash, same normalisation convention as
+            // scanForRawLedgerWriters()'s own mutation proof above.
+            $violations = array_map(
+                fn (string $p): string => str_replace('\\', '/', $p),
+                $this->findPostHocSettlementChannelUpdates($root)
+            );
+
+            $this->assertNotEmpty(
+                $violations,
+                'The settlement_channel post-hoc-update ratchet did NOT flag a synthetic '
+                ."->update(['settlement_channel' => ...]) write. The regex has stopped matching, "
+                .'so this class of write would now reach production with a green CI. Fix the '
+                .'pattern in findPostHocSettlementChannelUpdates().'
+            );
+
+            $this->assertContains(str_replace('\\', '/', $violationPath), $violations);
+            $this->assertNotContains(
+                str_replace('\\', '/', $cleanPath),
+                $violations,
+                'The settlement_channel ratchet flagged a file containing no post-hoc update at all.'
+            );
+        } finally {
+            $this->removeDirectory($root);
+        }
+    }
+
+    /**
      * @return string[] absolute paths with a hit.
      */
-    private function findPostHocSettlementChannelUpdates(): array
+    private function findPostHocSettlementChannelUpdates(?string $rootDir = null): array
     {
-        $appDir = base_path('app');
-        $allowedDir = str_replace('\\', '/', base_path('app/Services/Accounting'));
+        // PHASE GATE (accounting-builds T12): $rootDir exists ONLY so the mutation proof above
+        // can point this scanner at a synthetic tree, same convention as
+        // {@see self::scanForRawLedgerWriters()}'s own $rootDir parameter. Defaults to
+        // base_path('app'), so the live rule is byte-identical to before this parameter existed.
+        $appDir = $rootDir ?? base_path('app');
+        $allowedDir = rtrim(str_replace('\\', '/', $appDir), '/').'/Services/Accounting';
 
         $violations = [];
 
@@ -518,11 +901,89 @@ class ArchitectureTest extends TestCase
     }
 
     /**
+     * PHASE GATE (accounting-builds) T12 — mutation proof for the `reconciled` post-hoc rule
+     * above, GATE-REPORT §3's second recorded gap (see the settlement_channel MP's docblock
+     * immediately above {@see self::findPostHocSettlementChannelUpdates()} for the full context).
+     * Probes BOTH write styles the live rule matches (`->update([...'reconciled'...])` and the
+     * direct `->reconciled = ` property assignment), plus the two allow-listed engine files
+     * (which must NOT be reported — they are the two known-legitimate writers) and a clean file.
+     */
+    public function test_the_reconciled_ratchet_actually_bites_a_synthetic_violation(): void
+    {
+        $root = sys_get_temp_dir().'/arch-reconciled-ratchet-mutation-'.uniqid();
+
+        $violations = [
+            'Http/Controllers/ProbeReconciledUpdate.php' => "\$book->where('id', 1)->update(['reconciled' => 1]);",
+            'Http/Controllers/ProbeReconciledPropertyAssign.php' => '$book->reconciled = 1;',
+        ];
+
+        try {
+            foreach ($violations as $relative => $body) {
+                $path = $root.'/'.$relative;
+                @mkdir(dirname($path), 0777, true);
+                file_put_contents($path, "<?php\n\n".$body."\n");
+            }
+
+            // The two allow-listed engine files are the sole legitimate writers -- an identical
+            // write inside either must NOT be reported.
+            foreach (self::ALLOW_LISTED_RECONCILED_WRITER_FILES as $allowed) {
+                $allowedPath = $root.'/'.$allowed;
+                @mkdir(dirname($allowedPath), 0777, true);
+                file_put_contents($allowedPath, "<?php\n\n\$book->reconciled = 1;\n");
+            }
+
+            // A false-positive guard: a mere comparison/array-literal-value read must not match.
+            $cleanPath = $root.'/Http/Controllers/ProbeReconciledClean.php';
+            file_put_contents($cleanPath, "<?php\n\nif (\$book->reconciled == 1) { \$x = ['reconciled' => \$book->reconciled]; }\n");
+
+            // Normalise both sides to forward slashes -- getRealPath() returns OS-native
+            // separators (backslash on Windows), same convention as the settlement_channel MP
+            // test and scanForRawLedgerWriters()'s own mutation proof above.
+            $found = array_map(
+                fn (string $p): string => str_replace('\\', '/', $p),
+                $this->findPostHocReconciledUpdates($root)
+            );
+
+            foreach (array_keys($violations) as $relative) {
+                $expected = str_replace('\\', '/', $root.'/'.$relative);
+                $this->assertContains(
+                    $expected,
+                    $found,
+                    "The reconciled post-hoc-update ratchet did NOT flag {$relative}. The regex for "
+                    .'this write shape has stopped matching, so this class of write would now reach '
+                    .'production with a green CI. Fix the pattern in findPostHocReconciledUpdates().'
+                );
+            }
+
+            foreach (self::ALLOW_LISTED_RECONCILED_WRITER_FILES as $allowed) {
+                $this->assertNotContains(
+                    str_replace('\\', '/', $root.'/'.$allowed),
+                    $found,
+                    "The reconciled ratchet flagged {$allowed}, one of its own two allow-listed "
+                    .'legitimate writers.'
+                );
+            }
+
+            $this->assertNotContains(
+                str_replace('\\', '/', $cleanPath),
+                $found,
+                'The reconciled ratchet flagged a bare comparison / array-literal read as a write.'
+            );
+        } finally {
+            $this->removeDirectory($root);
+        }
+    }
+
+    /**
      * @return string[] absolute paths with a hit.
      */
-    private function findPostHocReconciledUpdates(): array
+    private function findPostHocReconciledUpdates(?string $rootDir = null): array
     {
-        $appDir = base_path('app');
+        // PHASE GATE (accounting-builds T12): $rootDir exists ONLY so the mutation proof above
+        // can point this scanner at a synthetic tree, same convention as
+        // {@see self::scanForRawLedgerWriters()}'s own $rootDir parameter. Defaults to
+        // base_path('app'), so the live rule is byte-identical to before this parameter existed.
+        $appDir = $rootDir ?? base_path('app');
 
         $violations = [];
 
@@ -679,5 +1140,232 @@ class ArchitectureTest extends TestCase
         }
 
         return $violations;
+    }
+
+    /**
+     * Timezone-safety fix (accounting-builds, 2026-09-02 read-only audit): prod `APP_TIMEZONE` is
+     * `Asia/Kuwait` but MySQL/MariaDB's own clock (`NOW()`/`CURRENT_TIMESTAMP`) is UTC — a column
+     * that defaults to the DB's own clock silently drifts 3 hours from every other date/time this
+     * app writes (all go through PHP's tz-aware `now()`). `journal_entries.cheque_date` was exactly
+     * this bug (`timestamp('cheque_date')->nullable()->useCurrent()`,
+     * `2025_03_25_085713_add_columns_to_general_ledgers_table.php:20`) — fixed by migration
+     * `2026_09_02_000009_drop_db_clock_defaults_in_accounting_tables.php`. This is the CI ratchet
+     * that keeps it fixed: no accounting-table migration may EVER introduce `useCurrent(`,
+     * `useCurrentOnUpdate(`, or a raw `CURRENT_TIMESTAMP` default again.
+     *
+     * Same allow-list shape as {@see self::ALLOW_LISTED_RAW_WRITER_FILES} above: a hit in a
+     * migration NOT on {@see self::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS} fails the build (new
+     * regression); an allow-listed file with no hit also fails (stale entry — remove it once the
+     * migration is deleted or truly no longer matches). Deliberately does NOT flag the two
+     * historical migrations that introduced (2025_03_25) then removed (2026_09_02, this same wave)
+     * the `cheque_date` default — both are named on the allow-list with an explanation, since a
+     * migration file is an immutable historical record and rewriting it would break `php artisan
+     * migrate:fresh` on any environment that already ran it.
+     */
+    private const ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS = [
+        // Introduced the original `journal_entries.cheque_date` useCurrent() default (table was
+        // still named `general_ledgers` at the time). This is the historical bug the 2026-09-02
+        // migration below fixes — kept as an immutable past migration, not rewritten.
+        '2025_03_25_085713_add_columns_to_general_ledgers_table.php',
+        // The fix itself: this migration's down() legitimately RE-ADDS useCurrent() (to make
+        // rollback byte-identical to the pre-fix schema) — that re-add is inside a rollback path,
+        // not a live schema shape, but the whole-file text scan below cannot tell down() apart from
+        // up(), so this file is allow-listed rather than the scanner made AST-aware for one line.
+        '2026_09_02_000009_drop_db_clock_defaults_in_accounting_tables.php',
+        // The scan's regex matches whole-file TEXT, including comments/docblocks (same caveat the
+        // raw-writer scan documents for PostingEngineDisabledException.php above). This migration's
+        // only hit is a docblock MENTION of `useCurrent()` — describing why `cheque_clearance_date`
+        // deliberately does NOT use that shape ("Deliberately a plain `date`, not the `timestamp
+        // ... useCurrent()` shape `cheque_date` uses next to it") — its actual column definition is
+        // a plain nullable `date` with no default at all.
+        '2026_08_29_090000_add_cheque_clearance_date_to_journal_entries_table.php',
+        // PRE-EXISTING GAPS, out of scope for this 2026-09-02 timezone-safety fix (which targeted
+        // specifically `journal_entries.cheque_date` and `transactions.transaction_date` — see this
+        // rule's own class-level docblock). This rule's table-scoped scan surfaced two more real,
+        // live DB-clock defaults on the policed accounting-table list that predate this fix and
+        // were not part of its scope. Allow-listed (not silently fixed) so the ratchet still catches
+        // any NEW db-clock default from here on, while flagging these two as a known, tracked gap
+        // for a future timezone-safety wave rather than expanding this "small, surgical" fix's
+        // blast radius.
+        //   - exchange_rate_histories.changed_at: `$table->timestamp('changed_at')->useCurrent();`
+        '2025_07_30_110917_create_exchange_rate_histories_table.php',
+        //   - payment_applications.applied_at: `$table->timestamp('applied_at')->useCurrent();`
+        '2026_01_12_154855_create_payment_applications_table.php',
+    ];
+
+    /**
+     * Every accounting table this rule polices (P3.j timezone-safety fix scope, matching the phase
+     * brief's own table list). A migration is only flagged when it references one of THESE table
+     * names — a `useCurrent()` on some unrelated table (e.g. a `password_reset_tokens.created_at`)
+     * is a normal Laravel convention this rule has no opinion about.
+     *
+     * `general_ledgers` is included alongside `journal_entries`: it is that same table's ORIGINAL
+     * name before `2025_03_28_145526_rename_table_general_ledgers_to_journal_entries.php` — the
+     * allow-listed 2025_03_25 migration that introduced the historical `cheque_date` default still
+     * refers to the table by its pre-rename name, so this alias is required for that file to
+     * actually produce a hit (and therefore not be flagged as a stale allow-list entry).
+     */
+    private const DB_CLOCK_DEFAULT_POLICED_TABLES = [
+        'transactions', 'journal_entries', 'general_ledgers', 'accounting_periods',
+        'accounting_audit_log', 'reconciliation_', 'gateway_settlements', 'fixed_asset',
+        'supplier_statement_', 'bank_statement_', 'supplier_bank_details', 'serial_schemas',
+        'system_accounts', 'payment_applications', 'exchange_rate_histories',
+    ];
+
+    public function test_no_db_clock_defaults_in_accounting_migrations(): void
+    {
+        $result = $this->scanForDbClockDefaultsInMigrations();
+
+        $message = '';
+
+        if (! empty($result['unlisted'])) {
+            $message .= 'Accounting-table migration(s) found introducing a DB-clock default '
+                .'(useCurrent()/useCurrentOnUpdate()/CURRENT_TIMESTAMP) NOT on the allow-list -- '
+                ."MySQL/MariaDB's own clock is UTC while APP_TIMEZONE is Asia/Kuwait, so a DB-clock "
+                .'default silently drifts from every app-written date/time. Use an explicit '
+                ."PHP now() at the write site instead (see PostingService::post() step 8's cheque_date "
+                .'fallback for the pattern), or if this is a deliberately-reviewed exception, add the '
+                .'file to ArchitectureTest::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS with a note:'
+                ."\n".implode("\n", $result['unlisted'])."\n";
+        }
+
+        if (! empty($result['stale'])) {
+            $message .= 'Allow-listed DB-clock-default migration(s) with NO hit found (stale '
+                .'allow-list entry -- remove from '
+                ."ArchitectureTest::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS):\n"
+                .implode("\n", $result['stale']);
+        }
+
+        $this->assertTrue(empty($result['unlisted']) && empty($result['stale']), $message);
+    }
+
+    /**
+     * Mutation proof (same construction as
+     * {@see self::test_the_raw_writer_ratchet_actually_bites_a_synthetic_violation()}): plants a
+     * synthetic migration carrying a `useCurrent()` default on one of the policed tables, plus one
+     * on an UNPOLICED table (must not be flagged) and a clean migration (must not be flagged), and
+     * asserts the scanner reports exactly the policed one.
+     */
+    public function test_the_db_clock_default_ratchet_actually_bites_a_synthetic_violation(): void
+    {
+        $root = sys_get_temp_dir().'/arch-db-clock-default-ratchet-mutation-'.uniqid();
+
+        try {
+            $violationPath = $root.'/2099_01_01_000000_probe_add_db_clock_default_to_journal_entries.php';
+            @mkdir(dirname($violationPath), 0777, true);
+            file_put_contents(
+                $violationPath,
+                "<?php\n\nSchema::table('journal_entries', function (\$table) {\n"
+                    ."    \$table->timestamp('probe_col')->nullable()->useCurrent();\n});\n"
+            );
+
+            // Unrelated table -- a useCurrent() here is a normal Laravel convention this rule has
+            // no opinion about, and must NOT be reported.
+            $unpolicedPath = $root.'/2099_01_01_000001_probe_add_db_clock_default_to_password_resets.php';
+            file_put_contents(
+                $unpolicedPath,
+                "<?php\n\nSchema::table('password_reset_tokens', function (\$table) {\n"
+                    ."    \$table->timestamp('created_at')->nullable()->useCurrent();\n});\n"
+            );
+
+            $cleanPath = $root.'/2099_01_01_000002_probe_clean_migration.php';
+            file_put_contents(
+                $cleanPath,
+                "<?php\n\nSchema::table('journal_entries', function (\$table) {\n"
+                    ."    \$table->string('probe_col')->nullable();\n});\n"
+            );
+
+            $result = $this->scanForDbClockDefaultsInMigrations($root);
+
+            // Normalise both sides to forward slashes -- getRealPath() returns OS-native separators
+            // (backslash on Windows), same convention as the settlement_channel/reconciled mutation
+            // proofs above.
+            $found = array_map(fn (string $p): string => str_replace('\\', '/', $p), $result['unlisted']);
+
+            $this->assertContains(
+                str_replace('\\', '/', $violationPath),
+                $found,
+                'The DB-clock-default ratchet did NOT flag a synthetic useCurrent() on a policed '
+                .'accounting table. The scanner has stopped matching, so this class of timezone '
+                .'regression would now reach production with a green CI. Fix '
+                .'scanForDbClockDefaultsInMigrations().'
+            );
+
+            $this->assertNotContains(
+                str_replace('\\', '/', $unpolicedPath),
+                $found,
+                'The DB-clock-default ratchet flagged a useCurrent() on an unpoliced table -- this '
+                .'rule must only police the accounting table list.'
+            );
+
+            $this->assertNotContains(
+                str_replace('\\', '/', $cleanPath),
+                $found,
+                'The DB-clock-default ratchet flagged a migration with no DB-clock default at all.'
+            );
+        } finally {
+            $this->removeDirectory($root);
+        }
+    }
+
+    /**
+     * @return array{unlisted: string[], stale: string[]}
+     */
+    private function scanForDbClockDefaultsInMigrations(?string $rootDir = null): array
+    {
+        $migrationsDir = $rootDir ?? database_path('migrations');
+
+        $defaultPattern = '/useCurrent\s*\(|useCurrentOnUpdate\s*\(|CURRENT_TIMESTAMP/i';
+
+        $unlisted = [];
+        $hitAllowListed = [];
+
+        if (! is_dir($migrationsDir)) {
+            return ['unlisted' => $unlisted, 'stale' => self::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS];
+        }
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($migrationsDir, FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || strtolower($file->getExtension()) !== 'php') {
+                continue;
+            }
+
+            $realPath = $file->getRealPath();
+            $filename = $file->getFilename();
+
+            $contents = file_get_contents($realPath);
+            if ($contents === false) {
+                continue;
+            }
+
+            if (preg_match($defaultPattern, $contents) !== 1) {
+                continue;
+            }
+
+            $referencesPolicedTable = false;
+            foreach (self::DB_CLOCK_DEFAULT_POLICED_TABLES as $table) {
+                if (str_contains($contents, "'{$table}") || str_contains($contents, "\"{$table}")) {
+                    $referencesPolicedTable = true;
+                    break;
+                }
+            }
+
+            if (! $referencesPolicedTable) {
+                continue;
+            }
+
+            if (in_array($filename, self::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS, true)) {
+                $hitAllowListed[$filename] = true;
+            } else {
+                $unlisted[] = $realPath;
+            }
+        }
+
+        $stale = array_values(array_diff(self::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS, array_keys($hitAllowListed)));
+
+        return ['unlisted' => $unlisted, 'stale' => $stale];
     }
 }

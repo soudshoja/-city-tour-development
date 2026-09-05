@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\Task;
@@ -13,6 +14,8 @@ use Illuminate\Support\Facades\Log;
 
 class AssignTaskPaymentMethod extends Command
 {
+    use RefusesWhenPostingEngineEnabled;
+
     protected $signature = 'tasks:assign-payment-method
                             {--issued_by= : GDS office code, e.g. KWIKT2843}
                             {--account= : Account name (resolved by name + task.company_id), e.g. "Como Travel & Tourism"}
@@ -121,7 +124,17 @@ class AssignTaskPaymentMethod extends Command
         $newJeTotal = 0;
 
         foreach ($tasks as $task) {
-            $account = $resolveAccount((int) $task->company_id);
+            // Engine-ON guard (RefusesWhenPostingEngineEnabled sweep): this command hand-rolls
+            // JournalEntry/Transaction rows directly (reversal + re-post), bypassing PostingSeam
+            // entirely. Once a company is cut over, the engine owns this task's ledger -- refuse
+            // rather than write rows it cannot see or reconcile against.
+            $companyId = (int) $task->company_id;
+            if ($this->refusePostingEngineEnabledCompany($companyId, null, 'tasks:assign-payment-method')) {
+                $skipCount++;
+                continue;
+            }
+
+            $account = $resolveAccount($companyId);
             if (!$account) {
                 $this->warn("  task {$task->id} ({$task->reference}): account '{$accountName}' not found for company_id={$task->company_id} — skip");
                 $skipCount++;

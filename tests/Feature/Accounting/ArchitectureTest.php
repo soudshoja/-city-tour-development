@@ -62,13 +62,21 @@ class ArchitectureTest extends TestCase
         'Console/Commands/FixProfitAndCommission.php',
         'Console/Commands/UpdateOldTaskToTransaction.php',
 
-        // Same one-off/manual-only category as the block above -- these 3 predate this
-        // rebuild's base (9af11f181, prod-drift sync 254bb45a8) and were never in the ratchet's
-        // original allow-list because that list was authored against a different base that
-        // did not carry these files. Re-confirmed absent from both routes/console.php and
-        // app/Console/Kernel.php's schedule during the feat/accounting-dev-line rebuild.
+        // Dev prod-drift maintenance command; legacy raw writes; refuses when engine ON (guarded
+        // via RefusesWhenPostingEngineEnabled -- see accounting:repair's per-transaction company
+        // check); route through PostingSeam in a later wave. Predates this rebuild's base
+        // (9af11f181, prod-drift sync 254bb45a8), so it was never in the ratchet's original
+        // allow-list. Confirmed absent from routes/console.php and Kernel.php's schedule.
         'Console/Commands/AccountingRepair.php',
+        // Dev prod-drift maintenance command; legacy raw writes; refuses when engine ON (guarded
+        // via RefusesWhenPostingEngineEnabled -- see the per-task company check in the main
+        // foreach loop); route through PostingSeam in a later wave. Same prod-drift provenance
+        // as AccountingRepair above.
         'Console/Commands/AssignTaskPaymentMethod.php',
+        // Dev prod-drift maintenance command; legacy raw writes; refuses when engine ON (guarded
+        // via RefusesWhenPostingEngineEnabled -- see processInvoice()'s per-invoice company
+        // check); route through PostingSeam in a later wave. Same prod-drift provenance as
+        // AccountingRepair above.
         'Console/Commands/FixProfitLossEntries.php',
 
         // Live/scheduled commands whose raw writes are gated.

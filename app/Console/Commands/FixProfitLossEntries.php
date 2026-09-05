@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\AgentLoss;
@@ -14,7 +15,9 @@ use Illuminate\Support\Facades\Log;
 
 class FixProfitLossEntries extends Command
 {
-    protected $signature = 'fix:profit-loss-entries 
+    use RefusesWhenPostingEngineEnabled;
+
+    protected $signature = 'fix:profit-loss-entries
                             {--company= : Specific company ID}
                             {--invoice= : Specific invoice ID}
                             {--agent= : Specific agent ID}
@@ -30,6 +33,7 @@ class FixProfitLossEntries extends Command
     private int $createdProfitEntries = 0;
     private int $createdLossEntries = 0;
     private int $skippedDetails = 0;
+    private int $skippedEngineOnInvoices = 0;
     private array $summary = [
         'profit_debit' => 0,
         'profit_credit' => 0,
@@ -126,6 +130,15 @@ class FixProfitLossEntries extends Command
 
         $companyId = $agent->branch?->company_id;
         if (!$companyId) return;
+
+        // Engine-ON guard (RefusesWhenPostingEngineEnabled sweep): this command hand-rolls
+        // profit/loss/commission JournalEntry rows directly, bypassing PostingSeam entirely.
+        // Once a company is cut over, the engine owns this invoice's P&L postings -- refuse
+        // rather than write rows it cannot see or reconcile against.
+        if ($this->refusePostingEngineEnabledCompany((int) $companyId, null, 'fix:profit-loss-entries')) {
+            $this->skippedEngineOnInvoices++;
+            return;
+        }
 
         $transactionId = $this->getOrCreateTransactionId($invoice);
         if (!$transactionId) return;
@@ -839,6 +852,7 @@ class FixProfitLossEntries extends Command
         $this->info("Invoices processed:         {$this->processedInvoices}");
         $this->info("Invoice details processed:  {$this->processedDetails}");
         $this->info("Skipped details:            {$this->skippedDetails}");
+        $this->info("Skipped invoices (engine ON): {$this->skippedEngineOnInvoices}");
         $this->info("Profit entries created:     {$this->createdProfitEntries}");
         $this->info("Loss entries created:       {$this->createdLossEntries}");
 

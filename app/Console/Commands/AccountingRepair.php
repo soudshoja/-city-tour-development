@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Console\Concerns\RefusesWhenPostingEngineEnabled;
 use App\Models\Account;
 use App\Models\JournalEntry;
 use App\Models\SystemLog;
@@ -31,6 +32,8 @@ use Throwable;
  */
 class AccountingRepair extends Command
 {
+    use RefusesWhenPostingEngineEnabled;
+
     protected $signature = 'accounting:repair
         {--company= : Limit to one company_id}
         {--commit : Actually post the balancing entries (default: dry-run)}
@@ -76,6 +79,7 @@ class AccountingRepair extends Command
             'repaired' => 0,
             'skipped_locked' => 0,
             'skipped_already' => 0,
+            'skipped_engine_on' => 0,
             'errors' => 0,
             'by_company' => [],
         ];
@@ -89,6 +93,15 @@ class AccountingRepair extends Command
             $cid = (int) $row->company_id;
             $delta = (float) $row->delta;
             $report['by_company'][$cid] = ($report['by_company'][$cid] ?? 0) + 1;
+
+            // Engine-ON guard (RefusesWhenPostingEngineEnabled sweep): this command hand-rolls a
+            // suspense JournalEntry directly, bypassing PostingSeam entirely -- once a company is
+            // cut over, the engine owns balancing/repair for its own batches. Refuse per company
+            // rather than write a suspense row the engine cannot see or reconcile against.
+            if ($this->refusePostingEngineEnabledCompany($cid, null, 'accounting:repair')) {
+                $report['skipped_engine_on']++;
+                continue;
+            }
 
             if ((int) $row->any_locked === 1) {
                 $report['skipped_locked']++;
@@ -208,6 +221,7 @@ class AccountingRepair extends Command
         $this->line("   {$verb} : {$r['repaired']}");
         $this->line("   Skipped (locked)         : {$r['skipped_locked']}");
         $this->line("   Skipped (already done)   : {$r['skipped_already']}");
+        $this->line("   Skipped (engine ON)      : {$r['skipped_engine_on']}");
         $this->line("   Errors                   : {$r['errors']}");
         foreach ($r['by_company'] as $cid => $n) {
             $this->line("      - company {$cid}: {$n} batches");

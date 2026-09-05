@@ -522,6 +522,11 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/supplier-statements', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'importSupplierStatement'])->name('supplier-statements.import');
         Route::post('/supplier-statements/{supplierStatementImport}/match', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'matchSupplierStatement'])->name('supplier-statements.match');
         Route::get('/supplier-statements/{supplierStatementImport}/exceptions', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'supplierStatementExceptions'])->name('supplier-statements.exceptions');
+
+        // accounting-builds T7 (Lane D) — "Record settlement" panel.
+        Route::get('/bank-accounts', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'bankAccounts'])->name('bank-accounts');
+        Route::get('/settlements', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'settlements'])->name('settlements');
+        Route::post('/settlements', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'recordSettlement'])->name('settlements.record');
     });
 
     // P2.5.H (p2_5-brief.md §P2.5.H) — client/supplier/agent statement (open_items|full_activity)

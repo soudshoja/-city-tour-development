@@ -384,6 +384,32 @@ final class AccountResolver
     }
 
     /**
+     * accounting-builds T7 (Lane D): every leaf strictly under the Bank Accounts group ONLY (no
+     * cash, no gateway-clearing pool) — the exact set {@see self::assertUnderBankGroup()} would
+     * accept for a given id, listed rather than probed one id at a time, for the "Record
+     * settlement" screen's bank-account picker (a settlement's `bank_account_id` must always pass
+     * that same check, so offering anything outside this set would only produce a refusal on
+     * submit).
+     *
+     * @return int[]
+     */
+    public function bankLeafIds(int $companyId): array
+    {
+        $bankGroupName = (string) config('accounting.engine.bank_group_name', 'Bank Accounts');
+
+        $companyAccounts = Account::withoutGlobalScopes()->where('company_id', $companyId)->get(['id', 'parent_id', 'name', 'disabled']);
+        $parentIds = $companyAccounts->pluck('parent_id')->filter()->flip();
+
+        return $companyAccounts
+            ->reject(fn (Account $a): bool => $parentIds->has($a->id)) // leaves only
+            ->reject(fn (Account $a): bool => (bool) $a->disabled)
+            ->filter(fn (Account $a): bool => $a->name === $bankGroupName || $this->hasAncestorNamed($a, $bankGroupName))
+            ->pluck('id')
+            ->values()
+            ->all();
+    }
+
+    /**
      * P2.5.G verify fix (drift risk): every bank/cash/gateway-clearing LEAF for a company — the
      * exact account set both {@see \App\Services\Accounting\ReconciliationCenterService} (the
      * Reconciliation Center grid) and {@see \App\Services\Accounting\PeriodCloseChecklistService}

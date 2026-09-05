@@ -6,12 +6,16 @@ namespace App\Http\Controllers\Accounting;
 
 use App\Http\Controllers\Controller;
 use App\Jobs\RunReconciliationAutoMatchJob;
+use App\Models\Account;
 use App\Models\Branch;
+use App\Models\GatewaySettlement;
 use App\Models\ReconciliationFixDraft;
 use App\Models\ReconciliationProposal;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\SupplierStatementImport;
+use App\Services\Accounting\AccountResolver;
+use App\Services\Accounting\GatewaySettlementService;
 use App\Services\Accounting\ReconciliationCenterService;
 use App\Services\Accounting\ReconciliationFixDraftService;
 use App\Services\Accounting\ReconciliationProposalService;
@@ -45,6 +49,7 @@ class ReconciliationController extends Controller
         return view('accounting.reconciliation.index', [
             'companyId' => $companyId,
             'canManage' => Gate::allows('manage', ReconciliationProposal::class),
+            'gateways' => (array) config('accounting.purpose_codes.gateways', []),
         ]);
     }
 
@@ -332,6 +337,96 @@ class ReconciliationController extends Controller
             'disputed' => $exceptions['disputed']->values(),
             'unmatched_ledger' => $exceptions['unmatched_ledger']->values(),
         ]);
+    }
+
+    /**
+     * accounting-builds T7 (Lane D): the "Record settlement" panel's bank-account picker — every
+     * leaf a settlement's `bank_account_id` could actually pass
+     * {@see \App\Services\Accounting\AccountResolver::assertUnderBankGroup()} for.
+     */
+    public function bankAccounts(Request $request, AccountResolver $resolver): JsonResponse
+    {
+        Gate::authorize('view', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        $accounts = Account::withoutGlobalScopes()
+            ->whereIn('id', $resolver->bankLeafIds($companyId))
+            ->orderBy('name')
+            ->get(['id', 'name', 'code']);
+
+        return response()->json(['success' => true, 'bank_accounts' => $accounts]);
+    }
+
+    /**
+     * accounting-builds T7 (Lane D): the settlements list feeding the "Record settlement" panel's
+     * own table — most-recent-first, capped, same shape convention as
+     * {@see self::rowDetail()}'s own `recently_matched` slice.
+     */
+    public function settlements(Request $request): JsonResponse
+    {
+        Gate::authorize('view', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        $settlements = GatewaySettlement::forCompany($companyId)
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get();
+
+        return response()->json(['success' => true, 'settlements' => $settlements]);
+    }
+
+    /**
+     * accounting-builds T7 (Lane D): records a real gateway payout and (engine permitting) posts
+     * its ledger movement — see {@see \App\Services\Accounting\GatewaySettlementService::record()}
+     * for the full contract. A validation/idempotency-conflict failure comes back as a 422 with
+     * the exception's own message (never a 500 — this is caller-fixable input, not a server
+     * fault), matching {@see self::postFixDraft()}'s own error-shape convention.
+     */
+    public function recordSettlement(Request $request, GatewaySettlementService $service): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        $data = $request->validate([
+            'gateway' => ['required', 'string'],
+            'payout_reference' => ['required', 'string', 'max:100'],
+            'payout_date' => ['required', 'date'],
+            'gross' => ['required', 'numeric'],
+            'fee' => ['required', 'numeric'],
+            'net' => ['required', 'numeric'],
+            'bank_account_id' => ['required', 'integer'],
+            'currency' => ['nullable', 'string', 'size:3'],
+            'settlement_channel' => ['nullable', 'string', 'max:24'],
+            'recognised_fee' => ['nullable', 'numeric'],
+        ]);
+
+        try {
+            $settlement = $service->record(
+                companyId: $companyId,
+                gateway: $data['gateway'],
+                payoutReference: $data['payout_reference'],
+                payoutDate: Carbon::parse($data['payout_date']),
+                gross: (float) $data['gross'],
+                fee: (float) $data['fee'],
+                net: (float) $data['net'],
+                bankAccountId: (int) $data['bank_account_id'],
+                currency: $data['currency'] ?? null,
+                settlementChannel: $data['settlement_channel'] ?? null,
+                recognisedFee: (float) ($data['recognised_fee'] ?? 0),
+                source: GatewaySettlement::SOURCE_MANUAL,
+                actor: Auth::user(),
+            );
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true, 'settlement' => $settlement], 201);
     }
 
     /** @return array{0:int,1:Carbon,2:string} */

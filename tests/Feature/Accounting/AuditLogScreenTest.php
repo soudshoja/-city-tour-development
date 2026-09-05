@@ -21,6 +21,7 @@ use App\Models\User;
 use App\Services\Accounting\AccountingLog;
 use Database\Seeders\CoaSeeder;
 use Livewire\Livewire;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -30,9 +31,12 @@ use Tests\Support\AccountingTestCase;
  */
 class AuditLogScreenTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     private function makeCompanyAndAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $admin = User::factory()->create(['role_id' => Role::ADMIN]);
         session(['company_id' => $company->id]);
         $this->trackCompanyForInvariants($company->id);
@@ -128,6 +132,7 @@ class AuditLogScreenTest extends AccountingTestCase
     public function test_page_is_403_for_a_role_with_no_permission(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
         $agent = $this->makeAgentInCompany($company);
 
@@ -141,6 +146,7 @@ class AuditLogScreenTest extends AccountingTestCase
     {
         [$company, $admin] = $this->makeCompanyAndAdmin();
         $otherCompany = Company::factory()->create();
+        $this->grantAccountingModule($otherCompany);
         $this->trackCompanyForInvariants($otherCompany->id);
 
         AccountingLog::write(action: 'post', companyId: $company->id, subjectType: 'transaction', subjectId: 1);
@@ -310,6 +316,7 @@ class AuditLogScreenTest extends AccountingTestCase
     public function test_purge_archive_csv_neutralizes_formula_injection_payloads(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
 
         \App\Models\Setting::create([

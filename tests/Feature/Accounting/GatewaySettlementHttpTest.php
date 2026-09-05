@@ -14,6 +14,7 @@ use App\Models\Role;
 use App\Models\User;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 use Tests\Support\SeedsGatewayClearing;
 
@@ -26,6 +27,7 @@ use Tests\Support\SeedsGatewayClearing;
 class GatewaySettlementHttpTest extends AccountingTestCase
 {
     use SeedsGatewayClearing;
+    use GrantsAccountingModule;
 
     protected function tearDown(): void
     {
@@ -36,6 +38,7 @@ class GatewaySettlementHttpTest extends AccountingTestCase
     private function makeCompanyAndAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
         (new SystemAccountsSeeder)->run();
 
@@ -70,6 +73,7 @@ class GatewaySettlementHttpTest extends AccountingTestCase
     public function test_guest_is_redirected_to_login_on_record_settlement(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
 
         $response = $this->postJson(route('accounting.reconciliation.settlements.record'), []);

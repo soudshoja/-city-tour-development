@@ -8,6 +8,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Services\Reminders\ReminderOptions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\TestCase;
 
 /**
@@ -20,6 +21,7 @@ use Tests\TestCase;
 class ReminderAccountingSettingsRoundTripTest extends TestCase
 {
     use RefreshDatabase;
+    use GrantsAccountingModule;
 
     public function test_saving_reminder_settings_via_the_shared_form_is_read_back_by_reminder_options(): void
     {
@@ -27,6 +29,7 @@ class ReminderAccountingSettingsRoundTripTest extends TestCase
         $country = Country::factory()->create();
         $admin = User::factory()->create(['role_id' => Role::ADMIN]);
         $company = Company::factory()->create(['user_id' => $admin->id, 'country_id' => $country->id]);
+        $this->grantAccountingModule($company);
         // Gate::authorize('manageAccountingSettings') resolves the acting company via
         // getCompanyId(), which for an ADMIN falls back to session('company_id') — without
         // this the POST below 403s against whatever company_id happens to be in session
@@ -75,6 +78,7 @@ class ReminderAccountingSettingsRoundTripTest extends TestCase
         $country = Country::factory()->create();
         $admin = User::factory()->create(['role_id' => Role::ADMIN]);
         $company = Company::factory()->create(['user_id' => $admin->id, 'country_id' => $country->id]);
+        $this->grantAccountingModule($company);
         session(['company_id' => $company->id]);
 
         $set = $this->actingAs($admin)->postJson(route('settings.accounting-settings.store'), [

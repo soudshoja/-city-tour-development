@@ -125,4 +125,30 @@ class Supplier extends Model
     {
         return $this->hasMany(SupplierCompany::class);
     }
+
+    /**
+     * T14 "Supplier bank details per currency" (L18). One-to-many remittance details keyed by
+     * currency -- see {@see SupplierBankDetail} for the DB-level default-per-currency guard.
+     */
+    public function bankDetails()
+    {
+        return $this->hasMany(SupplierBankDetail::class);
+    }
+
+    /**
+     * The supplier's DEFAULT, active, non-deleted bank detail for one currency -- the exact lookup
+     * the supplier payment voucher (BankPaymentController) uses to auto-select remittance details
+     * for the voucher's payment currency. Currency is matched case-insensitively but the stored
+     * value is always uppercase (see {@see SupplierBankDetail::scopeForCurrency()}); returns null
+     * (never a silent fallback to another currency's row) when none exists -- the caller is
+     * responsible for surfacing the missing-currency warning.
+     */
+    public function defaultBankDetailFor(string $currency): ?SupplierBankDetail
+    {
+        return $this->bankDetails()
+            ->active()
+            ->default()
+            ->forCurrency($currency)
+            ->first();
+    }
 }

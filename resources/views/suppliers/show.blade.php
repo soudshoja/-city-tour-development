@@ -320,6 +320,9 @@
             @include('suppliers.partials.charge-rule-card', ['supplier' => $supplier, 'chargeRuleRows' => $chargeRuleRows, 'canManageSupplier' => $canManageSupplier])
         </div>
 
+        {{-- T14 "Supplier bank details per currency" (accounting-builds PLAN.md §5 T14; L18). --}}
+        @include('suppliers.partials.bank-detail-card', ['supplier' => $supplier, 'bankDetailRows' => $bankDetailRows, 'canManageSupplier' => $canManageSupplier])
+
         <!-- <div class="bg-white rounded-xl shadow-md p-6 border border-gray-100">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="ttext-lg font-semibold text-gray-800">Auto Extra Surcharge</h2>

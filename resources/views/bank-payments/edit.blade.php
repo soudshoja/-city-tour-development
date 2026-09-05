@@ -92,7 +92,14 @@
         @endif
 
         <!-- Editable fields --------------------------------------------------------------------------- -->
-        <form method="POST" action="{{ route('bank-payments.update', $bp->id) }}" enctype="multipart/form-data">
+        <form method="POST" action="{{ route('bank-payments.update', $bp->id) }}" enctype="multipart/form-data"
+              x-data="bankDetailResolution(@js($supplierBankResolution['isSupplierTarget'] ? [
+                  'is_supplier_target' => true,
+                  'currency' => $supplierBankResolution['currency'],
+                  'supplier_name' => $supplierBankResolution['supplier']?->name,
+                  'found' => $supplierBankResolution['detail'] !== null,
+                  'bank_detail' => $supplierBankResolution['detail']?->only(['bank_name', 'beneficiary_name', 'account_number', 'iban', 'swift_bic', 'bank_country', 'intermediary_bank_name', 'intermediary_swift_bic']),
+              ] : ['is_supplier_target' => false]))">
             @csrf
             @method('PUT')
 
@@ -117,6 +124,7 @@
                         <div>
                             <label for="pay_from_account" class="mb-1 block text-sm font-medium text-gray-700">Pay from</label>
                             <select id="pay_from_account" name="pay_from_account" required {{ $fieldsDisabled ? 'disabled' : '' }}
+                                    @change="resolveBankDetail()"
                                     class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
                                 @foreach ($bankAccounts as $bank)
                                     <option value="{{ $bank->id }}" {{ (int) $bp->pay_from_account_id === $bank->id ? 'selected' : '' }}>[{{ $bank->code }}] {{ $bank->name }}</option>
@@ -129,12 +137,45 @@
                         <div>
                             <label for="account_id" class="mb-1 block text-sm font-medium text-gray-700">Pay to</label>
                             <select id="account_id" name="account_id" required {{ $fieldsDisabled ? 'disabled' : '' }}
+                                    @change="resolveBankDetail()"
                                     class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
                                 @foreach ($accpayreceives as $acc)
                                     <option value="{{ $acc->id }}" {{ (int) $bp->target_account_id === $acc->id ? 'selected' : '' }}>[{{ $acc->code }}] {{ $acc->name }}</option>
                                 @endforeach
                             </select>
                         </div>
+                    </div>
+
+                    {{-- T14 "Supplier bank details per currency" (L18) -- auto-selected remittance
+                         details for this voucher's payment currency, re-resolved live if the
+                         pay-from/pay-to accounts change. This is also the voucher's own
+                         remittance/print view (BankPaymentController has no separate print
+                         screen today -- see the T14 review packet's deviations section). Never
+                         blocks saving. --}}
+                    <div class="mt-4" x-show="resolution.is_supplier_target" x-cloak>
+                        <template x-if="resolution.found">
+                            <div class="rounded-md border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 print:border-black">
+                                <p class="font-semibold mb-1">Remittance details (<span x-text="resolution.currency"></span>, default on file)</p>
+                                <dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                    <dt class="text-emerald-600">Bank</dt><dd x-text="resolution.bank_detail?.bank_name"></dd>
+                                    <dt class="text-emerald-600">Beneficiary</dt><dd x-text="resolution.bank_detail?.beneficiary_name"></dd>
+                                    <dt class="text-emerald-600">IBAN / account no.</dt><dd class="font-mono" x-text="resolution.bank_detail?.iban || resolution.bank_detail?.account_number"></dd>
+                                    <dt class="text-emerald-600">SWIFT/BIC</dt><dd class="font-mono" x-text="resolution.bank_detail?.swift_bic"></dd>
+                                    <dt class="text-emerald-600">Bank country</dt><dd x-text="resolution.bank_detail?.bank_country"></dd>
+                                    <template x-if="resolution.bank_detail?.intermediary_bank_name">
+                                        <dt class="text-emerald-600">Intermediary bank</dt>
+                                    </template>
+                                    <template x-if="resolution.bank_detail?.intermediary_bank_name">
+                                        <dd x-text="resolution.bank_detail?.intermediary_bank_name"></dd>
+                                    </template>
+                                </dl>
+                            </div>
+                        </template>
+                        <template x-if="!resolution.found">
+                            <div class="rounded-md border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                                No bank details on file for <span x-text="resolution.supplier_name"></span> in <span x-text="resolution.currency"></span>. The voucher can still be saved; add remittance details on the supplier's page first if this payment needs them.
+                            </div>
+                        </template>
                     </div>
                 </section>
 
@@ -269,4 +310,29 @@
             </section>
         @endif
     </div>
+
+    <script>
+        // T14 -- re-resolves BankPaymentController::resolveSupplierBankAjax() whenever the
+        // pay-from or pay-to account changes on this voucher's edit screen, so the panel above
+        // never shows a stale currency's default after an unsaved change.
+        function bankDetailResolution(initial) {
+            return {
+                resolution: initial || { is_supplier_target: false },
+                resolveBankDetail() {
+                    const accountId = document.getElementById('account_id')?.value;
+                    const payFromId = document.getElementById('pay_from_account')?.value;
+                    if (!accountId) {
+                        this.resolution = { is_supplier_target: false };
+                        return;
+                    }
+                    const params = new URLSearchParams({ account_id: accountId });
+                    if (payFromId) params.set('pay_from_account_id', payFromId);
+                    fetch(`/bank-payments/resolve-supplier-bank?${params.toString()}`, { headers: { 'Accept': 'application/json' } })
+                        .then(r => r.json())
+                        .then(data => { this.resolution = data; })
+                        .catch(() => { this.resolution = { is_supplier_target: false }; });
+                },
+            };
+        }
+    </script>
 </x-app-layout>

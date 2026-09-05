@@ -281,21 +281,47 @@ final class YearEndCloseService
         // own explicit self-balancing pair (Cr 3200 / Dr RETAINED_EARNINGS) so a reviewer reading
         // the posted document sees the two effects (P&L sweep vs dividend sweep) as two distinct,
         // separately-labelled pairs on the same document, not one merged number.
-        $dividendsAccount = $this->accountResolver->resolve('DIVIDENDS_PAID', $companyId);
+        //
+        // Adversarial-verification fix (post-T5 commit): DIVIDENDS_PAID must resolve via
+        // AccountResolver()->resolve() to LOOK UP the leaf, but that call throws
+        // UnmappedPurposeException the moment ANY company has no system_accounts row for the
+        // purpose yet — a real, pre-existing state (a company whose registry setup never ran, or
+        // ran before T0a introduced this purpose). Pre-T5, a no-activity year for such a company
+        // short-circuited cleanly at the (now-later) `$lines === []` check without ever touching
+        // the registry; this unconditional resolve() call regressed that into a hard 500
+        // (PeriodControllerTest::test_close_year_endpoint_succeeds_as_a_no_op_when_every_month_is_locked_with_no_activity,
+        // caught by adversarial verification, not by this task's own fixtures — every T5 fixture
+        // runs the full SystemAccountsSeeder, which always maps DIVIDENDS_PAID). An unmapped
+        // purpose is treated the same as "leaf has zero movement" — nothing to sweep, not a
+        // failure — mirroring how the Income/Expenses loop above naturally no-ops when a company
+        // has no matching leaves at all.
+        $dividendsAccount = null;
+        $dividendBalance = 0.0;
 
-        $dividendTotals = DB::table('journal_entries')
-            ->where('account_id', $dividendsAccount->id)
-            ->whereNull('deleted_at')
-            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$yearStart, $yearEnd])
-            ->selectRaw('COALESCE(SUM(debit),0) as d, COALESCE(SUM(credit),0) as c')
-            ->first();
+        $dividendsMapped = DB::table('system_accounts')
+            ->where('company_id', $companyId)
+            ->where('purpose_code', 'DIVIDENDS_PAID')
+            ->whereNull('service_type')
+            ->exists();
 
-        // Debit-normal: a positive balance is the ordinary "dividends paid this year" case (Dr
-        // 3200). A negative balance (net credits — e.g. a reversed/corrected dividend entry) is
-        // handled by the mirrored sweep direction below, same defensive symmetry the Income/
-        // Expenses loop above already applies.
-        $dividendBalance = (float) $dividendTotals->d - (float) $dividendTotals->c;
-        $hasDividendSweep = abs($dividendBalance) > $tolerance;
+        if ($dividendsMapped) {
+            $dividendsAccount = $this->accountResolver->resolve('DIVIDENDS_PAID', $companyId);
+
+            $dividendTotals = DB::table('journal_entries')
+                ->where('account_id', $dividendsAccount->id)
+                ->whereNull('deleted_at')
+                ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$yearStart, $yearEnd])
+                ->selectRaw('COALESCE(SUM(debit),0) as d, COALESCE(SUM(credit),0) as c')
+                ->first();
+
+            // Debit-normal: a positive balance is the ordinary "dividends paid this year" case (Dr
+            // 3200). A negative balance (net credits — e.g. a reversed/corrected dividend entry) is
+            // handled by the mirrored sweep direction below, same defensive symmetry the Income/
+            // Expenses loop above already applies.
+            $dividendBalance = (float) $dividendTotals->d - (float) $dividendTotals->c;
+        }
+
+        $hasDividendSweep = $dividendsAccount !== null && abs($dividendBalance) > $tolerance;
 
         if ($lines === [] && ! $hasDividendSweep) {
             return [[], 0.0];

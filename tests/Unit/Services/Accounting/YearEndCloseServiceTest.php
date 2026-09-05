@@ -314,4 +314,35 @@ class YearEndCloseServiceTest extends AccountingTestCase
         $this->assertNotNull($dividendSweepLine);
         $this->assertEqualsWithDelta(75.0, (float) $dividendSweepLine->credit, 0.001);
     }
+
+    /**
+     * ADVERSARIAL VERIFICATION regression pin (T5-T6 review, 2026-09-02): a company with NO
+     * chart of accounts and NO system_accounts mapping at all (CoaSeeder/SystemAccountsSeeder
+     * never run -- exactly {@see \Tests\Feature\Accounting\PeriodControllerTest}
+     * ::makeCompanyAndAdmin()'s fixture, which this pins directly) must still close a no-activity
+     * year as a clean no-op, exactly like it did before T5. The original commit unconditionally
+     * called AccountResolver::resolve('DIVIDENDS_PAID', ...) before the empty-P&L short-circuit,
+     * which throws UnmappedPurposeException the moment a company has no system_accounts row for
+     * the purpose -- turning a legitimate no-op into a hard 500
+     * (PeriodControllerTest::test_close_year_endpoint_succeeds_as_a_no_op_when_every_month_is_locked_with_no_activity
+     * caught this; none of T5's own fixtures did, since every one of them runs the full
+     * SystemAccountsSeeder first). Fixed by checking system_accounts for a DIVIDENDS_PAID mapping
+     * before resolving it, treating "unmapped" the same as "zero movement" -- not a failure.
+     */
+    public function test_close_with_no_coa_and_no_system_accounts_mapping_at_all_is_a_clean_no_op(): void
+    {
+        $company = Company::factory()->create();
+        // Deliberately NOT calling CoaSeeder::run() or SystemAccountsSeeder -- no accounts, no
+        // system_accounts rows exist for this company at all.
+        config(['accounting.engine.enabled' => true]);
+        $this->trackCompanyForInvariants($company->id);
+        $this->lockAllMonths($company, 2026);
+
+        $result = $this->service()->run($company->id, 2026, null);
+
+        $this->assertTrue($result['success'], 'A company with no COA/registry at all must still close a no-activity year as a no-op, not a 500.');
+        $this->assertFalse($result['already_closed']);
+        $this->assertNull($result['transaction']);
+        $this->assertEqualsWithDelta(0.0, (float) $result['net_profit'], 0.001);
+    }
 }

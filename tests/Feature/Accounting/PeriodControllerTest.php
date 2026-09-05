@@ -12,6 +12,7 @@ use App\Models\Company;
 use App\Models\Role;
 use App\Models\Transaction;
 use App\Models\User;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -22,9 +23,12 @@ use Tests\Support\AccountingTestCase;
  */
 class PeriodControllerTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     private function makeCompanyAndAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $admin = User::factory()->create(['role_id' => Role::ADMIN]);
         session(['company_id' => $company->id]);
         $this->trackCompanyForInvariants($company->id);
@@ -54,6 +58,7 @@ class PeriodControllerTest extends AccountingTestCase
     public function test_guest_is_redirected_to_login(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
 
         $response = $this->get(route('accounting.periods.index', ['company_id' => $company->id]));
@@ -123,6 +128,7 @@ class PeriodControllerTest extends AccountingTestCase
     public function test_close_endpoint_forbids_a_role_with_no_permission(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $agent = $this->makeAgentInCompany($company);
         $this->trackCompanyForInvariants($company->id);
 
@@ -169,6 +175,7 @@ class PeriodControllerTest extends AccountingTestCase
     public function test_reopen_endpoint_forbids_a_role_with_no_permission(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $agent = $this->makeAgentInCompany($company);
         $this->trackCompanyForInvariants($company->id);
         AccountingPeriod::create(['company_id' => $company->id, 'year' => 2026, 'month' => 3, 'status' => AccountingPeriod::STATUS_LOCKED]);

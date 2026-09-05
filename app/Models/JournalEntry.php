@@ -40,6 +40,10 @@ class JournalEntry extends Model
         'auth_no',
         'reconciled',
         'reconciled_ref_id',
+        // accounting-builds T0b (M1, L12): the settlement rail a line moved through
+        // (`tap:knet`, `bank:transfer`, …). Written ONLY by PostingService — see this column's
+        // own migration docblock and ArchitectureTest::test_no_post_hoc_settlement_channel_updates().
+        'settlement_channel',
         'task_id',
         'original_currency',
         'original_amount',

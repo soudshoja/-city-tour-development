@@ -1421,6 +1421,10 @@ final class PostingService
                     'cheque_clearance_date' => $line->chequeClearanceDate,
                     'bank_info' => $this->truncateNullable($line->bankInfo, 200),
                     'auth_no' => $this->truncateNullable($line->authNo, 100),
+                    // accounting-builds T0b (M1, L12): write-through only, never a post-hoc
+                    // ->update() elsewhere — see LineDraft::$settlementChannel's own docblock and
+                    // ArchitectureTest::test_no_post_hoc_settlement_channel_updates().
+                    'settlement_channel' => $this->truncateNullable($line->settlementChannel, 24),
                 ]);
             }
 
@@ -1685,6 +1689,7 @@ final class PostingService
                     // state of a specific instance in time, not audit-trail identity, and a
                     // reversal does not itself clear or un-clear anything; W5.R's own bounce flow
                     // builds its own explicit LineDraft for that state change.
+                    settlementChannel: $original->settlement_channel,
                     chequeNo: $original->cheque_no,
                     // JournalEntry casts neither cheque_date column as a Carbon/date (only
                     // is_locked/locked_at are cast — see that model's own $casts) — the raw

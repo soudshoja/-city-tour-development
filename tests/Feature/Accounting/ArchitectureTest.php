@@ -401,6 +401,81 @@ class ArchitectureTest extends TestCase
     }
 
     /**
+     * accounting-builds T0b (M1, L12, MP-0b-2): "written ONLY by PostingService, never a post-hoc
+     * `->update(['settlement_channel' => ...])`" — the `TaskStatusService` `reason_tag` post-hoc
+     * pattern (two existing sites, see §10 of the accounting-builds phase plan) is EXPLICITLY not
+     * to be copied for this new column. A permanent CI ratchet, not skipped — this build introduces
+     * ZERO post-hoc writers of this column anywhere (the only write site is PostingService::post()'s
+     * own step-8 INSERT), so this assertion protects a status quo that is already true everywhere
+     * today, same convention as {@see self::test_no_new_writes_of_ticketed_or_refunded_task_status()}
+     * and {@see self::test_no_report_query_periodizes_journal_entries_on_created_at()} above.
+     *
+     * Deliberately excludes app/Services/Accounting/ (the engine's own directory, same convention
+     * as the raw-writer scan above) — PostingService::post()'s own INSERT (not an ->update() call
+     * at all) never matches this pattern regardless.
+     */
+    public function test_no_post_hoc_settlement_channel_updates(): void
+    {
+        $violations = $this->findPostHocSettlementChannelUpdates();
+
+        $this->assertEmpty(
+            $violations,
+            "Post-hoc JournalEntry::...->update(['settlement_channel' => ...]) found outside "
+                ."App\\Services\\Accounting\\ (L12: written ONLY by PostingService's own INSERT, "
+                ."never a post-hoc update — do not copy the TaskStatusService reason_tag "
+                ."anti-pattern):\n".implode("\n", $violations)
+        );
+    }
+
+    /**
+     * @return string[] absolute paths with a hit.
+     */
+    private function findPostHocSettlementChannelUpdates(): array
+    {
+        $appDir = base_path('app');
+        $allowedDir = str_replace('\\', '/', base_path('app/Services/Accounting'));
+
+        $violations = [];
+
+        if (! is_dir($appDir)) {
+            return $violations;
+        }
+
+        // Same shape as the raw-writer scan's debit/credit ->update() pattern above, scoped to
+        // 'settlement_channel' instead — any receiver (JournalEntry::where(...), a resolved
+        // model variable, etc.) chaining ->update([...'settlement_channel'...]).
+        $pattern = '/->\s*update\s*\(\s*\[[^\]]*[\'"]settlement_channel[\'"]/s';
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($appDir, FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || strtolower($file->getExtension()) !== 'php') {
+                continue;
+            }
+
+            $realPath = $file->getRealPath();
+            $normalizedPath = str_replace('\\', '/', $realPath);
+
+            if (str_starts_with($normalizedPath, $allowedDir)) {
+                continue;
+            }
+
+            $contents = file_get_contents($realPath);
+            if ($contents === false) {
+                continue;
+            }
+
+            if (preg_match($pattern, $contents) === 1) {
+                $violations[] = $realPath;
+            }
+        }
+
+        return $violations;
+    }
+
+    /**
      * P2.5.B (p2_5-brief.md §P2.5.B; BUG-C4, doc 08): "Add ArchitectureTest rule: no report query
      * references journal_entries.created_at for period filtering." A permanent CI ratchet, not
      * skipped -- ReportController::profitLoss() (the one confirmed BUG-C4 offender) and every

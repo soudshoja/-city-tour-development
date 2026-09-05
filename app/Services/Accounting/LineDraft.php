@@ -153,5 +153,10 @@ final class LineDraft
         // journal_entries.cheque_clearance_date
         public readonly ?int $reconciled = null, // W5.P fix -> journal_entries.reconciled; falls
         // back to 0 when null. See class docblock's "W5.P FIX ROUND" note.
+        public readonly ?string $settlementChannel = null, // accounting-builds T0b (M1, L12) ->
+        // journal_entries.settlement_channel (varchar(24), e.g. 'tap:knet', 'bank:transfer').
+        // Null by default (unchanged behaviour for every feeder that doesn't set it).
+        // PostingService::post() writes it verbatim at step 8; reverse()'s reconstruction carries
+        // it over from the original line (see PostingService's own MP-0b-1 note on that copy).
     ) {}
 }

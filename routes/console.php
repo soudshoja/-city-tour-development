@@ -83,6 +83,20 @@ Schedule::command('accounting:reconcile --auto')
         \Illuminate\Support\Facades\Log::error('accounting:reconcile --auto nightly run failed');
     });
 
+// accounting-builds T3 (Lane B): monthly straight-line depreciation, on the 1st of the month —
+// posts DEP documents for the PREVIOUS calendar month (FixedAssetsDepreciate's own default) for
+// every company that has at least one fixed asset. Engine-OFF companies are a logged no-op inside
+// the command itself (see DepreciationRunService's own docblock) — this schedule entry does not
+// need its own engine-flag check.
+Schedule::command('fixed-assets:depreciate', ['--all-companies' => true])
+    ->monthlyOn(1, '00:30')
+    ->withoutOverlapping(120)
+    ->runInBackground()
+    ->appendOutputTo(storage_path('logs/fixed-assets-depreciate.log'))
+    ->onFailure(function () {
+        \Illuminate\Support\Facades\Log::error('fixed-assets:depreciate nightly run failed');
+    });
+
 // Akeed-DOTW static data sync (countries + cities) — every Sunday at 03:00 KWT
 Schedule::command('dotwai:sync-static')
     ->weekly()

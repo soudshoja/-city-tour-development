@@ -21,6 +21,7 @@ use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -33,6 +34,8 @@ use Tests\Support\AccountingTestCase;
  */
 class FixedAssetControllerTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     private function assets(): FixedAssetService
     {
         return app(FixedAssetService::class);
@@ -47,6 +50,7 @@ class FixedAssetControllerTest extends AccountingTestCase
     private function makeEngineOnCompanyWithAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
         (new SystemAccountsSeeder)->run();
 
@@ -65,6 +69,7 @@ class FixedAssetControllerTest extends AccountingTestCase
     private function makeEngineOffCompanyWithAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
         (new SystemAccountsSeeder)->run();
 
@@ -120,6 +125,7 @@ class FixedAssetControllerTest extends AccountingTestCase
     public function test_guest_is_redirected_to_login(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
 
         $response = $this->get(route('accounting.fixed-assets.index'));
@@ -130,6 +136,7 @@ class FixedAssetControllerTest extends AccountingTestCase
     public function test_index_403s_for_an_unauthorized_agent(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $agent = $this->makeAgentInCompany($company);
         $this->trackCompanyForInvariants($company->id);
 
@@ -141,6 +148,7 @@ class FixedAssetControllerTest extends AccountingTestCase
     public function test_create_403s_for_an_unauthorized_agent(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $agent = $this->makeAgentInCompany($company);
         $this->trackCompanyForInvariants($company->id);
 
@@ -152,6 +160,7 @@ class FixedAssetControllerTest extends AccountingTestCase
     public function test_store_403s_for_an_unauthorized_agent(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $agent = $this->makeAgentInCompany($company);
         $this->trackCompanyForInvariants($company->id);
 
@@ -167,6 +176,7 @@ class FixedAssetControllerTest extends AccountingTestCase
     public function test_depreciate_form_403s_for_an_unauthorized_agent(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $agent = $this->makeAgentInCompany($company);
         $this->trackCompanyForInvariants($company->id);
 
@@ -469,6 +479,7 @@ class FixedAssetControllerTest extends AccountingTestCase
         $foreignAsset = $this->makeDraftAsset($companyA);
 
         $companyB = Company::factory()->create();
+        $this->grantAccountingModule($companyB);
         CoaSeeder::run($companyB->id);
         (new SystemAccountsSeeder)->run();
         $adminB = User::factory()->create(['role_id' => Role::ADMIN]);
@@ -486,6 +497,7 @@ class FixedAssetControllerTest extends AccountingTestCase
         $foreignAsset = $this->makeDraftAsset($companyA);
 
         $companyB = Company::factory()->create();
+        $this->grantAccountingModule($companyB);
         CoaSeeder::run($companyB->id);
         (new SystemAccountsSeeder)->run();
         $adminB = User::factory()->create(['role_id' => Role::ADMIN]);
@@ -503,6 +515,7 @@ class FixedAssetControllerTest extends AccountingTestCase
         $foreignAsset = $this->makeActiveAsset($companyA);
 
         $companyB = Company::factory()->create();
+        $this->grantAccountingModule($companyB);
         CoaSeeder::run($companyB->id);
         (new SystemAccountsSeeder)->run();
         $adminB = User::factory()->create(['role_id' => Role::ADMIN]);
@@ -523,6 +536,7 @@ class FixedAssetControllerTest extends AccountingTestCase
         $this->makeDraftAsset($companyA, ['name' => 'Company A Asset']);
 
         $companyB = Company::factory()->create();
+        $this->grantAccountingModule($companyB);
         CoaSeeder::run($companyB->id);
         (new SystemAccountsSeeder)->run();
         $this->trackCompanyForInvariants($companyB->id);

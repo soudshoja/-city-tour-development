@@ -58,6 +58,17 @@ use Illuminate\Support\Facades\DB;
  * top of the fact that a second run's OWN P&L query would in practice already see every leaf back
  * at zero net movement (the first YEC's own lines are dated inside the year and therefore counted),
  * so there would be nothing left to sweep even without this explicit short-circuit.
+ *
+ * ── Dividend sweep (accounting-builds T5, L9) ─────────────────────────────────────────────────────
+ * The SAME document also sweeps Dividends Paid (3200, `DIVIDENDS_PAID` purpose, debit-normal) to
+ * Retained Earnings, as two ADDITIONAL lines appended after the P&L block: Cr 3200 (zeroing the
+ * year's dividend movement) / Dr `RETAINED_EARNINGS` for the same amount — its own self-balancing
+ * pair, independent of `$netProfit`, which the dividend sweep never alters (dividends are a
+ * distribution of profit, not an expense). Kept inside this SAME `YEC` document — never a second
+ * document — so `TrialBalanceService`'s whole-document YEC movement-exclusion (see that class's own
+ * docblock) covers both sweeps identically; a separate document would let one sweep's movement stay
+ * excluded while the other's leaked into the closing year's own trial balance. See
+ * {@see self::buildClosingLines()} for the literal implementation.
  */
 final class YearEndCloseService
 {
@@ -251,7 +262,42 @@ final class YearEndCloseService
             }
         }
 
-        if ($lines === []) {
+        // accounting-builds T5 (L9): dividend sweep. Dividends Paid (3200, DIVIDENDS_PAID purpose,
+        // debit-normal) is closed to Retained Earnings as ADDITIONAL lines inside this SAME YEC
+        // document, after the P&L block above — never a separate document. Posting it separately
+        // would let TrialBalanceService's whole-document YEC exclusion (keyed off doc_type='YEC',
+        // one document at a time) exclude the P&L sweep's movement but NOT this one (or vice
+        // versa), reintroducing exactly the same-year self-zeroing bug the exclusion rule exists to
+        // prevent — see YearEndCloseReportExclusionTest and this task's own MP-5-2 (adversarial
+        // verification: moving this pair to a second document must fail that test).
+        //
+        // Computed and queried the identical way the P&L leaves above are (COALESCE(posting_date,
+        // transaction_date), whereBetween $yearStart/$yearEnd, deleted_at excluded) so it is
+        // subject to the exact same period-movement semantics — no separate rule to keep in sync.
+        //
+        // Deliberately NOT folded into $netProfit (dividends are a DISTRIBUTION of profit, not an
+        // expense that reduces it — MP-5-1 pins this: folding it in must fail the net_profit
+        // assertion) and NOT merged into the net-profit Retained-Earnings line below — kept as its
+        // own explicit self-balancing pair (Cr 3200 / Dr RETAINED_EARNINGS) so a reviewer reading
+        // the posted document sees the two effects (P&L sweep vs dividend sweep) as two distinct,
+        // separately-labelled pairs on the same document, not one merged number.
+        $dividendsAccount = $this->accountResolver->resolve('DIVIDENDS_PAID', $companyId);
+
+        $dividendTotals = DB::table('journal_entries')
+            ->where('account_id', $dividendsAccount->id)
+            ->whereNull('deleted_at')
+            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$yearStart, $yearEnd])
+            ->selectRaw('COALESCE(SUM(debit),0) as d, COALESCE(SUM(credit),0) as c')
+            ->first();
+
+        // Debit-normal: a positive balance is the ordinary "dividends paid this year" case (Dr
+        // 3200). A negative balance (net credits — e.g. a reversed/corrected dividend entry) is
+        // handled by the mirrored sweep direction below, same defensive symmetry the Income/
+        // Expenses loop above already applies.
+        $dividendBalance = (float) $dividendTotals->d - (float) $dividendTotals->c;
+        $hasDividendSweep = abs($dividendBalance) > $tolerance;
+
+        if ($lines === [] && ! $hasDividendSweep) {
             return [[], 0.0];
         }
 
@@ -268,6 +314,38 @@ final class YearEndCloseService
                 exchangeRate: 1.0,
                 transactionType: 'YEAR_END_CLOSE',
                 description: 'Net profit/loss for the fiscal year swept to Retained Earnings.',
+            );
+        }
+
+        if ($hasDividendSweep) {
+            $dividendAmount = abs($dividendBalance);
+            // Zero the leaf: credit it when its own year balance is a normal positive debit
+            // (the ordinary "dividends paid" case), mirrored otherwise — same flip convention the
+            // Income/Expenses loop above documents in this class's own docblock proof.
+            $sweepSide = $dividendBalance > 0 ? 'credit' : 'debit';
+            $retainedEarningsSide = $dividendBalance > 0 ? 'debit' : 'credit';
+
+            $lines[] = new LineDraft(
+                purposeCode: '',
+                accountId: $dividendsAccount->id,
+                side: $sweepSide,
+                amount: $dividendAmount,
+                currency: (string) config('accounting.engine.base_currency', 'KWD'),
+                originalAmount: $dividendAmount,
+                exchangeRate: 1.0,
+                transactionType: 'YEAR_END_CLOSE',
+                description: "Year-end sweep of Dividends Paid (code {$dividendsAccount->code}) to Retained Earnings.",
+            );
+            $lines[] = new LineDraft(
+                purposeCode: '',
+                accountId: $retainedEarnings->id,
+                side: $retainedEarningsSide,
+                amount: $dividendAmount,
+                currency: (string) config('accounting.engine.base_currency', 'KWD'),
+                originalAmount: $dividendAmount,
+                exchangeRate: 1.0,
+                transactionType: 'YEAR_END_CLOSE',
+                description: 'Dividends paid for the fiscal year swept to Retained Earnings.',
             );
         }
 

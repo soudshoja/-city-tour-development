@@ -400,4 +400,114 @@ class YearEndCloseReportExclusionTest extends AccountingTestCase
         $spanIncomeOpening = $spanOpening[$incomeAccount->id] ?? ['opening_debit' => 0.0, 'opening_credit' => 0.0];
         $this->assertEqualsWithDelta(0.0, $spanIncomeOpening['opening_credit'] - $spanIncomeOpening['opening_debit'], 0.001, 'Nothing predates 2026 in this fixture, so the spanning range must open at zero.');
     }
+
+    /**
+     * T5 (dividend sweep, L9): posts a Dr 3200 (Dividends Paid) / Cr 1201 (bank) pair for the
+     * year, same fixture shape as postPlAndAr(). Reused by every dividend-exclusion test below.
+     */
+    private function postDividendPayment(Company $company, Branch $branch, int $year, float $amount): Account
+    {
+        $dividends = $this->resolver()->resolve('DIVIDENDS_PAID', $company->id);
+        $bank = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1201')->firstOrFail();
+        $date = Carbon::create($year, 9, 1);
+
+        $txn = Transaction::forceCreate([
+            'company_id' => $company->id, 'branch_id' => $branch->id, 'entity_id' => $company->id, 'entity_type' => 'company',
+            'transaction_type' => 'JV', 'amount' => $amount, 'description' => 'Dividend payment fixture', 'reference_type' => 'Payment',
+            'reference_number' => 'DIV-'.uniqid(), 'name' => 'Dividend payment fixture', 'transaction_date' => $date, 'posting_date' => $date,
+            'doc_type' => 'JV', 'doc_year' => $year, 'posting_status' => 'posted',
+            'total_debit' => $amount, 'total_credit' => $amount, 'idempotency_key' => uniqid('div:'),
+        ]);
+
+        $this->makeLine($txn, $company, $branch, $dividends, $amount, 0, $date);
+        $this->makeLine($txn, $company, $branch, $bank, 0, $amount, $date);
+
+        return $dividends;
+    }
+
+    /**
+     * T5 (L9): (1) 3200's own real year movement (the Dr 100 dividend payment) must still show,
+     * un-zeroed, in the closing year's OWN trial-balance movement -- exactly the same whole-
+     * document YEC exclusion the Income/Expense leaves already get, now proven for the dividend
+     * leaf too. (2) Opening balances for the NEXT year must show 3200 back at zero (the sweep IS
+     * included in getOpeningBalances(), same as the Income/Expense zeroing) -- "3200 has zero
+     * carried balance into the new year" from the task spec, pinned directly.
+     */
+    public function test_dividend_sweep_movement_excluded_from_same_year_report_but_included_in_next_year_opening(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $dividendsAccount = $this->postDividendPayment($company, $branch, 2026, 100);
+
+        [$yearStart, $yearEnd] = $this->yearBounds(2026);
+
+        $before = $this->trialBalance()->generate($company->id, $yearStart, $yearEnd, ['show_zero' => true]);
+        $dividendRowBefore = collect($before['accounts'])->firstWhere('id', $dividendsAccount->id);
+        $this->assertEqualsWithDelta(100.0, (float) $dividendRowBefore->total_debit, 0.001);
+        $this->assertEqualsWithDelta(0.0, (float) $dividendRowBefore->total_credit, 0.001);
+
+        $closeResult = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($closeResult['success']);
+        $this->assertNotNull($closeResult['transaction']);
+
+        // (1) Same-year movement, re-queried after close: 3200's real Dr 100 must still show
+        // un-zeroed -- the YEC's own Cr 100 sweep line, dated inside this same year, is excluded
+        // as part of the whole YEC document, exactly like the Income/Expense leaves.
+        $after = $this->trialBalance()->generate($company->id, $yearStart, $yearEnd, ['show_zero' => true]);
+        $dividendRowAfter = collect($after['accounts'])->firstWhere('id', $dividendsAccount->id);
+        $this->assertEqualsWithDelta(100.0, (float) $dividendRowAfter->total_debit, 0.001, 'Dividends Paid movement for the closed year must remain 100, not swept to zero by the YEC lines landing in the same date range.');
+        $this->assertEqualsWithDelta(0.0, (float) $dividendRowAfter->total_credit, 0.001, 'Dividends Paid must not pick up its own YEC zeroing credit inside the same-year movement query.');
+
+        // (2) Opening balances for 2027: 3200 must be back at net zero -- the sweep IS counted in
+        // getOpeningBalances() (no YEC exclusion there, same rule the Income/Expense leaves rely
+        // on for their own zero opening).
+        $openingForNextYear = $this->trialBalance()->getOpeningBalances($company->id, Carbon::create(2027, 1, 1));
+        $dividendOpening = $openingForNextYear[$dividendsAccount->id] ?? ['opening_debit' => 0.0, 'opening_credit' => 0.0];
+        $this->assertEqualsWithDelta(
+            0.0,
+            $dividendOpening['opening_debit'] - $dividendOpening['opening_credit'],
+            0.001,
+            'Dividends Paid must carry a ZERO balance into 2027 opening -- the year-end sweep must zero it out, same as every other swept leaf.'
+        );
+
+        // Retained Earnings opening for 2027 must now be net profit (300) minus dividends (100) = 200.
+        $retainedEarnings = $this->resolver()->resolve('RETAINED_EARNINGS', $company->id);
+        $reOpening = $openingForNextYear[$retainedEarnings->id] ?? ['opening_debit' => 0.0, 'opening_credit' => 0.0];
+        $this->assertEqualsWithDelta(200.0, $reOpening['opening_credit'] - $reOpening['opening_debit'], 0.001, 'Retained Earnings must open 2027 carrying profit (300) minus the dividend sweep (100) = 200.');
+    }
+
+    /**
+     * T5: multi-year case -- Y1 (2026) has P&L + a dividend, closed; Y2 (2027) has its own,
+     * different dividend and is ALSO closed. Pins that each year's own dividend sweep is
+     * independent -- Y2's sweep does not disturb Y1's already-swept 3200/RE figures, and Y2's own
+     * opening for 2028 reflects the CUMULATIVE effect of both years' dividends.
+     */
+    public function test_multi_year_dividend_sweep_is_independent_per_year(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $dividendsAccount = $this->postDividendPayment($company, $branch, 2026, 100);
+        $y1Close = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($y1Close['success']);
+
+        $this->lockAllMonths($company, 2027);
+        $this->postPlAndAr($company, $branch, 2027, income: 800, expense: 300);
+        $this->postDividendPayment($company, $branch, 2027, 150);
+        $y2Close = $this->service()->run($company->id, 2027, null);
+        $this->assertTrue($y2Close['success']);
+        $this->assertEqualsWithDelta(500.0, $y2Close['net_profit'], 0.001, 'Y2 net_profit (800-300) must be unaffected by Y1s already-closed dividend sweep.');
+
+        $retainedEarnings = $this->resolver()->resolve('RETAINED_EARNINGS', $company->id);
+        $opening2028 = $this->trialBalance()->getOpeningBalances($company->id, Carbon::create(2028, 1, 1));
+
+        // 3200 must be back at zero going into 2028 -- both years' dividend sweeps applied.
+        $dividendOpening2028 = $opening2028[$dividendsAccount->id] ?? ['opening_debit' => 0.0, 'opening_credit' => 0.0];
+        $this->assertEqualsWithDelta(0.0, $dividendOpening2028['opening_debit'] - $dividendOpening2028['opening_credit'], 0.001, 'Dividends Paid must carry zero into 2028 -- both years dividend sweeps applied.');
+
+        // Retained Earnings cumulative: Y1 (300-100=200) + Y2 (500-150=350) = 550.
+        $reOpening2028 = $opening2028[$retainedEarnings->id] ?? ['opening_debit' => 0.0, 'opening_credit' => 0.0];
+        $this->assertEqualsWithDelta(550.0, $reOpening2028['opening_credit'] - $reOpening2028['opening_debit'], 0.001, 'Retained Earnings 2028 opening must be the cumulative net of both years profit-minus-dividends: (300-100)+(500-150)=550.');
+    }
 }

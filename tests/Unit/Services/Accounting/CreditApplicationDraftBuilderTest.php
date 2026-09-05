@@ -383,11 +383,25 @@ class CreditApplicationDraftBuilderTest extends AccountingTestCase
      * W2c fix (R-a): when no CurrencyExchange row exists for the invoice's currency pair, the
      * builder must not throw or silently mislabel — it falls back to exchangeRate = 1.0 and logs
      * a loud, observable warning instead.
+     *
+     * accounting-builds T1 (F1/Q2 fix): the builder now tries the invoice's own POSTED INV-rate
+     * FIRST (see resolvePostedInvoiceRate()'s own docblock) — no INV document is posted in this
+     * test's fixture, so that lookup finds nothing and logs
+     * 'accounting.credit_apply_rate_fallback_live_lookup' (info) before falling through to the
+     * SAME live-lookup path this test already exercised, which then finds no CurrencyExchange row
+     * either and hits the ORIGINAL 'accounting.fx_rate_missing' warning unchanged.
      */
     public function test_missing_exchange_rate_falls_back_to_one_and_logs_warning(): void
     {
         $tenant = $this->createTenant();
         $invoice = $this->makeInvoice($tenant, 50.0, 'GBP');
+
+        Log::shouldReceive('info')
+            ->once()
+            ->with('accounting.credit_apply_rate_fallback_live_lookup', \Mockery::on(function (array $context) use ($invoice) {
+                return $context['invoice_id'] === $invoice->id
+                    && $context['currency'] === 'GBP';
+            }));
 
         Log::shouldReceive('warning')
             ->once()

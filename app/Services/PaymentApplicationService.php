@@ -15,6 +15,7 @@ use App\Services\Accounting\CreditApplicationDraftBuilder;
 use App\Services\Accounting\CreditApplicationInput;
 use App\Services\Accounting\PostedDocument;
 use App\Services\Accounting\PostingSeam;
+use App\Services\Accounting\RealisedFxService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -978,6 +979,33 @@ class PaymentApplicationService
 
         try {
             $posted = $seam->post($draft, $legacy, 'payment-application.credit-apply');
+
+            if ($posted instanceof PostedDocument) {
+                // accounting-builds T1 (Lane A — realised FX on apply, PLAN.md §5): one FXR
+                // document per application, posted right after the credit-apply JV itself. Only
+                // reachable on the genuine ON path (a real engine document was just posted) — the
+                // OFF path (the legacy closure's own return value, or a bare null per PostingSeam's
+                // S1) has no engine-posted source/applied lines to compare against and is a
+                // documented no-op (L2); RealisedFxService::postForApply() would itself route OFF
+                // through the seam's own no-op branch even if called, but skipping the call
+                // entirely here avoids the pointless line-resolution queries on every OFF-path post.
+                // A CrossCurrencyApplyException (a PostingException) thrown from here is caught by
+                // the SAME `catch (PostingException $e)` below as the credit-apply document's own
+                // failures — deliberately: an FX data error is exactly as loud as an engine
+                // posting failure, and must roll back the whole application the same way.
+                $docDate = $posted->transaction->transaction_date ?? now();
+
+                foreach ($applications as $application) {
+                    app(RealisedFxService::class)->postForApplication(
+                        application: $application,
+                        invoice: $invoice,
+                        companyId: $companyId,
+                        branchId: $branchId,
+                        docDate: $docDate,
+                        userId: Auth::id(),
+                    );
+                }
+            }
 
             return $posted instanceof PostedDocument ? $posted->transaction : $posted;
         } catch (PostingException $e) {

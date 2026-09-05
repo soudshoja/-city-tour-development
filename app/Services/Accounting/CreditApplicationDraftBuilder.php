@@ -8,6 +8,7 @@ use App\Exceptions\Accounting\CreditApplicationTotalMismatchException;
 use App\Exceptions\Accounting\UnresolvedBranchException;
 use App\Http\Traits\CurrencyExchangeTrait;
 use App\Models\Invoice;
+use App\Models\JournalEntry;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -135,6 +136,14 @@ final class CreditApplicationDraftBuilder
 {
     use CurrencyExchangeTrait;
 
+    public function __construct(
+        // accounting-builds T1 (F1/Q2 fix, see build()'s own docblock note below): resolves the
+        // invoice's own POSTED INV-document RECEIVABLE_CONTROL rate. Plain constructor DI, same
+        // convention every other engine-layer class in this directory uses (no explicit binding —
+        // see PostingSeam's own docblock).
+        private readonly AccountResolver $accounts = new AccountResolver(),
+    ) {}
+
     /**
      * @param  CreditApplicationInput[]  $applications  The full set submitted for this event —
      *                                                   including any this method goes on to skip for being zero/negative. Must be
@@ -199,7 +208,33 @@ final class CreditApplicationDraftBuilder
 
         $exchangeRate = 1.0;
         if (! $isBaseCurrency) {
-            $resolvedRate = $this->getExchangeRate($companyId, $invoiceCurrency, $baseCurrency);
+            // accounting-builds T1 (F1/Q2 fix — owner ruling, 2026-09-02: "Applies must use the
+            // POSTED invoice rate"). The original W2c cut resolved a CURRENT lookup rate here via
+            // CurrencyExchangeTrait::getExchangeRate() — the app's one rate table
+            // (`currency_exchanges`) is a single MUTABLE row with no effective dating, so "the
+            // rate as of the invoice's own posting" cannot be recovered from it later; a fresh
+            // lookup at apply time can silently disagree with whatever rate the invoice's own
+            // `INV` document was actually posted at, leaving a residual balance in
+            // RECEIVABLE_CONTROL for this invoice/client that this credit-apply document itself
+            // was supposed to zero out. The ONLY reliable posted rate is the one frozen on the
+            // invoice's own journal line (`journal_entries.exchange_rate`, written verbatim by
+            // PostingService step 8) — resolved here, never re-derived.
+            $resolvedRate = $this->resolvePostedInvoiceRate($invoice, $companyId);
+
+            if ($resolvedRate === null || $resolvedRate <= 0) {
+                // No posted INV-document rate exists (a legacy-era invoice whose receivable line
+                // was never engine-posted, or one with exchange_rate = 0) — fall back to the
+                // original live-lookup behaviour, but logged DISTINCTLY from the "truly missing"
+                // case below so the two causes are never confused on the 'accounting' channel.
+                Log::info('accounting.credit_apply_rate_fallback_live_lookup', [
+                    'invoice_id' => $invoice->id,
+                    'company_id' => $companyId,
+                    'currency' => $invoiceCurrency,
+                    'base_currency' => $baseCurrency,
+                ]);
+
+                $resolvedRate = $this->getExchangeRate($companyId, $invoiceCurrency, $baseCurrency);
+            }
 
             if ($resolvedRate === null || $resolvedRate <= 0) {
                 Log::warning('accounting.fx_rate_missing', [
@@ -304,5 +339,46 @@ final class CreditApplicationDraftBuilder
             // namespace ClientController::addCredit()'s success document and PaymentController's
             // own B3 failure rows already occupy.
         );
+    }
+
+    /**
+     * accounting-builds T1 (F1/Q2 fix — see build()'s own docblock note). Reads the invoice's own
+     * posted `INV`-document `RECEIVABLE_CONTROL` line's `exchange_rate` — the SAME line
+     * {@see \App\Services\Accounting\RealisedFxService::resolveAppliedLineId()} (private, mirrored
+     * logic) resolves as its own "applied line". Deliberately excludes the credit-apply JV this
+     * very method is building (that document does not exist yet at call time, so there is nothing
+     * to exclude in practice — noted only so a future caller of this helper from elsewhere does
+     * not assume otherwise) by filtering to `transactions.doc_type = 'INV'`. Returns null when no
+     * such line exists (legacy-era invoice, or one never engine-posted) — the caller falls back to
+     * a live lookup in that case, logged distinctly.
+     */
+    private function resolvePostedInvoiceRate(Invoice $invoice, int $companyId): ?float
+    {
+        try {
+            $receivableAccountId = $this->accounts->resolve('RECEIVABLE_CONTROL', $companyId)->id;
+        } catch (\Throwable) {
+            // RECEIVABLE_CONTROL unmapped for this company -- the caller's own post() call is
+            // about to fail loudly for the same reason; nothing useful to resolve here.
+            return null;
+        }
+
+        $line = JournalEntry::withoutGlobalScopes()
+            ->whereNull('journal_entries.deleted_at')
+            ->join('transactions', 'transactions.id', '=', 'journal_entries.transaction_id')
+            ->where('transactions.doc_type', 'INV')
+            ->where('transactions.company_id', $companyId)
+            ->where('journal_entries.invoice_id', $invoice->id)
+            ->where('journal_entries.account_id', $receivableAccountId)
+            ->orderBy('journal_entries.id')
+            ->select('journal_entries.exchange_rate')
+            ->first();
+
+        if ($line === null) {
+            return null;
+        }
+
+        $rate = (float) $line->exchange_rate;
+
+        return $rate > 0 ? $rate : null;
     }
 }

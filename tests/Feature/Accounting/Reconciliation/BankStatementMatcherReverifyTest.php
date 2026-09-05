@@ -531,4 +531,286 @@ class BankStatementMatcherReverifyTest extends AccountingTestCase
         $this->assertCount(1, $live);
         $this->assertSame(ReconciliationProposal::KIND_BANK_STATEMENT, (string) $live->first()->kind);
     }
+
+    // ── 6. FINAL RE-VERIFY (loop 3) — recovery, predicate coverage, cross-kind approval ─────────
+
+    /**
+     * FV-1 (recovery path). The RV-1 ruling settles a stale claim DISPUTED and deliberately does
+     * NOT fall through to the tiers. The question that leaves open is whether an operator can ever
+     * get OUT of that state when the ledger side comes back — the document was reposted
+     * ({@see \App\Services\Accounting\PostingService::repost()} = reverse the original + post a
+     * replacement), which is the ordinary way an edited receipt looks afterwards.
+     *
+     * RULING (derived, and pinned here): the matcher must NOT auto-follow the `:repost:`
+     * replacement the way {@see \App\Services\Accounting\RealisedFxService::resolveLiveSourceTransaction()}
+     * (T1) does. T1 is a headless posting feeder with no human in the loop — a skip there means the
+     * books silently miss a real gain/loss, so it must resolve the chain itself. Here the opposite
+     * holds: the stale proposal is a LIVE claim on a ledger line and the matcher never decides
+     * proposals (L13 — approve/reject is the reconciliation centre's job). Auto-re-matching would
+     * have to either supersede that live claim (deciding it) or raise a SECOND live claim (breaking
+     * the one-to-one invariant). A repost can also change the amount, which is exactly the case a
+     * human must see. So: DISPUTED + a note that names the proposal to reject, and the recovery is
+     * the operator's REJECT — after which the very next sweep matches the replacement with no
+     * further intervention. That recovery is what this test proves actually works end to end;
+     * without it the disputed state would be a dead end.
+     */
+    public function test_a_stale_disputed_line_recovers_via_reject_then_rematch_against_the_replacement(): void
+    {
+        [$company, $branch, $leaf] = $this->makeCompanyWithBankLeaf();
+        $date = Carbon::parse('2026-08-27');
+        $actor = User::factory()->create();
+
+        $original = $this->postBankLine($company, $branch, $leaf, 'debit', 310.000, $date, authNo: 'AUTH-FV-1');
+        $import = $this->makeImportWithLine($company, $leaf, [
+            'value_date' => $date, 'credit' => 310.000, 'auth_no' => 'AUTH-FV-1',
+        ]);
+
+        $this->matcher()->match($import);
+        $this->assertSame(BankStatementImportLine::STATE_MATCHED, $import->fresh(['lines'])->lines->first()->state, 'precondition');
+
+        // The document is reposted: the ORIGINAL is stamped 'reversed', a REPLACEMENT is posted
+        // carrying the same evidence (same auth_no, same amount, same date).
+        Transaction::withoutGlobalScopes()->where('id', $original->transaction_id)->update(['posting_status' => 'reversed']);
+        $replacement = $this->postBankLine($company, $branch, $leaf, 'debit', 310.000, $date, authNo: 'AUTH-FV-1');
+
+        // Sweep 1: DISPUTED, and deliberately NOT re-derived against the replacement even though a
+        // perfect candidate now exists — the stale proposal is still live.
+        $this->matcher()->match($import->fresh(['lines']));
+        $line = $import->fresh(['lines'])->lines->first();
+        $this->assertSame(BankStatementImportLine::STATE_DISPUTED, $line->state);
+        $this->assertSame($original->id, $line->matched_journal_entry_id);
+        $this->assertSame(1, ReconciliationProposal::where('company_id', $company->id)->count(), 'no second claim while the stale one is live');
+
+        // The operator does what the note tells them to: reject the stale proposal.
+        $stale = ReconciliationProposal::where('matched_reference', 'bank_stmt_line:'.$line->id)
+            ->where('status', ReconciliationProposal::STATUS_PENDING)->firstOrFail();
+        $this->assertStringContainsString('#'.$stale->id, (string) $line->note, 'the note names the proposal to reject');
+        app(ReconciliationProposalService::class)->reject($stale, 'ledger line was reversed and reposted', $actor);
+
+        // Sweep 2: recovery — the line matches the REPLACEMENT, with a fresh proposal.
+        $this->matcher()->match($import->fresh(['lines']));
+        $line = $import->fresh(['lines'])->lines->first();
+
+        $this->assertSame(BankStatementImportLine::STATE_MATCHED, $line->state, 'the disputed state must not be a dead end');
+        $this->assertSame($replacement->id, $line->matched_journal_entry_id, 'it re-matches the reposted replacement');
+        $this->assertNull($line->note);
+
+        $live = ReconciliationProposal::where('matched_reference', 'bank_stmt_line:'.$line->id)
+            ->whereIn('status', [ReconciliationProposal::STATUS_PENDING, ReconciliationProposal::STATUS_APPROVED])->get();
+        $this->assertCount(1, $live);
+        $this->assertSame($replacement->id, (int) $live->first()->book_journal_entry_id);
+        $this->assertSame(
+            2,
+            ReconciliationProposal::where('matched_reference', 'bank_stmt_line:'.$line->id)->count(),
+            'the rejected one is kept as history'
+        );
+    }
+
+    /**
+     * FV-1b. The same recovery when there is NOTHING to re-match against (the document was
+     * reversed outright, not reposted): after rejection the line settles UNMATCHED — an honest
+     * open item that the exceptions report and the close WARN both surface — rather than being
+     * stuck DISPUTED against a JE that no longer exists.
+     */
+    public function test_a_stale_disputed_line_with_no_replacement_settles_unmatched_after_rejection(): void
+    {
+        [$company, $branch, $leaf] = $this->makeCompanyWithBankLeaf();
+        $date = Carbon::parse('2026-08-28');
+        $actor = User::factory()->create();
+
+        $original = $this->postBankLine($company, $branch, $leaf, 'debit', 320.000, $date, authNo: 'AUTH-FV-2');
+        $import = $this->makeImportWithLine($company, $leaf, [
+            'value_date' => $date, 'credit' => 320.000, 'auth_no' => 'AUTH-FV-2',
+        ]);
+        $this->matcher()->match($import);
+
+        Transaction::withoutGlobalScopes()->where('id', $original->transaction_id)->update(['posting_status' => 'reversed']);
+        $this->matcher()->match($import->fresh(['lines']));
+
+        $line = $import->fresh(['lines'])->lines->first();
+        $this->assertSame(BankStatementImportLine::STATE_DISPUTED, $line->state, 'precondition');
+
+        $stale = ReconciliationProposal::where('matched_reference', 'bank_stmt_line:'.$line->id)
+            ->where('status', ReconciliationProposal::STATUS_PENDING)->firstOrFail();
+        app(ReconciliationProposalService::class)->reject($stale, 'reversed, not reposted', $actor);
+
+        $this->matcher()->match($import->fresh(['lines']));
+        $line = $import->fresh(['lines'])->lines->first();
+
+        $this->assertSame(BankStatementImportLine::STATE_UNMATCHED, $line->state);
+        $this->assertNull($line->matched_journal_entry_id);
+        $this->assertSame(
+            1,
+            ReconciliationProposal::where('matched_reference', 'bank_stmt_line:'.$line->id)->count(),
+            'no new claim is invented for a movement with no ledger evidence'
+        );
+    }
+
+    /**
+     * FV-2. The stale-claim predicate's remaining routes. RV-1/RV-1b already pin `reversed` and a
+     * soft-deleted JOURNAL LINE; these are the other three shapes the same predicate must trip on:
+     * a soft-deleted TRANSACTION (the line rows survive — `whereHas('transaction')` carries the
+     * related model's own SoftDeletingScope, which is what catches it), a transaction rolled back
+     * to `draft`, and a line MOVED to another bank leaf.
+     *
+     * The moved-leaf case is the one worth a ruling: it must trip. This import is scoped to ONE
+     * bank leaf (`account_id = $import->bank_account_id` in every tier) — a line that now sits on a
+     * different leaf is not evidence for THIS statement, whichever leaf it moved to.
+     *
+     * @dataProvider staleLedgerRoutes
+     */
+    public function test_every_route_that_makes_a_claimed_line_ineligible_trips_the_stale_check(string $route): void
+    {
+        [$company, $branch, $leaf] = $this->makeCompanyWithBankLeaf();
+        $date = Carbon::parse('2026-08-29');
+        $auth = 'AUTH-FV-3-'.substr(md5($route), 0, 6);
+
+        $bookLine = $this->postBankLine($company, $branch, $leaf, 'debit', 410.000, $date, authNo: $auth);
+        $import = $this->makeImportWithLine($company, $leaf, [
+            'value_date' => $date, 'credit' => 410.000, 'auth_no' => $auth,
+        ]);
+        $this->matcher()->match($import);
+        $this->assertSame(BankStatementImportLine::STATE_MATCHED, $import->fresh(['lines'])->lines->first()->state, 'precondition');
+
+        match ($route) {
+            'soft_deleted_transaction' => Transaction::withoutGlobalScopes()
+                ->where('id', $bookLine->transaction_id)->update(['deleted_at' => now()]),
+            'draft' => Transaction::withoutGlobalScopes()
+                ->where('id', $bookLine->transaction_id)->update(['posting_status' => 'draft']),
+            'moved_to_another_bank_leaf' => JournalEntry::withoutGlobalScopes()
+                ->where('id', $bookLine->id)
+                ->update(['account_id' => Account::withoutGlobalScopes()
+                    ->where('company_id', $company->id)->where('code', '1204')->firstOrFail()->id]),
+        };
+
+        $this->matcher()->match($import->fresh(['lines']));
+        $line = $import->fresh(['lines'])->lines->first();
+
+        $this->assertSame(
+            BankStatementImportLine::STATE_DISPUTED,
+            $line->state,
+            "route '{$route}' must make the claim stale, not leave the line silently matched"
+        );
+        $this->assertStringContainsString('no longer a live posted line', (string) $line->note);
+        $this->assertSame($bookLine->id, $line->matched_journal_entry_id, 'the vanished JE is kept for traceability');
+    }
+
+    /** @return array<string, array{0:string}> */
+    public static function staleLedgerRoutes(): array
+    {
+        return [
+            'soft-deleted transaction' => ['soft_deleted_transaction'],
+            'transaction rolled back to draft' => ['draft'],
+            'line moved to another bank leaf' => ['moved_to_another_bank_leaf'],
+        ];
+    }
+
+    /**
+     * FV-3. R-2 dropped the `kind` filter from `liveClaimOn()`. The obvious worry is a FALSE
+     * positive: a live proposal of some unrelated kind blocking a legitimate bank-statement match.
+     * It structurally cannot — `liveClaimOn()` is keyed on `book_journal_entry_id`, and a
+     * `supplier_statement` proposal claims a PARTY-scoped payable line, never a bank leaf. Pinned
+     * so a future kind that DOES touch bank leaves is a deliberate decision, not an accident.
+     */
+    public function test_a_supplier_statement_claim_on_a_payable_line_never_blocks_a_bank_leaf_match(): void
+    {
+        [$company, $branch, $leaf] = $this->makeCompanyWithBankLeaf();
+        $date = Carbon::parse('2026-08-30');
+
+        $payableLeaf = $this->offsetLeaf($company->id);
+        $payableLine = $this->postBankLine($company, $branch, $payableLeaf, 'credit', 500.000, $date);
+
+        ReconciliationProposal::create([
+            'company_id' => $company->id,
+            'account_id' => $payableLeaf->id,
+            'source' => 'external',
+            'kind' => ReconciliationProposal::KIND_SUPPLIER_STATEMENT,
+            'confidence' => ReconciliationProposal::CONFIDENCE_EXACT,
+            'book_journal_entry_id' => $payableLine->id,
+            'matched_reference' => 'supplier_stmt_line:999',
+            'amount' => 500.000,
+            'difference_amount' => 0,
+            'status' => ReconciliationProposal::STATUS_PENDING,
+        ]);
+
+        $bookLine = $this->postBankLine($company, $branch, $leaf, 'debit', 500.000, $date, authNo: 'AUTH-FV-4');
+        $import = $this->makeImportWithLine($company, $leaf, [
+            'value_date' => $date, 'credit' => 500.000, 'auth_no' => 'AUTH-FV-4',
+        ]);
+        $this->matcher()->match($import);
+
+        $line = $import->fresh(['lines'])->lines->first();
+        $this->assertSame(BankStatementImportLine::STATE_MATCHED, $line->state);
+        $this->assertSame($bookLine->id, $line->matched_journal_entry_id);
+        $this->assertNull($line->note, 'a same-amount payable-side claim is not a claim on this bank line');
+        $this->assertSame(
+            1,
+            ReconciliationProposal::where('book_journal_entry_id', $bookLine->id)
+                ->where('kind', ReconciliationProposal::KIND_BANK_STATEMENT)->count()
+        );
+    }
+
+    /**
+     * FV-4. The other half of the R-2 block: when the bank-statement matcher correctly DECLINES to
+     * raise a second claim on a bank line another kind already claims (here a gateway-payout
+     * proposal — a `GWS` payout hitting the same bank leaf), it still records the line as MATCHED
+     * against that JE. Approving the OTHER kind's proposal then sets `reconciled = 1`, which hides
+     * the candidate from every tier. The statement line must NOT then be reverted to 'unmatched'
+     * by the next sweep — that is the very defect 4e96c08d fixed, reached by a route its
+     * short-circuit does not cover (there is no bank_statement proposal on this line to be its
+     * oracle). Left unfixed, the close checklist re-raises "N statement lines unmatched" every
+     * night for a movement that is fully settled.
+     */
+    public function test_approving_another_kinds_claim_does_not_revert_the_statement_line(): void
+    {
+        [$company, $branch, $leaf] = $this->makeCompanyWithBankLeaf();
+        $date = Carbon::parse('2026-08-31');
+        $actor = User::factory()->create();
+
+        $bookLine = $this->postBankLine($company, $branch, $leaf, 'debit', 610.000, $date, authNo: 'AUTH-FV-5');
+
+        $foreign = ReconciliationProposal::create([
+            'company_id' => $company->id,
+            'account_id' => $leaf->id,
+            'source' => 'external',
+            'kind' => ReconciliationProposal::KIND_GATEWAY_SETTLEMENT,
+            'confidence' => ReconciliationProposal::CONFIDENCE_EXACT,
+            'book_journal_entry_id' => $bookLine->id,
+            'matched_reference' => 'gw_payout:PO-FV-5',
+            'amount' => 610.000,
+            'difference_amount' => 0,
+            'status' => ReconciliationProposal::STATUS_PENDING,
+        ]);
+
+        $import = $this->makeImportWithLine($company, $leaf, [
+            'value_date' => $date, 'credit' => 610.000, 'auth_no' => 'AUTH-FV-5',
+        ]);
+        $this->matcher()->match($import);
+
+        $line = $import->fresh(['lines'])->lines->first();
+        $this->assertSame(BankStatementImportLine::STATE_MATCHED, $line->state, 'precondition: matched, no second claim raised');
+        $this->assertSame($bookLine->id, $line->matched_journal_entry_id);
+        $this->assertSame(1, ReconciliationProposal::where('book_journal_entry_id', $bookLine->id)->count(), 'precondition');
+
+        // The operator approves the gateway-settlement proposal — the one live claim on the line.
+        app(ReconciliationProposalService::class)->approve($foreign->fresh(), $actor);
+        $this->assertSame(1, (int) $bookLine->fresh()->reconciled, 'precondition');
+
+        $this->matcher()->match($import->fresh(['lines']));
+
+        $line = $import->fresh(['lines'])->lines->first();
+        $this->assertSame(
+            BankStatementImportLine::STATE_MATCHED,
+            $line->state,
+            'the statement line is settled by the other kind\'s approved claim — it must not flip to unmatched'
+        );
+        $this->assertSame($bookLine->id, $line->matched_journal_entry_id);
+        $this->assertSame(1, ReconciliationProposal::where('book_journal_entry_id', $bookLine->id)->count(), 'still exactly one claim');
+
+        // Stable across further sweeps.
+        $before = [$line->state, $line->matched_journal_entry_id, $line->note];
+        $this->matcher()->match($import->fresh(['lines']));
+        $again = $import->fresh(['lines'])->lines->first();
+        $this->assertSame($before, [$again->state, $again->matched_journal_entry_id, $again->note]);
+    }
 }

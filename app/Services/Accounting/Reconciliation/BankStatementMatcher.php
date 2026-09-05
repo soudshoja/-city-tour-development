@@ -48,9 +48,12 @@ use Illuminate\Support\Facades\DB;
  * ONE-TO-ONE INVARIANT (T8's own invariant, "a ledger line is settled by at most one live
  * statement row", and the reverse): {@see self::$consumedJournalEntryIds} excludes any ledger line
  * an EARLIER row in this SAME match() run already matched (in-run guard); {@see self::liveClaimOn()}
- * refuses to raise a second proposal against a ledger line a PRIOR import's still-pending-or-
- * approved bank_statement proposal already claims (cross-run guard) — together the covered-ids/
- * live-claim guard pattern T8's review packet documents as one invariant enforced at two horizons.
+ * refuses to raise a second proposal against a ledger line any still-pending-or-approved proposal
+ * already claims — a PRIOR import's, or one of the internal detectors' that sweep the same
+ * bank/cash leaves (cross-run guard, kind-agnostic: see that method's own note) — together the
+ * covered-ids/live-claim guard pattern T8's review packet documents as one invariant enforced at
+ * two horizons. A line settled by such a FOREIGN claim carries no proposal of its own, so
+ * {@see self::matchLine()} treats that claim as its short-circuit oracle too.
  */
 final class BankStatementMatcher
 {
@@ -129,17 +132,45 @@ final class BankStatementMatcher
         // ledger line while the stale proposal is still live, breaking the one-to-one invariant.
         // The matcher never decides proposals — the live one stays for a human to reject in the
         // reconciliation center, and the note names it.
-        $live = $this->liveReferenceFor($line);
-        if ($live !== null) {
-            $claimedId = $live->book_journal_entry_id !== null ? (int) $live->book_journal_entry_id : null;
+        //
+        // FINAL RE-VERIFY (loop 3) — the FOREIGN-claim route into that same hazard. A statement
+        // line can be settled by a live claim that is not its OWN proposal: when
+        // {@see self::ensureProposal()} correctly declines to raise a second claim on a ledger
+        // line another detector already holds (the kind-agnostic guard R-2 introduced — see
+        // {@see self::liveClaimOn()}), the line ends up MATCHED with NO bank_statement proposal of
+        // its own, so `liveReferenceFor()` is null and the short-circuit above cannot fire.
+        // Approving that OTHER proposal then sets `journal_entries.reconciled = 1`, which every
+        // tier's baseQuery excludes — and the line was reverted to 'unmatched' on the next sweep.
+        // That is the very defect `4e96c08d` fixed, reached through the one route its own oracle
+        // does not cover, and made reachable precisely BY R-2's (correct) decision to let a
+        // foreign claim block ours. The settlement is real — the ledger line IS reconciled, just
+        // by someone else's claim — so the foreign claim is the oracle here, and the same
+        // staleness rule applies to it unchanged.
+        $claim = $this->liveReferenceFor($line);
+        $claimedId = $claim?->book_journal_entry_id !== null ? (int) $claim->book_journal_entry_id : null;
 
+        if ($claim === null
+            && $line->state === BankStatementImportLine::STATE_MATCHED
+            && $line->matched_journal_entry_id !== null
+        ) {
+            $foreignId = (int) $line->matched_journal_entry_id;
+            $foreign = $this->liveClaimOn($foreignId);
+
+            if ($foreign !== null) {
+                $claim = $foreign;
+                $claimedId = $foreignId;
+            }
+        }
+
+        if ($claim !== null) {
             if ($claimedId !== null && ! $this->claimedLineIsStillValid($import, $claimedId)) {
                 return $this->settle($line, BankStatementImportLine::STATE_DISPUTED, [
                     'note' => sprintf(
-                        'Matched ledger line JE#%d is no longer a live posted line on this bank leaf (reversed, voided or deleted) — the match is stale. Proposal #%d (%s) still stands; reject it in the reconciliation center to allow a fresh match.',
+                        'Matched ledger line JE#%d is no longer a live posted line on this bank leaf (reversed, voided or deleted) — the match is stale. Proposal #%d (kind %s, %s) still stands; reject it in the reconciliation center to allow a fresh match.',
                         $claimedId,
-                        $live->id,
-                        $live->status
+                        $claim->id,
+                        $claim->kind,
+                        $claim->status
                     ),
                     'difference' => (float) $line->difference,
                     'matched_journal_entry_id' => $claimedId,

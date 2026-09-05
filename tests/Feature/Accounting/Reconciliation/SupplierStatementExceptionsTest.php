@@ -20,6 +20,7 @@ use App\Modules\DotwAI\Models\DotwAIBooking;
 use App\Services\Accounting\Reconciliation\SupplierStatementMatcher;
 use Database\Seeders\CoaSeeder;
 use Illuminate\Support\Carbon;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -31,6 +32,8 @@ use Tests\Support\AccountingTestCase;
  */
 class SupplierStatementExceptionsTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     private function matcher(): SupplierStatementMatcher
     {
         return app(SupplierStatementMatcher::class);
@@ -40,6 +43,7 @@ class SupplierStatementExceptionsTest extends AccountingTestCase
     private function makeCompany(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
         $owner = \App\Models\User::factory()->create();
         $branch = Branch::factory()->create(['company_id' => $company->id, 'user_id' => $owner->id]);

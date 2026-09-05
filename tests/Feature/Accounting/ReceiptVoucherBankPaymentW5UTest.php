@@ -22,6 +22,7 @@ use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -41,6 +42,8 @@ use Tests\Support\AccountingTestCase;
  */
 class ReceiptVoucherBankPaymentW5UTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -51,6 +54,7 @@ class ReceiptVoucherBankPaymentW5UTest extends AccountingTestCase
     private function makeFixture(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
 
         $branchOwner = User::factory()->create();

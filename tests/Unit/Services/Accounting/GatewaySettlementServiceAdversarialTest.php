@@ -20,6 +20,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\AccountingTestCase;
+use Tests\Support\SeedsGatewayClearing;
 
 /**
  * Adversarial verification (T7 review): mutation proofs and boundary cases the builder's own
@@ -29,6 +30,8 @@ use Tests\Support\AccountingTestCase;
  */
 class GatewaySettlementServiceAdversarialTest extends AccountingTestCase
 {
+    use SeedsGatewayClearing;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -80,6 +83,9 @@ class GatewaySettlementServiceAdversarialTest extends AccountingTestCase
         $bank = $this->bankAccount($company);
         $client = $this->makeClient($company, $branch);
 
+        // The three receipts behind those payments, already sitting in clearing.
+        $this->seedGatewayClearing($company, 'TAP', 150.000);
+
         // Three payments, same gateway, same date, KWD 50 each = KWD 150 pending.
         $p1 = Payment::factory()->create([
             'company_id' => $company->id, 'agent_id' => $client->agent_id, 'client_id' => $client->id,
@@ -124,6 +130,8 @@ class GatewaySettlementServiceAdversarialTest extends AccountingTestCase
         [$company, $branch] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
         $client = $this->makeClient($company, $branch);
+
+        $this->seedGatewayClearing($company, 'TAP', 100.000);
 
         $p1 = Payment::factory()->create([
             'company_id' => $company->id, 'agent_id' => $client->agent_id, 'client_id' => $client->id,
@@ -177,13 +185,25 @@ class GatewaySettlementServiceAdversarialTest extends AccountingTestCase
         );
     }
 
-    public function test_over_settlement_check_is_skipped_when_the_pending_pool_is_genuinely_empty(): void
+    /**
+     * Post-fix re-verification: this test previously asserted that a KWD 1,000 payout recorded
+     * against a company with NO pending payments and NO money in clearing still posted — the
+     * pending-pool guard's own "skip when the pool is empty" escape. That is not an invariant to
+     * preserve; it is the hole (it drives GATEWAY_CLEARING_TAP to −1,000). What must actually
+     * hold is the narrower claim underneath it: a payout with no local `Payment` LINKAGE still
+     * settles, provided the money it releases is genuinely in clearing. Guarding on the derived
+     * clearing balance keeps that true and closes the hole; the refusal half is pinned in
+     * {@see GatewaySettlementCoverageGuardTest::test_empty_pending_pool_with_no_clearing_balance_is_refused()}.
+     */
+    public function test_settlement_with_no_payment_linkage_posts_when_clearing_actually_holds_the_money(): void
     {
         [$company] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
 
-        // No local Payment rows at all for this gateway/company — a from-scratch manual entry.
-        // Must still post (matches every pre-existing isolated posting-shape test).
+        // No local Payment rows at all for this gateway/company — a from-scratch manual entry —
+        // but the money it is releasing really is in clearing.
+        $this->seedGatewayClearing($company, 'TAP', 1000.000);
+
         $settlement = $this->service()->record(
             companyId: $company->id, gateway: 'TAP', payoutReference: 'NOLINK-1',
             payoutDate: Carbon::parse('2026-08-20'), gross: 1000.000, fee: 5.000, net: 995.000,

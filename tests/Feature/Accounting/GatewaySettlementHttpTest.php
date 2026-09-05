@@ -15,6 +15,7 @@ use App\Models\User;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Tests\Support\AccountingTestCase;
+use Tests\Support\SeedsGatewayClearing;
 
 /**
  * Adversarial verification (T7 review): the packet's own 25 tests never exercise
@@ -24,6 +25,8 @@ use Tests\Support\AccountingTestCase;
  */
 class GatewaySettlementHttpTest extends AccountingTestCase
 {
+    use SeedsGatewayClearing;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -119,6 +122,10 @@ class GatewaySettlementHttpTest extends AccountingTestCase
         $bank = $this->bankAccount($company);
         config(['accounting.engine.enabled' => true]);
         \Illuminate\Support\Facades\Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
+
+        // The receipts this payout releases, already in clearing (the service refuses to drain
+        // more than GATEWAY_CLEARING_TAP derivably holds).
+        $this->seedGatewayClearing($company, 'TAP', 100.000);
 
         $response = $this->actingAs($admin)->postJson(route('accounting.reconciliation.settlements.record'), [
             'gateway' => 'TAP', 'payout_reference' => 'HTTP-OK-1', 'payout_date' => '2026-08-20',

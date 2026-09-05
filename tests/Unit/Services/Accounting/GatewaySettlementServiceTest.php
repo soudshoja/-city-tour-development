@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\AccountingTestCase;
+use Tests\Support\SeedsGatewayClearing;
 
 /**
  * accounting-builds T7 (Lane D — PLAN.md §5): {@see GatewaySettlementService}. Posting shapes
@@ -27,6 +28,8 @@ use Tests\Support\AccountingTestCase;
  */
 class GatewaySettlementServiceTest extends AccountingTestCase
 {
+    use SeedsGatewayClearing;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -70,6 +73,10 @@ class GatewaySettlementServiceTest extends AccountingTestCase
         $resolver = app(AccountResolver::class);
 
         foreach (['TAP', 'KNET', 'MYFATOORAH', 'HESABE', 'UPAYMENT'] as $gateway) {
+            // The receipts behind this payout, already sitting in clearing: recognised_fee is 0
+            // here, so clearing holds the full gross and the document drains it to exactly zero.
+            $this->seedGatewayClearing($company, $gateway, 1000.500);
+
             $settlement = $this->service()->record(
                 companyId: $company->id,
                 gateway: $gateway,
@@ -115,12 +122,13 @@ class GatewaySettlementServiceTest extends AccountingTestCase
     {
         [$company] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
+        $this->seedGatewayClearing($company, 'TAP', 488.000);
         $resolver = app(AccountResolver::class);
 
         $settlement = $this->service()->record(
             companyId: $company->id,
             gateway: 'TAP',
-            payoutReference: 'PO-POS-1',
+            payoutReference: 'PO-POS-1',  // clearing holds gross - recognised = 500 - 12 = 488
             payoutDate: Carbon::parse('2026-08-20'),
             gross: 500.000,
             fee: 20.000,
@@ -141,12 +149,13 @@ class GatewaySettlementServiceTest extends AccountingTestCase
     {
         [$company] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
+        $this->seedGatewayClearing($company, 'TAP', 482.000);
         $resolver = app(AccountResolver::class);
 
         $settlement = $this->service()->record(
             companyId: $company->id,
             gateway: 'TAP',
-            payoutReference: 'PO-NEG-1',
+            payoutReference: 'PO-NEG-1',  // clearing holds gross - recognised = 500 - 18 = 482
             payoutDate: Carbon::parse('2026-08-20'),
             gross: 500.000,
             fee: 10.000,
@@ -167,12 +176,13 @@ class GatewaySettlementServiceTest extends AccountingTestCase
     {
         [$company] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
+        $this->seedGatewayClearing($company, 'TAP', 485.000);
         $resolver = app(AccountResolver::class);
 
         $settlement = $this->service()->record(
             companyId: $company->id,
             gateway: 'TAP',
-            payoutReference: 'PO-ZERO-1',
+            payoutReference: 'PO-ZERO-1',  // clearing holds gross - recognised = 500 - 15 = 485
             payoutDate: Carbon::parse('2026-08-20'),
             gross: 500.000,
             fee: 15.000,
@@ -196,6 +206,7 @@ class GatewaySettlementServiceTest extends AccountingTestCase
     {
         [$company] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
+        $this->seedGatewayClearing($company, 'TAP', 100.000);
 
         $first = $this->service()->record(
             companyId: $company->id, gateway: 'TAP', payoutReference: 'IDEMP-1',
@@ -218,6 +229,7 @@ class GatewaySettlementServiceTest extends AccountingTestCase
     {
         [$company] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
+        $this->seedGatewayClearing($company, 'TAP', 100.000);
 
         $this->service()->record(
             companyId: $company->id, gateway: 'TAP', payoutReference: 'CONFLICT-1',
@@ -238,6 +250,7 @@ class GatewaySettlementServiceTest extends AccountingTestCase
     {
         [$company] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
+        $this->seedGatewayClearing($company, 'TAP', 400.000);
 
         $a = $this->service()->record(
             companyId: $company->id, gateway: 'TAP', payoutReference: 'SAMEDAY-A',
@@ -319,6 +332,7 @@ class GatewaySettlementServiceTest extends AccountingTestCase
     {
         [$company] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
+        $this->seedGatewayClearing($company, 'TAP', 98.000);
 
         $settlement = $this->service()->record(
             companyId: $company->id, gateway: 'TAP', payoutReference: 'CHANNEL-1',
@@ -338,6 +352,7 @@ class GatewaySettlementServiceTest extends AccountingTestCase
     {
         [$company] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
+        $this->seedGatewayClearing($company, 'TAP', 100.000);
 
         $settlement = $this->service()->record(
             companyId: $company->id, gateway: 'TAP', payoutReference: 'CHANNEL-2',
@@ -354,6 +369,7 @@ class GatewaySettlementServiceTest extends AccountingTestCase
     {
         [$company, $branch] = $this->makeEngineOnCompany();
         $bank = $this->bankAccount($company);
+        $this->seedGatewayClearing($company, 'TAP', 150.000);
 
         $agentType = \App\Models\AgentType::firstOrCreate(['id' => 1], ['name' => 'type-1']);
         $agentUser = User::factory()->create();

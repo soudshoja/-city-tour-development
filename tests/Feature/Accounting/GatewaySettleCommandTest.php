@@ -13,6 +13,7 @@ use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Tests\Support\AccountingTestCase;
+use Tests\Support\SeedsGatewayClearing;
 
 /**
  * accounting-builds T7 (Lane D): the `accounting:gateway-settle` CLI wrapper around
@@ -20,6 +21,8 @@ use Tests\Support\AccountingTestCase;
  */
 class GatewaySettleCommandTest extends AccountingTestCase
 {
+    use SeedsGatewayClearing;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -46,6 +49,7 @@ class GatewaySettleCommandTest extends AccountingTestCase
     public function test_single_payout_records_and_posts(): void
     {
         [$company, $bank] = $this->makeCompanyAndBank();
+        $this->seedGatewayClearing($company, 'TAP', 100.000);
 
         Artisan::call('accounting:gateway-settle', [
             'company' => $company->id,
@@ -98,6 +102,7 @@ class GatewaySettleCommandTest extends AccountingTestCase
     public function test_csv_batch_imports_multiple_payouts(): void
     {
         [$company, $bank] = $this->makeCompanyAndBank();
+        $this->seedGatewayClearing($company, 'TAP', 110.000); // 50.000 + 60.000, the two CSV payouts
 
         $csv = sys_get_temp_dir().'/gateway-settle-test-'.uniqid().'.csv';
         file_put_contents($csv, implode("\n", [

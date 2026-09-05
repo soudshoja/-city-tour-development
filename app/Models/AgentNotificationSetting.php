@@ -27,7 +27,6 @@ class AgentNotificationSetting extends Model
     // /home/citycomm/tour.citycommerce.group, 2026-08-31) to look up an agent's per-type
     // channel/active override via getForAgent(). Additive -- existing TYPE_TASK_CLOSE rows
     // and callers are untouched.
-    const TYPE_PAYMENT_LINK_UNINVOICED = 'payment_link_uninvoiced';
 
     protected $fillable = [
         'agent_id',

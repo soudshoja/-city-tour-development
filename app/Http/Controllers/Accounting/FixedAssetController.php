@@ -302,6 +302,22 @@ class FixedAssetController extends Controller
             ? ($result !== null ? 'Fixed asset capitalised.' : 'Capitalisation already posted for this asset.')
             : 'Engine disabled — nothing was posted. The register row is saved; capitalise once the accounting engine is enabled for this company.';
 
+        // Wave 3 lane G item B1 (T10 §12 sign-off finding): the same locked-period posting-date
+        // shift honesty gap dispose()/depreciateRun() got fixed in b8a8a7b6 — capitalise() posts
+        // through PostingSeam exactly like those two, so PostingService::post() step 5 can just as
+        // silently shift the acquisition document's posting_date into the next open period when
+        // the asset's own acquisition_date falls in a locked/soft-closed period. See
+        // lockedPeriodShiftNote()'s own docblock; this never changes what posts, only what the
+        // flash message says. Also fires on an idempotent replay (an already-capitalised asset),
+        // which is correct — it truthfully reports the SAME shift that happened on the original
+        // capitalise() call, not a new one.
+        if ($engineEnabled && $result !== null) {
+            $message .= $this->lockedPeriodShiftNote(
+                $fixedAsset->acquisition_date->toDateString(),
+                $result->transaction->posting_date ?? null
+            );
+        }
+
         return redirect()->route('accounting.fixed-assets.show', $fixedAsset)->with('success', $message);
     }
 

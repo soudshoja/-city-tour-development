@@ -601,6 +601,65 @@ class FixedAssetControllerTest extends AccountingTestCase
         $this->assertNull($asset->acquisition_transaction_id);
     }
 
+    /**
+     * accounting-builds Wave 3 lane G item B1 (T10 §12 sign-off finding): capitalise() posts
+     * through the SAME PostingSeam -> PostingService::post() step 5 as dispose()/depreciateRun(),
+     * so it can just as silently shift the acquisition document's posting_date into the next open
+     * period when the asset's own acquisition_date falls in a locked/soft-closed period — the same
+     * honesty gap b8a8a7b6 fixed for dispose()/depreciateRun(), now closed for capitalise() too.
+     */
+    public function test_capitalise_into_a_locked_period_tells_the_user_it_shifted(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $asset = $this->makeDraftAsset($company, ['acquisition_date' => Carbon::create(2026, 1, 15)]);
+        $bankLeafId = $this->resolveBankOnlyLeafId($company->id);
+
+        AccountingPeriod::updateOrCreate(
+            ['company_id' => $company->id, 'year' => 2026, 'month' => 1],
+            ['status' => AccountingPeriod::STATUS_LOCKED]
+        );
+        AccountingPeriod::updateOrCreate(
+            ['company_id' => $company->id, 'year' => 2026, 'month' => 2],
+            ['status' => AccountingPeriod::STATUS_OPEN]
+        );
+
+        $response = $this->actingAs($admin)->post(route('accounting.fixed-assets.capitalise', $asset), [
+            'bank_account_id' => $bankLeafId,
+        ]);
+
+        $response->assertSessionHas('success', function (string $message) {
+            return str_contains($message, '2026-01') && str_contains($message, '2026-02') && str_contains($message, 'locked or closed');
+        });
+        $asset->refresh();
+        $this->assertSame(FixedAsset::STATUS_ACTIVE, $asset->status);
+        $this->assertNotNull($asset->acquisition_transaction_id);
+    }
+
+    /**
+     * Companion acceptance case: an acquisition date in an OPEN period must produce no shift note
+     * at all — the note is additive, never appended when the requested and actual posting month
+     * agree.
+     */
+    public function test_capitalise_into_an_open_period_shows_no_shift_note(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $asset = $this->makeDraftAsset($company, ['acquisition_date' => Carbon::create(2026, 1, 15)]);
+        $bankLeafId = $this->resolveBankOnlyLeafId($company->id);
+
+        AccountingPeriod::updateOrCreate(
+            ['company_id' => $company->id, 'year' => 2026, 'month' => 1],
+            ['status' => AccountingPeriod::STATUS_OPEN]
+        );
+
+        $response = $this->actingAs($admin)->post(route('accounting.fixed-assets.capitalise', $asset), [
+            'bank_account_id' => $bankLeafId,
+        ]);
+
+        $response->assertSessionHas('success', function (string $message) {
+            return $message === 'Fixed asset capitalised.';
+        });
+    }
+
     public function test_capitalise_403s_for_an_unauthorized_agent(): void
     {
         [$company] = $this->makeEngineOnCompanyWithAdmin();

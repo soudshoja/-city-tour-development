@@ -50,6 +50,40 @@ class SupplierBankDetail extends Model
         'is_active' => 'boolean',
     ];
 
+    // ────────────────────────────────────────────────────────────────────────────────────────
+    // Canonical-form mutators (post-fix re-verify pass, T14, 2026-09-02). `currency`, `iban` and
+    // the two BIC columns are IDENTIFIERS, not free text: their canonical form is uppercase, and
+    // an IBAN is stored without its display grouping spaces (ISO 13616 print format is a display
+    // convention only). Normalizing here rather than only in SupplierController means EVERY
+    // writer gets it -- a seeder, a future supplier import, an artisan/tinker fix-up, a factory,
+    // or a direct `SupplierBankDetail::create()` (which this task's own tests use) -- not just
+    // the one HTTP CRUD path. `ValidIban`/`ValidSwiftBic` normalize their own local copy for the
+    // shape/mod-97 check but never write back, so without this a validation-passing
+    // "kw81 cbku ..." is persisted with its spaces intact and breaks exact-match lookups on the
+    // column (column collation is utf8mb4_unicode_ci, so case alone is forgiving -- spaces are
+    // not). See `SupplierBankDetailAdversarialTest`.
+    // ────────────────────────────────────────────────────────────────────────────────────────
+
+    public function setCurrencyAttribute(mixed $value): void
+    {
+        $this->attributes['currency'] = ($value === null || $value === '') ? $value : mb_strtoupper(trim((string) $value));
+    }
+
+    public function setIbanAttribute(mixed $value): void
+    {
+        $this->attributes['iban'] = ($value === null || $value === '') ? $value : strtoupper(str_replace(' ', '', trim((string) $value)));
+    }
+
+    public function setSwiftBicAttribute(mixed $value): void
+    {
+        $this->attributes['swift_bic'] = ($value === null || $value === '') ? $value : strtoupper(trim((string) $value));
+    }
+
+    public function setIntermediarySwiftBicAttribute(mixed $value): void
+    {
+        $this->attributes['intermediary_swift_bic'] = ($value === null || $value === '') ? $value : strtoupper(trim((string) $value));
+    }
+
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class);

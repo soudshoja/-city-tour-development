@@ -1629,33 +1629,24 @@ class SupplierController extends Controller
     }
 
     /**
-     * Normalizes the free-text identifier fields (currency, IBAN, SWIFT/BIC) the same way the
-     * `ValidIban`/`ValidSwiftBic` rules normalize their OWN local copy of the value before
-     * checking it (uppercase; IBAN also has internal spaces stripped) -- but those rules only
-     * validate a local variable, they never write back to the value that ends up stored. Without
-     * this, a validation-passing "de89 3704 ..." or " deutdeff " gets persisted byte-for-byte,
-     * which breaks the monospaced display's implied canonical form and any future exact-match
-     * lookup (e.g. a duplicate-IBAN check) on the stored column. Adversarial-verification finding
-     * (T14 verify pass, 2026-09-02) -- see `SupplierBankDetailAdversarialTest`.
+     * Uppercases the submitted currency BEFORE it is used, because this controller reads
+     * `$validated['currency']` directly in a WHERE clause ({@see self::demoteExistingDefault()})
+     * that runs before any model ever sees the value -- so the model's own canonical-form
+     * mutator cannot cover it. The identifier columns themselves (currency, iban, swift_bic,
+     * intermediary_swift_bic) are normalized ON THE MODEL
+     * ({@see \App\Models\SupplierBankDetail::setIbanAttribute()} and siblings), deliberately NOT
+     * here a second time: the model is the layer every writer goes through (seeder, import,
+     * tinker, factory, a direct `SupplierBankDetail::create()`), whereas this controller is only
+     * one of them. Post-fix re-verify pass, T14, 2026-09-02 -- the earlier verify pass put the
+     * normalization here, which left every non-HTTP writer storing raw values. See
+     * `SupplierBankDetailAdversarialTest`.
      *
      * @param  array<string, mixed>  $validated
      * @return array<string, mixed>
      */
     private function normalizeBankDetailFields(array $validated): array
     {
-        $validated['currency'] = mb_strtoupper($validated['currency']);
-
-        if (! empty($validated['iban'])) {
-            $validated['iban'] = strtoupper(str_replace(' ', '', $validated['iban']));
-        }
-
-        if (! empty($validated['swift_bic'])) {
-            $validated['swift_bic'] = strtoupper(trim($validated['swift_bic']));
-        }
-
-        if (! empty($validated['intermediary_swift_bic'])) {
-            $validated['intermediary_swift_bic'] = strtoupper(trim($validated['intermediary_swift_bic']));
-        }
+        $validated['currency'] = mb_strtoupper(trim((string) $validated['currency']));
 
         return $validated;
     }

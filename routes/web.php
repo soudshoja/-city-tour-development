@@ -534,6 +534,16 @@ Route::middleware(['auth'])->group(function () {
             ->name('pdf');
     });
 
+    // accounting-builds T6 (L10) — Statement of Changes in Equity, a read-layer report reusing
+    // TrialBalanceService. Per-action authorization mirrors ReportController::trialBalance()'s own
+    // role_id gate (ADMIN/COMPANY/ACCOUNTANT) inside the controller itself — the route middleware
+    // only gates module visibility, same split every other accounting screen's routes in this file
+    // already use.
+    Route::prefix('accounting/reports')->name('accounting.reports.')->middleware(['module:accounting'])->group(function () {
+        Route::get('/equity-changes', [\App\Http\Controllers\Accounting\EquityStatementController::class, 'show'])->name('equity-changes');
+        Route::get('/equity-changes/export', [\App\Http\Controllers\Accounting\EquityStatementController::class, 'export'])->name('equity-changes.export');
+    });
+
     //BRANCHES
     Route::group([
         'prefix' => 'branches',

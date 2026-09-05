@@ -63,6 +63,14 @@ class ReminderGeneratorsTest extends TestCase
 
     public function test_overdue_invoice_generator_fires_at_configured_offset_and_is_idempotent(): void
     {
+        // config/accounting.php's reminders.default_enabled ships every kind OFF as of
+        // commit 9585098d5 ("kinds ship OFF; tests opt in") -- generator mechanics still
+        // need an explicit per-company opt-in row to exercise.
+        Setting::updateOrCreate(
+            ['key' => 'accounting.reminders.overdue_invoice.enabled', 'company_id' => $this->company->id],
+            ['value' => true, 'type' => 'boolean']
+        );
+
         // Due 3 days ago -> daysOverdue = 3, one of the default offsets (1,3,7,14,30).
         $invoice = Invoice::factory()->create([
             'client_id' => $this->client->id,
@@ -133,6 +141,14 @@ class ReminderGeneratorsTest extends TestCase
 
     public function test_payment_link_uninvoiced_generator_creates_agent_facing_row(): void
     {
+        // config/accounting.php's reminders.default_enabled ships every kind OFF as of
+        // commit 9585098d5 ("kinds ship OFF; tests opt in") -- generator mechanics still
+        // need an explicit per-company opt-in row to exercise.
+        Setting::updateOrCreate(
+            ['key' => 'accounting.reminders.payment_link_uninvoiced.enabled', 'company_id' => $this->company->id],
+            ['value' => true, 'type' => 'boolean']
+        );
+
         $payment = Payment::factory()->create([
             'agent_id' => $this->agent->id,
             'client_id' => $this->client->id,
@@ -160,6 +176,18 @@ class ReminderGeneratorsTest extends TestCase
 
     public function test_dispatcher_all_sweeps_every_generatable_kind(): void
     {
+        // config/accounting.php's reminders.default_enabled ships every kind OFF as of
+        // commit 9585098d5 ("kinds ship OFF; tests opt in") -- both swept kinds need an
+        // explicit per-company opt-in row to actually create anything.
+        Setting::updateOrCreate(
+            ['key' => 'accounting.reminders.overdue_invoice.enabled', 'company_id' => $this->company->id],
+            ['value' => true, 'type' => 'boolean']
+        );
+        Setting::updateOrCreate(
+            ['key' => 'accounting.reminders.payment_link_uninvoiced.enabled', 'company_id' => $this->company->id],
+            ['value' => true, 'type' => 'boolean']
+        );
+
         Invoice::factory()->create([
             'client_id' => $this->client->id,
             'agent_id' => $this->agent->id,

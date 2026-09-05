@@ -247,10 +247,7 @@ final class SupplierStatementMatcher
             return;
         }
 
-        $claimed = ReconciliationProposal::where('book_journal_entry_id', $bookJournalEntryId)
-            ->where('kind', ReconciliationProposal::KIND_SUPPLIER_STATEMENT)
-            ->whereIn('status', [ReconciliationProposal::STATUS_PENDING, ReconciliationProposal::STATUS_APPROVED])
-            ->first();
+        $claimed = $this->liveClaimOn($line, $bookJournalEntryId);
 
         if ($claimed !== null) {
             // The line stays 'matched' (it genuinely corresponds to that ledger line — demoting it
@@ -284,6 +281,53 @@ final class SupplierStatementMatcher
             'difference_amount' => $line->difference,
             'status' => ReconciliationProposal::STATUS_PENDING,
         ]);
+    }
+
+    /**
+     * The live (pending-or-approved) supplier-statement claim standing against one payable line,
+     * or null if it is free to be proposed against. A REJECTED proposal is not a claim.
+     *
+     * FV-6 (final re-verify): RV-6's guard looked only at `book_journal_entry_id`, but an
+     * AGGREGATE match's single proposal names only its PRIMARY candidate while consuming — and
+     * settling — every line in `matched_journal_entry_ids`. So a later, corrected statement that
+     * SPLITS that summary row into its components found no direct claim on the non-primary lines
+     * and raised a second, separately approvable proposal against each of them: the summary row's
+     * amount plus the split rows' amounts, both approvable, against one set of charges. The
+     * covered set recorded by RV-1 is exactly the missing evidence, so it is consulted here.
+     *
+     * The covering-line lookup is deliberately not scoped to company/supplier: `journal_entries.id`
+     * is globally unique and every id in a covered set was written from an already company- and
+     * party-scoped query ({@see payableLinesFor()}), so a cross-company false positive cannot
+     * arise, and joining through the company-scoped import model here would risk the opposite
+     * (a global scope silently hiding a real claim). The current line is excluded because
+     * {@see settle()} persists its own covered set BEFORE calling ensureProposal().
+     */
+    private function liveClaimOn(SupplierStatementImportLine $line, int $bookJournalEntryId): ?ReconciliationProposal
+    {
+        $direct = ReconciliationProposal::where('book_journal_entry_id', $bookJournalEntryId)
+            ->where('kind', ReconciliationProposal::KIND_SUPPLIER_STATEMENT)
+            ->whereIn('status', [ReconciliationProposal::STATUS_PENDING, ReconciliationProposal::STATUS_APPROVED])
+            ->first();
+
+        if ($direct !== null) {
+            return $direct;
+        }
+
+        $coveringReferences = SupplierStatementImportLine::query()
+            ->where('id', '!=', $line->id)
+            ->whereJsonContains('matched_journal_entry_ids', $bookJournalEntryId)
+            ->pluck('id')
+            ->map(fn ($id) => 'supplier_stmt_line:'.$id)
+            ->all();
+
+        if ($coveringReferences === []) {
+            return null;
+        }
+
+        return ReconciliationProposal::whereIn('matched_reference', $coveringReferences)
+            ->where('kind', ReconciliationProposal::KIND_SUPPLIER_STATEMENT)
+            ->whereIn('status', [ReconciliationProposal::STATUS_PENDING, ReconciliationProposal::STATUS_APPROVED])
+            ->first();
     }
 
     private function proposalConfidenceFor(float $diff): string

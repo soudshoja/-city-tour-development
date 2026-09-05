@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -56,21 +57,52 @@ return new class extends Migration
             $table->index(['supplier_id', 'currency']);
         });
 
-        // Nullable STORED generated column -- see class docblock for the "at most one default per
-        // (supplier, currency)" mechanism this backs. Kept as its own Schema::table() call (not
-        // inlined into the create() above) to match this repo's own established convention for a
-        // storedAs() column that also needs a named unique index (see the transactions
-        // dedup-key migration cited above), and so a rerun after a partial failure can detect the
-        // column/index independently via Schema::hasColumn()/hasIndex().
+        // `default_group` -- see class docblock for the "at most one default per
+        // (supplier, currency)" mechanism this backs.
+        //
+        // 2026-09-02 PORTABILITY FIX: this was a STORED GENERATED column. MariaDB 10.11.19
+        // (production, reproduced on a clean `mariadb:10.11` container) rejects it with
+        //     SQLSTATE[HY000] 1901: Function or expression
+        //     'if(`is_default` = 1 and `is_active` = 1,concat(`supplier_id`,'-',`currency`),NULL)'
+        //     cannot be used in the GENERATED ALWAYS AS clause of `default_group`
+        // The offending reference is `currency`, a CHAR(3) column: MariaDB >= 10.5 refuses any
+        // generated-column expression that reads a CHAR(n) column, because CHAR trailing-space
+        // semantics depend on the session's sql_mode (PAD_CHAR_TO_FULL_LENGTH), which would make
+        // the stored value non-deterministic across sessions. Isolated on the container: the
+        // identical expression over a VARCHAR column is ACCEPTED, over a CHAR column REJECTED,
+        // with no FK or function involved. MariaDB 10.4 (our XAMPP fence) and MySQL 8 do not
+        // enforce this, which is why it passed locally and only surfaced against 10.11. This is
+        // a DIFFERENT 10.11 rule from the one that broke `chk_payment_owner` on `payments` and
+        // `payment_ref_dedup_key` on `transactions` (those reference columns carrying an
+        // ON DELETE SET NULL foreign key) -- same error number, unrelated cause.
+        //
+        // `currency` deliberately stays CHAR(3) (the currency-code convention used across this
+        // schema). Instead, `default_group` is now an ORDINARY nullable column kept in lockstep
+        // with the identical expression by BEFORE INSERT / BEFORE UPDATE triggers that assign
+        // `NEW.default_group` unconditionally -- so no application code can write it, exactly as
+        // with a generated column, and the UNIQUE index below still does all the enforcing under
+        // its unchanged name. Same technique as the two migrations cited above.
+        // OPERATIONAL NOTE: `supplier_bank_details` therefore carries BEFORE INSERT/UPDATE
+        // triggers -- bulk loads run row-by-row through them, and a dump/restore replays them as
+        // recorded. No explicit DEFINER is set, so they are created as CURRENT_USER and install
+        // under any DB account.
         if (! Schema::hasColumn('supplier_bank_details', 'default_group')) {
             Schema::table('supplier_bank_details', function (Blueprint $table) {
                 $table->string('default_group', 80)
                     ->nullable()
-                    ->storedAs(
-                        "IF(`is_default` = 1 AND `is_active` = 1, CONCAT(`supplier_id`, '-', `currency`), NULL)"
-                    )
                     ->after('is_active');
             });
+        }
+
+        if ($this->isMySql()) {
+            $this->installTriggers();
+
+            // Keep an already-populated table consistent with what the generated column would
+            // have produced. A no-op on a virgin database.
+            DB::statement(
+                'UPDATE `supplier_bank_details` SET `default_group` = '
+                .self::defaultGroupExpression('`supplier_bank_details`.')
+            );
         }
 
         if (! Schema::hasIndex('supplier_bank_details', 'supplier_bank_details_default_group_unique')) {
@@ -82,6 +114,46 @@ return new class extends Migration
 
     public function down(): void
     {
+        if ($this->isMySql()) {
+            DB::unprepared('DROP TRIGGER IF EXISTS supplier_bank_details_default_group_before_insert');
+            DB::unprepared('DROP TRIGGER IF EXISTS supplier_bank_details_default_group_before_update');
+        }
+
         Schema::dropIfExists('supplier_bank_details');
+    }
+
+    /**
+     * The default-group expression, verbatim from the original generated-column definition,
+     * rendered against a caller-supplied column prefix ('NEW.' in the triggers, the table name in
+     * the backfill UPDATE) so trigger bodies and backfill can never drift apart.
+     */
+    private static function defaultGroupExpression(string $prefix): string
+    {
+        return "IF({$prefix}`is_default` = 1 AND {$prefix}`is_active` = 1, "
+            ."CONCAT({$prefix}`supplier_id`, '-', {$prefix}`currency`), NULL)";
+    }
+
+    /**
+     * Idempotent: DROP TRIGGER IF EXISTS before each CREATE, and no explicit DEFINER clause, so
+     * the triggers are recorded as CURRENT_USER and reinstall cleanly under any DB account.
+     */
+    private function installTriggers(): void
+    {
+        $expr = self::defaultGroupExpression('NEW.');
+
+        foreach (['insert', 'update'] as $event) {
+            $name = "supplier_bank_details_default_group_before_{$event}";
+
+            DB::unprepared("DROP TRIGGER IF EXISTS {$name}");
+            DB::unprepared(
+                "CREATE TRIGGER {$name} BEFORE ".strtoupper($event).' ON `supplier_bank_details` '
+                ."FOR EACH ROW SET NEW.`default_group` = {$expr}"
+            );
+        }
+    }
+
+    private function isMySql(): bool
+    {
+        return Schema::getConnection()->getDriverName() === 'mysql';
     }
 };

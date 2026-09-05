@@ -123,6 +123,22 @@ final class GatewaySettlementService
             throw new \InvalidArgumentException("Unknown gateway '{$gatewayKey}' — must be one of: ".implode(', ', $knownGateways));
         }
 
+        // Post-sign-off fix (T7 review packet §12 finding 3): refuse pre-flight, before anything
+        // is persisted, when the settlement's currency is not the company's base currency. Every
+        // line post() builds uses exchangeRate 1.0 with no rate input anywhere on the HTTP/CLI/CSV
+        // surfaces that reach here — a non-base currency would silently book a foreign-currency
+        // figure into the ledger at parity. See GatewaySettlementCurrencyMismatchException.
+        $baseCurrency = strtoupper(trim((string) config('accounting.engine.base_currency')));
+        $requestedCurrency = $currency !== null && trim($currency) !== '' ? strtoupper(trim($currency)) : $baseCurrency;
+        if ($requestedCurrency !== $baseCurrency) {
+            throw new \App\Exceptions\Accounting\GatewaySettlementCurrencyMismatchException(
+                $gatewayKey,
+                $payoutReference,
+                $requestedCurrency,
+                $baseCurrency,
+            );
+        }
+
         $tolerance = (float) config('accounting.engine.balance_tolerance', 0.001);
         if (abs($gross - ($net + $fee)) > $tolerance) {
             throw new \InvalidArgumentException(

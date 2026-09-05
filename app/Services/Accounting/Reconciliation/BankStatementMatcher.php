@@ -112,11 +112,43 @@ final class BankStatementMatcher
         // A REJECTED proposal is deliberately NOT live here (see ensureProposal()'s matching
         // status filter) — rejecting a match must allow a corrected re-match to reconsider it,
         // per spec ("rejected -> allowed").
-        if ($line->state === BankStatementImportLine::STATE_MATCHED) {
-            $live = $this->liveReferenceFor($line);
-            if ($live !== null) {
-                if ($live->book_journal_entry_id !== null) {
-                    $consumedJournalEntryIds[(int) $live->book_journal_entry_id] = true;
+        //
+        // POST-FIX RE-VERIFY hardening: the short-circuit's premise is that the candidate vanished
+        // ONLY because approval reconciled it — a self-inflicted exclusion. That premise has to be
+        // CHECKED, not assumed. If the claimed ledger line stopped being a valid candidate for any
+        // OTHER reason — its document was reversed (PostingService::reverse() stamps
+        // `posting_status = 'reversed'` on the original and leaves the line itself untouched and
+        // still `reconciled = 0`, so nothing else catches this) or the line was soft-deleted — then
+        // the claim is STALE: the statement row's evidence has been backed out of the ledger.
+        // Leaving it silently 'matched' would tell the reconciliation report and
+        // PeriodCloseChecklistService that a movement is settled against a line that no longer
+        // exists. It is settled as DISPUTED instead (an owner-approved state, so it surfaces in
+        // exceptionsFor() and re-trips the close WARN — correct: it genuinely IS an open item
+        // again), keeping `matched_journal_entry_id` so an operator can trace WHICH line went away.
+        // It deliberately does NOT fall through to the tiers: re-deriving would claim a SECOND
+        // ledger line while the stale proposal is still live, breaking the one-to-one invariant.
+        // The matcher never decides proposals — the live one stays for a human to reject in the
+        // reconciliation center, and the note names it.
+        $live = $this->liveReferenceFor($line);
+        if ($live !== null) {
+            $claimedId = $live->book_journal_entry_id !== null ? (int) $live->book_journal_entry_id : null;
+
+            if ($claimedId !== null && ! $this->claimedLineIsStillValid($import, $claimedId)) {
+                return $this->settle($line, BankStatementImportLine::STATE_DISPUTED, [
+                    'note' => sprintf(
+                        'Matched ledger line JE#%d is no longer a live posted line on this bank leaf (reversed, voided or deleted) — the match is stale. Proposal #%d (%s) still stands; reject it in the reconciliation center to allow a fresh match.',
+                        $claimedId,
+                        $live->id,
+                        $live->status
+                    ),
+                    'difference' => (float) $line->difference,
+                    'matched_journal_entry_id' => $claimedId,
+                ], null, null);
+            }
+
+            if ($line->state === BankStatementImportLine::STATE_MATCHED) {
+                if ($claimedId !== null) {
+                    $consumedJournalEntryIds[$claimedId] = true;
                 }
 
                 return ['state' => $line->state, 'tier' => null];
@@ -257,8 +289,9 @@ final class BankStatementMatcher
     /**
      * Creates the external ReconciliationProposal for a clean match (L13) — idempotent per line;
      * refuses (cross-run guard) when the ledger line already carries a live (pending-or-approved)
-     * bank_statement proposal from an EARLIER import, following T8's `liveClaimOn()` pattern
-     * (no aggregate/covered-ids case exists for bank statements — every match here is 1:1).
+     * proposal of ANY kind — an earlier bank statement, or one of the internal detectors that
+     * sweep the same bank/cash leaves (see {@see self::liveClaimOn()}'s own note). No
+     * aggregate/covered-ids case exists for bank statements — every match here is 1:1.
      */
     private function ensureProposal(BankStatementImportLine $line, int $bookJournalEntryId, string $confidence): void
     {
@@ -274,8 +307,9 @@ final class BankStatementMatcher
         $claimed = $this->liveClaimOn($bookJournalEntryId);
         if ($claimed !== null) {
             $line->note = sprintf(
-                'Ledger line already reconciled against an earlier statement (proposal #%d, %s) — matched, no new proposal raised.',
+                'Ledger line already claimed by a live reconciliation proposal (#%d, kind %s, %s) — matched, no new proposal raised.',
                 $claimed->id,
+                $claimed->kind,
                 $claimed->status
             );
             $line->save();
@@ -303,12 +337,47 @@ final class BankStatementMatcher
         ]);
     }
 
+    /**
+     * Any LIVE (pending or approved) proposal already claiming this ledger line — of ANY kind.
+     *
+     * POST-FIX RE-VERIFY (cross-kind): this deliberately does NOT filter on
+     * `kind = bank_statement`. A bank leaf is not this matcher's private territory —
+     * {@see \App\Services\Accounting\ReconciliationAutoMatchService::detectClearingRollforward()}
+     * sweeps the SAME bank/cash leaves for cleared cheques and runs FIRST inside the same nightly
+     * `run()`, and detectReceiptInvoiceConsistency() flags lines on those leaves too. A cleared
+     * cheque that also appears on the bank statement — the most ordinary bank-reconciliation event
+     * there is — reaches both. With a kind filter here, the clearing proposal was invisible and a
+     * SECOND live proposal was raised against the same ledger line, which could then be reconciled
+     * twice against two different counterparts (`reconciled_ref_id` ending up as whichever was
+     * approved last). This is now the exact mirror of that service's own kind-agnostic
+     * `alreadyPending()` guard, which already declines in the reverse direction for the same
+     * reason — one invariant, symmetrical in both directions: a ledger line carries at most one
+     * live claim.
+     */
     private function liveClaimOn(int $bookJournalEntryId): ?ReconciliationProposal
     {
         return ReconciliationProposal::where('book_journal_entry_id', $bookJournalEntryId)
-            ->where('kind', ReconciliationProposal::KIND_BANK_STATEMENT)
             ->whereIn('status', [ReconciliationProposal::STATUS_PENDING, ReconciliationProposal::STATUS_APPROVED])
             ->first();
+    }
+
+    /**
+     * Is the ledger line a live proposal claims still a valid candidate for THIS import? Mirrors
+     * {@see self::matchLine()}'s own `baseQuery` eligibility predicate, minus `reconciled = 0`
+     * (approval legitimately sets that — it is the whole reason the short-circuit exists) and minus
+     * the in-run consumed set. Anything else that makes it ineligible — soft-deleted, or its
+     * document no longer `posting_status = 'posted'` (reversed/void/draft), or it moved off this
+     * company's bank leaf — means the claim is stale.
+     */
+    private function claimedLineIsStillValid(BankStatementImport $import, int $bookJournalEntryId): bool
+    {
+        return JournalEntry::withoutGlobalScopes()
+            ->where('id', $bookJournalEntryId)
+            ->where('company_id', $import->company_id)
+            ->where('account_id', $import->bank_account_id)
+            ->whereNull('deleted_at')
+            ->whereHas('transaction', fn ($q) => $q->where('posting_status', 'posted'))
+            ->exists();
     }
 
     /**

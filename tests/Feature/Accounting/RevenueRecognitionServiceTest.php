@@ -25,6 +25,7 @@ use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -39,6 +40,8 @@ use Tests\Support\AccountingTestCase;
  */
 class RevenueRecognitionServiceTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -292,6 +295,7 @@ class RevenueRecognitionServiceTest extends AccountingTestCase
     public function test_deferred_revenue_schedule_endpoint_is_gated_by_role(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
         $admin = User::factory()->create(['role_id' => Role::ADMIN]);
         session(['company_id' => $company->id]);
@@ -312,6 +316,7 @@ class RevenueRecognitionServiceTest extends AccountingTestCase
     public function test_deferred_revenue_schedule_endpoint_rejects_a_non_permitted_role(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
 
         // Role::BRANCH resolves its company via $user->branch->company (see getCompanyId()) --

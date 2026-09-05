@@ -22,6 +22,7 @@ use App\Services\TaskStatusService;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Facades\Artisan;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -57,6 +58,8 @@ use Tests\Support\AccountingTestCase;
  */
 class TaskStatusServiceDepositVoidTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     private TaskStatusService $service;
 
     protected function setUp(): void
@@ -76,6 +79,7 @@ class TaskStatusServiceDepositVoidTest extends AccountingTestCase
     private function makeFixture(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
 
         $branchOwner = User::factory()->create();

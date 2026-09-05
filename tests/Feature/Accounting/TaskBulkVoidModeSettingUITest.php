@@ -11,6 +11,7 @@ use App\Models\Task;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role as SpatieRole;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\TestCase;
 
 /**
@@ -27,6 +28,7 @@ use Tests\TestCase;
 class TaskBulkVoidModeSettingUITest extends TestCase
 {
     use RefreshDatabase;
+    use GrantsAccountingModule;
 
     private Company $company;
     private User $companyOwner;
@@ -42,6 +44,7 @@ class TaskBulkVoidModeSettingUITest extends TestCase
             'user_id' => $this->companyOwner->id,
             'country_id' => $country->id,
         ]);
+        $this->grantAccountingModule($this->company);
 
         session(['company_id' => $this->company->id]);
     }
@@ -82,6 +85,7 @@ class TaskBulkVoidModeSettingUITest extends TestCase
         // permission needed.
         $user = User::factory()->create(['role_id' => Role::ADMIN]);
         Setting::query()->where('company_id', $this->company->id)->delete();
+        $this->grantAccountingModule($this->company);
 
         $response = $this->actingAs($user)->postJson(route('settings.accounting-settings.store'), [
             'invoice_overpay_cancel_policy' => 'credit',

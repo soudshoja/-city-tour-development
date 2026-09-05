@@ -22,6 +22,7 @@ use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -33,6 +34,8 @@ use Tests\Support\AccountingTestCase;
  */
 class SettingControllerAccountingSettingsTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -42,6 +45,7 @@ class SettingControllerAccountingSettingsTest extends AccountingTestCase
     private function makeCompanyWithAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
 
         $branchOwner = User::factory()->create();
@@ -54,6 +58,21 @@ class SettingControllerAccountingSettingsTest extends AccountingTestCase
         AgentType::firstOrCreate(['id' => 2], ['name' => 'type-2']);
 
         return [$company, $branch, $admin];
+    }
+
+    /**
+     * A Role::AGENT user actually attached (via a real Agent row) to $branch so
+     * getCompanyId()/EnsureModuleEnabled's own moduleEnabled() resolves a company at all --
+     * an agent with no Agent row resolves to NO company and the module-gate middleware 404s the
+     * request before SettingPolicy's own ability check ever runs, which would test the wrong layer.
+     */
+    private function makeUnauthorizedAgentUser(Branch $branch): User
+    {
+        $agentUser = User::factory()->create(['role_id' => Role::AGENT]);
+        $agentType = AgentType::firstOrCreate(['id' => 1], ['name' => 'type-1']);
+        Agent::factory()->create(['branch_id' => $branch->id, 'user_id' => $agentUser->id, 'type_id' => $agentType->id]);
+
+        return $agentUser;
     }
 
     private function fullSettingsPayload(): array
@@ -141,8 +160,8 @@ class SettingControllerAccountingSettingsTest extends AccountingTestCase
 
     public function test_store_is_403_for_a_role_without_the_ability(): void
     {
-        $this->makeCompanyWithAdmin();
-        $unauthorized = User::factory()->create(['role_id' => Role::AGENT]);
+        [, $branch] = $this->makeCompanyWithAdmin();
+        $unauthorized = $this->makeUnauthorizedAgentUser($branch);
 
         $this->actingAs($unauthorized)
             ->postJson(route('settings.accounting-settings.store'), $this->fullSettingsPayload())
@@ -151,8 +170,8 @@ class SettingControllerAccountingSettingsTest extends AccountingTestCase
 
     public function test_get_is_403_for_a_role_without_the_ability(): void
     {
-        $this->makeCompanyWithAdmin();
-        $unauthorized = User::factory()->create(['role_id' => Role::AGENT]);
+        [, $branch] = $this->makeCompanyWithAdmin();
+        $unauthorized = $this->makeUnauthorizedAgentUser($branch);
 
         $this->actingAs($unauthorized)
             ->getJson(route('settings.accounting-settings'))

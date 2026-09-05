@@ -20,6 +20,7 @@ use App\Models\User;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Facades\Artisan;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -32,6 +33,8 @@ use Tests\Support\AccountingTestCase;
  */
 class W4UReverifyRound3Test extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -41,6 +44,7 @@ class W4UReverifyRound3Test extends AccountingTestCase
     private function makeCompanyWithAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
 
         $branchOwner = User::factory()->create();

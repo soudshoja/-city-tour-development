@@ -21,6 +21,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -41,6 +42,8 @@ use Tests\Support\AccountingTestCase;
  */
 class ChequeImageUploadSecurityTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -51,6 +54,7 @@ class ChequeImageUploadSecurityTest extends AccountingTestCase
     private function makeFixture(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
 
         $branchOwner = User::factory()->create();
@@ -270,6 +274,7 @@ class ChequeImageUploadSecurityTest extends AccountingTestCase
         // allow this (it falls through to the role-only viewAny() for any non-agent role).
         $userB = User::factory()->create(['role_id' => Role::COMPANY]);
         $companyB = Company::factory()->create(['user_id' => $userB->id]);
+        $this->grantAccountingModule($companyB);
         $this->trackCompanyForInvariants($companyB->id);
 
         $this->actingAs($userB)->get(route('receipt-voucher.cheque-image', $invoiceReceipt->id))
@@ -303,6 +308,7 @@ class ChequeImageUploadSecurityTest extends AccountingTestCase
 
         $userB = User::factory()->create(['role_id' => Role::COMPANY]);
         $companyB = Company::factory()->create(['user_id' => $userB->id]);
+        $this->grantAccountingModule($companyB);
         $this->trackCompanyForInvariants($companyB->id);
 
         $this->actingAs($userB)->get(route('bank-payments.cheque-image', $bankPayment->id))

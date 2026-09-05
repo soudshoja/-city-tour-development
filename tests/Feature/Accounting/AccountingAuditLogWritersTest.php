@@ -28,6 +28,7 @@ use App\Services\Accounting\PostingService;
 use App\Services\Accounting\ReconciliationService;
 use Database\Seeders\CoaSeeder;
 use Illuminate\Support\Facades\DB;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -41,6 +42,8 @@ use Tests\Support\AccountingTestCase;
  */
 class AccountingAuditLogWritersTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -50,6 +53,7 @@ class AccountingAuditLogWritersTest extends AccountingTestCase
     private function makeCompany(): Company
     {
         $company = tap(Company::factory()->create(), fn (Company $c) => $c->forceFill(['posting_engine_enabled' => true])->save());
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
         session(['company_id' => $company->id]);
 

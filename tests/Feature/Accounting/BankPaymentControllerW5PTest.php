@@ -18,6 +18,7 @@ use App\Services\Accounting\VoucherOptions;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Facades\Artisan;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -28,6 +29,8 @@ use Tests\Support\AccountingTestCase;
  */
 class BankPaymentControllerW5PTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     protected function tearDown(): void
     {
         config(['accounting.engine.enabled' => false]);
@@ -38,6 +41,7 @@ class BankPaymentControllerW5PTest extends AccountingTestCase
     private function makeFixture(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
 
         $branchOwner = User::factory()->create();
@@ -771,10 +775,16 @@ class BankPaymentControllerW5PTest extends AccountingTestCase
         $bank = $this->fundBank($company, $branch, '1201', 1000);
         $target = $this->accountByCode($company->id, '5222');
 
-        Setting::create([
-            'company_id' => $company->id, 'key' => 'module.accounting',
-            'value' => 'false', 'type' => 'boolean',
-        ]);
+        // makeFixture() grants the module via GrantsAccountingModule; this test needs it OFF, so
+        // it must update that same row (not insert a second one) and drop the per-request memo.
+        // NB: Setting::setValueAttribute()'s boolean branch does `$value ? 'true' : 'false'` --
+        // on an UPDATE of an already-typed row the string 'false' is truthy in PHP and would
+        // silently re-enable the module, so this must pass the real boolean false.
+        Setting::updateOrCreate(
+            ['company_id' => $company->id, 'key' => 'module.accounting'],
+            ['value' => false, 'type' => 'boolean'],
+        );
+        \App\Models\Company::forgetModuleCache();
 
         $this->actingAs($admin)->post(route('bank-payments.store'), [
             'company_id' => $company->id,

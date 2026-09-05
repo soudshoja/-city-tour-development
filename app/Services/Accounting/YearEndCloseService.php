@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\DB;
  * in this sub-wave's close routine is a pure gate (design doc §3: "monthly close posts zero
  * entries ... only year-end posts closing entries").
  *
- * Preconditions (both BLOCK, no override):
+ * Preconditions (all BLOCK, no override):
  *   - every period this company has for `$year` (all 12 months under the default `monthly` length,
  *     or the single annual sentinel row under `annual`) must already be `locked`. A MISSING row is
  *     NOT treated as "locked" here (unlike {@see PeriodGuard}'s deliberate "no row = open" rule for
@@ -27,6 +27,12 @@ use Illuminate\Support\Facades\DB;
  *     while 1952 is non-zero" — a non-zero balance means undispositioned BSP memos). This is a
  *     HARDER gate than {@see PeriodCloseChecklistService}'s own monthly WARN on the same account —
  *     see that class's own docblock on `airline_memo_control_code` for why the two differ.
+ *   - `DIVIDENDS_PAID` must be MAPPED whenever the Dividends Paid leaf (3200, or a child of it)
+ *     actually moved during the year — otherwise the dividend sweep below would be silently
+ *     dropped and Retained Earnings overstated with no signal. See
+ *     {@see self::checkDividendMappingGap()} for the full derivation of why "unmapped" cannot be
+ *     read as "zero" once real money is on the leaf. An unmapped leaf that did NOT move is still a
+ *     clean no-op, not a block.
  *
  * ── The closing entry itself ──────────────────────────────────────────────────────────────────
  * This ledger has no separate "year" reset — every balance is a date-range QUERY
@@ -72,6 +78,14 @@ use Illuminate\Support\Facades\DB;
  */
 final class YearEndCloseService
 {
+    /**
+     * Structural code of the Dividends Paid leaf (CoaSeeder seeds it identically for every
+     * company; SystemAccountsSeeder maps `DIVIDENDS_PAID` onto exactly this code). Used ONLY by
+     * {@see self::checkDividendMappingGap()}'s misconfiguration precondition — the sweep itself
+     * always posts to the registry-resolved account, never to this literal.
+     */
+    private const DIVIDENDS_PAID_CODE = '3200';
+
     public function __construct(
         private readonly PostingService $posting,
         private readonly AccountResolver $accountResolver,
@@ -202,7 +216,120 @@ final class YearEndCloseService
             }
         }
 
+        foreach ($this->checkDividendMappingGap($companyId, $year) as $reason) {
+            $blocking[] = $reason;
+        }
+
         return $blocking;
+    }
+
+    /**
+     * POST-FIX RE-VERIFICATION guard (accounting-builds T5/T6 review §10): the misconfiguration
+     * that "unmapped purpose = zero dividend movement" would otherwise hide.
+     *
+     * {@see self::buildClosingLines()} skips the dividend sweep entirely when a company has no
+     * `DIVIDENDS_PAID` mapping — correct and necessary while the leaf carries no money (a company
+     * whose registry was never seeded must still close a no-activity year cleanly), but WRONG the
+     * moment real dividend money sits on the leaf: the YEC would post without the sweep, Retained
+     * Earnings would be overstated by exactly the dividend, nothing would say so, and run()'s
+     * "a YEC already exists" short-circuit makes it unrecoverable by simply re-running the close.
+     *
+     * The mapping is NOT guaranteed for a real company: {@see \Database\Seeders\SystemAccountsSeeder}
+     * ::mapByCode() SKIPS-and-reports (never fails) when code 3200 is absent, duplicated, or has
+     * grown children, and `DIVIDENDS_PAID` was only introduced by this phase's T0a — so every
+     * company that predates T0a is unmapped until the seeder is re-run.
+     * {@see \Tests\Feature\Accounting\PurposeMappingCoverageTest} only proves the mapping for a
+     * FRESHLY CoaSeeder+SystemAccountsSeeder'd company, not for the installed base.
+     *
+     * So: BLOCK (nothing posted, fully recoverable — map the purpose, close again) rather than
+     * silently under-post. Same shape as the 1952 Airline-Memo gate above, which likewise reads a
+     * structural code directly: this is a precondition CHECK, never an account resolution used to
+     * post — the sweep itself still refuses to post to anything but a registry-resolved leaf.
+     *
+     * Scope note: the check is on the YEAR'S OWN MOVEMENT (what the sweep would have posted), not
+     * the leaf's cumulative balance, so it is exactly the amount that would go missing. Children of
+     * 3200 are included — a 3200 that grew sub-accounts is itself a reason the seeder skipped the
+     * mapping, and the money then lives on the children.
+     *
+     * @return list<string>
+     */
+    private function checkDividendMappingGap(int $companyId, int $year): array
+    {
+        $mapped = DB::table('system_accounts')
+            ->where('company_id', $companyId)
+            ->where('purpose_code', 'DIVIDENDS_PAID')
+            ->whereNull('service_type')
+            ->exists();
+
+        if ($mapped) {
+            return [];
+        }
+
+        $accountIds = $this->dividendSubtreeAccountIds($companyId);
+
+        if ($accountIds === []) {
+            // No Dividends Paid leaf at all (a company with no COA seeded) — nothing can be
+            // hiding on it. Stays the clean no-op the previous fix restored.
+            return [];
+        }
+
+        $totals = DB::table('journal_entries')
+            ->whereIn('account_id', $accountIds)
+            ->whereNull('deleted_at')
+            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [
+                Carbon::create($year, 1, 1)->startOfDay(),
+                Carbon::create($year, 12, 31)->endOfDay(),
+            ])
+            ->selectRaw('COALESCE(SUM(debit),0) as d, COALESCE(SUM(credit),0) as c')
+            ->first();
+
+        $movement = (float) $totals->d - (float) $totals->c;
+        $tolerance = (float) config('accounting.engine.balance_tolerance', 0.0005);
+
+        if (abs($movement) <= $tolerance) {
+            return [];
+        }
+
+        return [sprintf(
+            'Dividends Paid (code %s) moved %s during %d but this company has no DIVIDENDS_PAID purpose mapping — the year-end dividend sweep would be silently dropped and Retained Earnings overstated by that amount. Map the purpose (re-run SystemAccountsSeeder) and close again.',
+            self::DIVIDENDS_PAID_CODE,
+            number_format($movement, 3),
+            $year
+        )];
+    }
+
+    /**
+     * The Dividends Paid leaf and every descendant of it, by structural code. Used ONLY by
+     * {@see self::checkDividendMappingGap()}'s misconfiguration guard — never to resolve a posting
+     * target.
+     *
+     * @return list<int>
+     */
+    private function dividendSubtreeAccountIds(int $companyId): array
+    {
+        $frontier = DB::table('accounts')
+            ->where('company_id', $companyId)
+            ->where('code', self::DIVIDENDS_PAID_CODE)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $all = $frontier;
+
+        // The COA is shallow (CoaSeeder seeds 3200 at level 2); the bound is a cycle guard, not a
+        // depth assumption.
+        for ($depth = 0; $depth < 10 && $frontier !== []; $depth++) {
+            $frontier = DB::table('accounts')
+                ->where('company_id', $companyId)
+                ->whereIn('parent_id', $frontier)
+                ->pluck('id')
+                ->map(fn ($id) => (int) $id)
+                ->all();
+
+            $all = array_merge($all, $frontier);
+        }
+
+        return array_values(array_unique($all));
     }
 
     /**

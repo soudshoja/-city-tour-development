@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Accounting\Reports;
 
+use App\Exceptions\Accounting\UnmappedPurposeException;
 use App\Models\Account;
 use App\Services\Accounting\AccountResolver;
 use App\Services\TrialBalanceService;
@@ -38,7 +39,10 @@ use Illuminate\Support\Collection;
  * pattern for THIS class of leaf, distinct from the purpose-code registry that exists for accounts a
  * FEEDER needs to resolve per company/service-type. 3200/3400 ARE registered purposes (T0a/T5) and
  * are resolved through {@see AccountResolver} here for consistency with the engine's own posting
- * side, even though this is a read path.
+ * side, even though this is a read path — falling back to their own structural codes for a company
+ * that has no mapping for them yet, so the report degrades instead of 500-ing on exactly the
+ * misconfigured company whose un-swept dividends it is the only place to see (see
+ * {@see self::resolvePurposeOrCode()}).
  *
  * ── The roll-forward formula (per component) ──────────────────────────────────────────────────
  *   closing = opening + movement                                          (Capital, OBE — direct
@@ -88,6 +92,10 @@ final class EquityChangesReportService
 
     public const CODE_OPENING_BALANCE_EQUITY = '3300';
 
+    public const CODE_DIVIDENDS_PAID = '3200';
+
+    public const CODE_RETAINED_EARNINGS = '3400';
+
     public function __construct(
         private readonly TrialBalanceService $trialBalance,
         private readonly AccountResolver $accountResolver,
@@ -115,8 +123,8 @@ final class EquityChangesReportService
 
         $capital = $this->resolveLeafByCode($companyId, self::CODE_CAPITAL, 'Capital Stock');
         $obe = $this->resolveLeafByCode($companyId, self::CODE_OPENING_BALANCE_EQUITY, 'Opening Balance Equity');
-        $dividends = $this->accountResolver->resolve('DIVIDENDS_PAID', $companyId);
-        $retainedEarnings = $this->accountResolver->resolve('RETAINED_EARNINGS', $companyId);
+        $dividends = $this->resolvePurposeOrCode($companyId, 'DIVIDENDS_PAID', self::CODE_DIVIDENDS_PAID, 'Dividends Paid');
+        $retainedEarnings = $this->resolvePurposeOrCode($companyId, 'RETAINED_EARNINGS', self::CODE_RETAINED_EARNINGS, 'Retained Earnings');
 
         $opening = $this->trialBalance->getOpeningBalances($companyId, $yearStart);
         $nextYearOpening = $this->trialBalance->getOpeningBalances($companyId, $nextYearStart);
@@ -230,6 +238,33 @@ final class EquityChangesReportService
         }
 
         return (float) $accountsById[$accountId]->closing_balance;
+    }
+
+    /**
+     * POST-FIX RE-VERIFICATION (accounting-builds T5/T6 review §10): resolve a registered purpose,
+     * falling back to the leaf's own structural code when the company has no mapping for it.
+     *
+     * A company with no `DIVIDENDS_PAID` mapping is a real state (the purpose only arrived with
+     * this phase's T0a; {@see \Database\Seeders\SystemAccountsSeeder}::mapByCode() also skips-and-
+     * reports whenever code 3200 is absent, duplicated, or has grown children). The write path
+     * REFUSES to close for such a company once real money sits on the leaf
+     * ({@see \App\Services\Accounting\YearEndCloseService::checkDividendMappingGap()}) — but a
+     * READ-layer report must not hard-crash (`UnmappedPurposeException` → HTTP 500) on it: this
+     * statement is the one screen where the operator can SEE the un-swept dividends the guard is
+     * complaining about. Degrading to the structural code shows the real figure instead of a 500
+     * (and instead of a silent zero, which would be worse than either).
+     *
+     * The write/read asymmetry is deliberate: a posting target must never be guessed, a reported
+     * figure must never be invented — reading a fixed, as-built code is not a guess, it is the
+     * same accepted read-layer treatment 3100/3300 already get above.
+     */
+    private function resolvePurposeOrCode(int $companyId, string $purposeCode, string $code, string $label): Account
+    {
+        try {
+            return $this->accountResolver->resolve($purposeCode, $companyId);
+        } catch (UnmappedPurposeException) {
+            return $this->resolveLeafByCode($companyId, $code, $label);
+        }
     }
 
     private function resolveLeafByCode(int $companyId, string $code, string $label): Account

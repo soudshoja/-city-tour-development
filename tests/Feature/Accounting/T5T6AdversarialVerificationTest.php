@@ -9,6 +9,7 @@ use App\Models\AccountingPeriod;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\JournalEntry;
+use App\Models\SystemAccount;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Accounting\AccountResolver;
@@ -376,5 +377,114 @@ class T5T6AdversarialVerificationTest extends AccountingTestCase
             $bsEquityTotal += (float) $row['opening_credit'] - (float) $row['opening_debit'];
         }
         $this->assertEqualsWithDelta($bsEquityTotal, $statement['closing_equity_total'], 0.001, 'Statement closing equity total must reconcile to the fils against a directly-computed balance-sheet equity total (independent derivation from raw ledger, bypassing the report service entirely).');
+    }
+
+    // -- (7) POST-FIX RE-VERIFICATION (independent Opus pass, 2026-09-02) ----------------------
+    //
+    // The Sonnet verifier's fix (commit 0236537b) made an UNMAPPED `DIVIDENDS_PAID` purpose mean
+    // "zero dividend movement". That is the right call ONLY while the unmapped leaf carries no
+    // money. It is NOT guaranteed that a real company is mapped: SystemAccountsSeeder::mapByCode()
+    // SKIPS (reports, never fails) when code 3200 is missing, duplicated, or has grown children,
+    // and `DIVIDENDS_PAID` itself was only introduced by T0a (ca093323) -- so EVERY company that
+    // existed before T0a is unmapped until SystemAccountsSeeder is re-run. For such a company,
+    // "unmapped = zero" silently drops a REAL dividend balance out of the close forever: the YEC
+    // document is posted without the sweep, Retained Earnings is overstated by the dividend, and
+    // run()'s "a YEC already exists" idempotency short-circuit makes it unrecoverable by simply
+    // re-running the close. Year-end close must therefore REFUSE (blocking, nothing posted --
+    // recoverable) rather than silently under-post.
+
+    private function unmapDividends(Company $company): void
+    {
+        SystemAccount::where('company_id', $company->id)
+            ->where('purpose_code', 'DIVIDENDS_PAID')
+            ->delete();
+    }
+
+    public function test_close_refuses_when_dividends_paid_carries_a_balance_but_has_no_purpose_mapping(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->postDividendPayment($company, $branch, 2026, 100);
+        $this->unmapDividends($company);
+
+        $result = $this->service()->run($company->id, 2026, null);
+
+        $this->assertFalse($result['success'], 'A company whose 3200 carries real dividend money but has no DIVIDENDS_PAID mapping must NOT close silently -- the sweep would be dropped and Retained Earnings overstated forever.');
+        $this->assertNull($result['transaction'], 'Nothing may be posted when the close is refused -- the state must stay recoverable.');
+        $this->assertNotEmpty($result['blocking']);
+        $this->assertStringContainsString('DIVIDENDS_PAID', implode(' | ', $result['blocking']));
+
+        $this->assertSame(0, Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('doc_type', 'YEC')->count(), 'A refused close must leave no YEC document behind.');
+    }
+
+    public function test_close_is_still_a_clean_no_op_when_dividends_paid_is_unmapped_but_carries_nothing(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->unmapDividends($company);
+
+        $result = $this->service()->run($company->id, 2026, null);
+
+        $this->assertTrue($result['success'], "An unmapped DIVIDENDS_PAID with NO money on the leaf must remain a clean no-op (the Sonnet fix's own case) -- the new guard must not over-block.");
+        $this->assertSame([], $result['blocking']);
+        $this->assertNotNull($result['transaction']);
+        $this->assertEqualsWithDelta(300.0, (float) $result['net_profit'], 0.001);
+    }
+
+    public function test_mapping_the_purpose_after_a_refused_close_lets_the_close_sweep_the_dividends(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $dividends = $this->postDividendPayment($company, $branch, 2026, 100);
+        $this->unmapDividends($company);
+
+        $refused = $this->service()->run($company->id, 2026, null);
+        $this->assertFalse($refused['success']);
+
+        // The operator does what the blocking message tells them to: re-run the registry seeder.
+        (new SystemAccountsSeeder)->run();
+
+        $result = $this->service()->run($company->id, 2026, null);
+
+        $this->assertTrue($result['success'], 'Once the mapping exists the very same close must succeed -- the guard must be RECOVERABLE, never a dead end.');
+        $lines = JournalEntry::withoutGlobalScopes()->where('transaction_id', $result['transaction']->id)->get();
+        $sweep = $lines->firstWhere('account_id', $dividends->id);
+        $this->assertNotNull($sweep, 'The dividend sweep must actually post after the mapping is restored.');
+        $this->assertEqualsWithDelta(100.0, (float) $sweep->credit, 0.001);
+    }
+
+    public function test_equity_statement_still_reports_real_dividends_for_a_company_with_no_dividends_mapping(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $this->lockAllMonths($company, 2026);
+        $this->postPlAndAr($company, $branch, 2026, income: 500, expense: 200);
+        $this->postDividendPayment($company, $branch, 2026, 100);
+        $this->unmapDividends($company);
+
+        // The T5 fix made the WRITE path survive an unmapped purpose; the sibling READ report must
+        // not still hard-crash (UnmappedPurposeException -> HTTP 500) on the exact same company --
+        // least of all this one, the misconfigured company whose unswept dividends the statement
+        // is the only place to SEE. It degrades to the leaf's own structural code, the same way it
+        // already reads 3100/3300 (accepted read-layer ruling, packet section 9).
+        $statement = $this->equity()->generate($company->id, 2026);
+
+        $this->assertEqualsWithDelta(100.0, $statement['dividends_paid_this_year'], 0.001, "An unmapped DIVIDENDS_PAID must not zero out the statement's dividend figure -- the money is still on the leaf.");
+        $this->assertEqualsWithDelta(300.0, $statement['net_profit'], 0.001);
+        $this->assertSame('3200', $statement['components']['dividends_paid']['code']);
+        $this->assertSame('3400', $statement['components']['retained_earnings']['code']);
+
+        // Pre-close vs post-close consistency on this SAME (unmapped-then-mapped) company.
+        (new SystemAccountsSeeder)->run();
+        $close = $this->service()->run($company->id, 2026, null);
+        $this->assertTrue($close['success']);
+
+        $post = $this->equity()->generate($company->id, 2026);
+        $this->assertEqualsWithDelta($statement['net_profit'], $post['net_profit'], 0.001);
+        $this->assertEqualsWithDelta($statement['dividends_paid_this_year'], $post['dividends_paid_this_year'], 0.001);
+        $this->assertEqualsWithDelta($statement['closing_equity_total'], $post['closing_equity_total'], 0.001);
+        $this->assertTrue($post['checks']['ties_to_next_year_opening']);
     }
 }

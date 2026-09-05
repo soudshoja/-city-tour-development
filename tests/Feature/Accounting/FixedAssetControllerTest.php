@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Accounting;
 
+use App\Models\AccountingPeriod;
 use App\Models\Agent;
 use App\Models\AgentType;
 use App\Models\Branch;
@@ -539,6 +540,67 @@ class FixedAssetControllerTest extends AccountingTestCase
         $asset->refresh();
         $this->assertSame(FixedAsset::STATUS_DISPOSED, $asset->status);
         $this->assertNotNull($asset->disposal_transaction_id);
+    }
+
+    /**
+     * Verifier pinning test (adversarial pass, T10): before the fix, a disposal dated into a
+     * locked period posted silently into the next open period (the engine's own documented
+     * "shift, not refuse" mechanic — T2-T4 packet §12) with the flash message giving no hint the
+     * ledger date differed from what the user typed. Locks 2026-01, leaves 2026-02 open, disposes
+     * with a 2026-01-15 date and asserts the message names both months.
+     */
+    public function test_dispose_into_a_locked_period_tells_the_user_it_shifted(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $asset = $this->makeActiveAsset($company, ['useful_life_months' => 4, 'cost' => 400, 'salvage' => 0]);
+        $this->runner()->runForMonth($company->id, 2026, 1); // NBV -> 300
+
+        AccountingPeriod::updateOrCreate(
+            ['company_id' => $company->id, 'year' => 2026, 'month' => 1],
+            ['status' => AccountingPeriod::STATUS_LOCKED]
+        );
+        AccountingPeriod::updateOrCreate(
+            ['company_id' => $company->id, 'year' => 2026, 'month' => 2],
+            ['status' => AccountingPeriod::STATUS_OPEN]
+        );
+
+        $response = $this->actingAs($admin)->post(route('accounting.fixed-assets.dispose', $asset), [
+            'disposal_date' => '2026-01-15', 'proceeds' => 300.000,
+        ]);
+
+        $response->assertSessionHas('success', function (string $message) {
+            return str_contains($message, '2026-01') && str_contains($message, '2026-02') && str_contains($message, 'locked or closed');
+        });
+        $this->assertSame(FixedAsset::STATUS_DISPOSED, $asset->fresh()->status);
+    }
+
+    /**
+     * Verifier pinning test (adversarial pass, T10): the same honesty gap for the depreciation
+     * run screen — a real post into a locked month previously said only "N posted, M skipped"
+     * with no indication the documents actually landed a month later in the ledger.
+     */
+    public function test_depreciate_run_into_a_locked_period_tells_the_user_it_shifted(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $this->makeActiveAsset($company, ['useful_life_months' => 4, 'cost' => 400, 'salvage' => 0]);
+
+        AccountingPeriod::updateOrCreate(
+            ['company_id' => $company->id, 'year' => 2026, 'month' => 1],
+            ['status' => AccountingPeriod::STATUS_LOCKED]
+        );
+        AccountingPeriod::updateOrCreate(
+            ['company_id' => $company->id, 'year' => 2026, 'month' => 2],
+            ['status' => AccountingPeriod::STATUS_OPEN]
+        );
+
+        $response = $this->actingAs($admin)->post(route('accounting.fixed-assets.depreciate.run'), [
+            'year' => 2026, 'month' => 1,
+        ]);
+
+        $response->assertSessionHas('success', function (string $message) {
+            return str_contains($message, '2026-01') && str_contains($message, 'locked');
+        });
+        $this->assertTrue(FixedAssetDepreciation::where('period_year', 2026)->where('period_month', 1)->exists());
     }
 
     public function test_disposing_twice_via_the_endpoint_is_idempotent(): void

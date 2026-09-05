@@ -15,6 +15,7 @@ use App\Models\Supplier;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\FixedAssets\DepreciationRunService;
 use App\Services\Accounting\FixedAssets\FixedAssetService;
+use App\Services\Accounting\PeriodGuard;
 use App\Services\Accounting\PostingSeam;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -335,8 +336,36 @@ class FixedAssetController extends Controller
         $diff = round((float) $validated['proceeds'] - $nbvBefore, 3);
         $gainLoss = $diff > 0 ? sprintf('a gain of %.3f KWD', $diff) : ($diff < 0 ? sprintf('a loss of %.3f KWD', abs($diff)) : 'no gain or loss');
 
+        $message = "Asset disposed ({$gainLoss} vs. NBV).";
+        $message .= $this->lockedPeriodShiftNote($validated['disposal_date'], $result->transaction->posting_date ?? null);
+
         return redirect()->route('accounting.fixed-assets.show', $fixedAsset)
-            ->with('success', "Asset disposed ({$gainLoss} vs. NBV).");
+            ->with('success', $message);
+    }
+
+    /**
+     * Verifier fix (adversarial pass, T10): the engine silently shifts a document's posting_date
+     * forward to the next open period when the requested date's own period is locked/soft-closed
+     * (PostingService::post() step 5 / PeriodGuard::earliestOpenOnOrAfter() — see the T2-T4 packet
+     * §12 "Locked-period shift, not refusal" note). Before this fix the dispose/run success message
+     * never mentioned it, so a user who entered a disposal date in a locked month had no way to
+     * know their document actually landed in the ledger a different month than the one they typed.
+     * This never changes what posts — only what the flash message says.
+     */
+    private function lockedPeriodShiftNote(string $requestedDate, ?\DateTimeInterface $actualPostingDate): string
+    {
+        if ($actualPostingDate === null) {
+            return '';
+        }
+
+        $requestedMonth = Carbon::parse($requestedDate)->format('Y-m');
+        $postedMonth = Carbon::instance($actualPostingDate)->format('Y-m');
+
+        if ($requestedMonth === $postedMonth) {
+            return '';
+        }
+
+        return " Note: {$requestedMonth} is locked or closed, so this posted into {$postedMonth}'s books instead of the date you entered.";
     }
 
     /**
@@ -384,6 +413,9 @@ class FixedAssetController extends Controller
 
         $engineEnabled = app(PostingSeam::class)->isEnabledFor($companyId);
 
+        $monthEnd = Carbon::create((int) $validated['year'], (int) $validated['month'], 1)->endOfMonth();
+        $periodStatus = app(PeriodGuard::class)->statusFor($companyId, $monthEnd);
+
         $result = $runner->runForMonth($companyId, (int) $validated['year'], (int) $validated['month'], dryRun: false, userId: Auth::id());
 
         $message = ! $engineEnabled
@@ -394,6 +426,20 @@ class FixedAssetController extends Controller
                 $result['skipped'],
                 $result['blocked'] !== [] ? ', '.count($result['blocked']).' blocked (see log)' : ''
             );
+
+        // Verifier fix (adversarial pass, T10): same locked-period shift honesty gap as dispose() —
+        // see FixedAssetController::lockedPeriodShiftNote()'s docblock. DepreciationRunService's own
+        // result shape carries no per-document posting_date, so this is a pre-check on the
+        // requested period's status rather than a post-hoc comparison; it only fires when
+        // something was actually posted this call.
+        if ($engineEnabled && $result['posted'] > 0 && in_array($periodStatus, [\App\Models\AccountingPeriod::STATUS_LOCKED, \App\Models\AccountingPeriod::STATUS_SOFT_CLOSED], true)) {
+            $message .= sprintf(
+                ' Note: %04d-%02d is %s, so these documents posted into the next open period\'s books instead of that month.',
+                (int) $validated['year'],
+                (int) $validated['month'],
+                str_replace('_', ' ', $periodStatus)
+            );
+        }
 
         return redirect()
             ->route('accounting.fixed-assets.depreciate', ['year' => $validated['year'], 'month' => $validated['month']])

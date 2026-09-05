@@ -159,6 +159,111 @@ class ArchitectureTest extends TestCase
     }
 
     /**
+     * PHASE GATE (accounting-builds) — the mutation proof PLAN.md's T12 named as MP-12-1 ("insert
+     * a JournalEntry::create into FixedAssetController -> ArchitectureTest fails; proves the
+     * ratchet still bites for new files") and which was never built, because T12 was never
+     * started.
+     *
+     * Why it matters: the app tree currently has ZERO real violations of this rule, so
+     * test_no_journal_entry_writes_outside_engine() above passes whether the scanner works or
+     * not. A regex that silently stopped matching — an escaping slip, a refactor that renamed
+     * JournalEntry, a `continue` in the wrong branch — would look exactly like a clean codebase.
+     * Nothing in CI could tell the difference. This test is what tells the difference: it builds a
+     * throwaway tree containing the violation MP-12-1 describes and asserts the scanner reports
+     * it, so a broken guard fails here loudly instead of passing quietly everywhere.
+     *
+     * All five raw-writer shapes are probed, plus both sides of the decision the scanner makes
+     * about a hit: inside app/Services/Accounting it is the sole allowed writer and must be
+     * ignored; outside it and off the allow-list it must be reported.
+     */
+    public function test_the_raw_writer_ratchet_actually_bites_a_synthetic_violation(): void
+    {
+        $root = sys_get_temp_dir().'/arch-ratchet-mutation-'.uniqid();
+
+        // Every shape the live scanner claims to catch, one file each. If any regex has rotted,
+        // its file goes missing from the reported set and this test names exactly which one.
+        $violations = [
+            'Http/Controllers/Accounting/FixedAssetController.php' => 'JournalEntry::create([1]);',
+            'Http/Controllers/ProbeNewJournalEntry.php' => '$e = new JournalEntry([1]);',
+            'Http/Controllers/ProbeInsert.php' => 'JournalEntry::insert([1]);',
+            'Http/Controllers/ProbeDebitUpdate.php' => "JournalEntry::where('id', 1)->update(['debit' => 1]);",
+            'Console/Commands/ProbeTransactionCreate.php' => 'Transaction::create([1]);',
+        ];
+
+        try {
+            foreach ($violations as $relative => $body) {
+                $path = $root.'/'.$relative;
+                @mkdir(dirname($path), 0777, true);
+                file_put_contents($path, "<?php\n\n".$body."\n");
+            }
+
+            // The engine's own directory is the sole allowed writer: an identical violation here
+            // must NOT be reported. Without this leg, a scanner that flagged everything
+            // unconditionally would still satisfy the assertions above.
+            $enginePath = $root.'/Services/Accounting/ProbeEngineWriter.php';
+            @mkdir(dirname($enginePath), 0777, true);
+            file_put_contents($enginePath, "<?php\n\nJournalEntry::create([1]);\n");
+
+            // A file with no raw write at all must not be reported either.
+            $cleanPath = $root.'/Http/Controllers/ProbeClean.php';
+            file_put_contents($cleanPath, "<?php\n\n\$x = 1;\n");
+
+            $result = $this->scanForRawLedgerWriters($root);
+
+            $reported = array_map(
+                fn (string $p): string => ltrim(str_replace('\\', '/', substr(str_replace('\\', '/', $p), strlen(str_replace('\\', '/', $root)))), '/'),
+                $result['unlisted']
+            );
+            sort($reported);
+
+            foreach (array_keys($violations) as $relative) {
+                $this->assertContains(
+                    $relative,
+                    $reported,
+                    "The raw-writer ratchet did NOT flag {$relative}. The regex for this write shape "
+                    .'has stopped matching, so this class of unguarded ledger write would now reach '
+                    .'production with a green CI. Fix the pattern in scanForRawLedgerWriters().'
+                );
+            }
+
+            $this->assertNotContains(
+                'Services/Accounting/ProbeEngineWriter.php',
+                $reported,
+                'The ratchet flagged a write inside the engine\'s own directory, which is the sole '
+                .'allowed writer — the exemption branch is broken and the live test would now fail '
+                .'against legitimate engine code.'
+            );
+
+            $this->assertNotContains(
+                'Http/Controllers/ProbeClean.php',
+                $reported,
+                'The ratchet flagged a file containing no raw ledger write at all.'
+            );
+        } finally {
+            // Always clean up: a leaked probe file under a real path would poison every later run.
+            $this->removeDirectory($root);
+        }
+    }
+
+    private function removeDirectory(string $dir): void
+    {
+        if (! is_dir($dir)) {
+            return;
+        }
+
+        $items = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::CHILD_FIRST
+        );
+
+        foreach ($items as $item) {
+            $item->isDir() ? @rmdir($item->getRealPath()) : @unlink($item->getRealPath());
+        }
+
+        @rmdir($dir);
+    }
+
+    /**
      * Grep-style static scan over app/ for the raw ledger-write shapes file 11's C2 names,
      * excluding the engine's own directory (app/Services/Accounting), which is the one place
      * allowed to write journal_entries/transactions directly. Deliberately a lightweight regex
@@ -168,10 +273,16 @@ class ArchitectureTest extends TestCase
      * @return array{unlisted: string[], stale: string[]} 'unlisted' = absolute paths with a hit
      *   not on the allow-list; 'stale' = allow-list entries (relative paths) with no hit.
      */
-    private function scanForRawLedgerWriters(): array
+    private function scanForRawLedgerWriters(?string $rootDir = null): array
     {
-        $appDir = base_path('app');
-        $allowedDir = str_replace('\\', '/', base_path('app/Services/Accounting'));
+        // PHASE GATE (accounting-builds T12/MP-12-1): $rootDir exists ONLY so the mutation proof
+        // below can point this same scanner at a synthetic tree and prove it actually bites. It
+        // defaults to base_path('app'), so the live ratchet above is byte-identical in behaviour
+        // to what it was before this parameter existed. Both the "sole writer" exemption and the
+        // relative-path the allow-list is matched on are derived FROM the root, so a synthetic
+        // tree reproduces the real decision logic rather than a lookalike of it.
+        $appDir = $rootDir ?? base_path('app');
+        $allowedDir = rtrim(str_replace('\\', '/', $appDir), '/').'/Services/Accounting';
         $appDirNormalized = rtrim(str_replace('\\', '/', $appDir), '/');
 
         $patterns = [

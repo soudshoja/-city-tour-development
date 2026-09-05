@@ -128,18 +128,16 @@ class CoaController extends Controller
 
             if ($rootAccount) {
                 $this->buildAccountTree($rootAccount, $childrenMap, $journalAggregates, $currencyAggregates, $debitCreditType);
-            } else {
-                // New/unseeded company: this root doesn't exist yet (a
-                // freshly registered company hasn't had a COA seeded, or
-                // this particular root was never created). Every
-                // coa.partials.* view does `${$name}->childAccounts` with
-                // no null guard, so leaving this null 500'd the whole page
-                // on day one of onboarding. Stand in an empty, unsaved
-                // root so the section renders with zero rows instead — a
-                // "needs setup" empty state rather than a crash.
-                $rootAccount = new Account(['name' => $rootName]);
-                $rootAccount->childAccounts = collect();
             }
+            // New/unseeded company: this root doesn't exist yet (a freshly
+            // registered company hasn't had a COA seeded, or this
+            // particular root was never created). $rootAccount stays null
+            // in that case -- coa.index's `@if ($assets)` (etc.) guards
+            // are what render the per-root "No X accounts yet." empty
+            // state, and the outer "No chart of accounts yet." state when
+            // every root is missing. A non-null placeholder here made
+            // those checks unreachable (DIAG-2): every root looked
+            // "seeded" even when empty, so the empty states never showed.
 
             match ($rootName) {
                 'Assets'      => $assets = $rootAccount,

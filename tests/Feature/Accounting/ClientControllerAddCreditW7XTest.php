@@ -190,7 +190,12 @@ class ClientControllerAddCreditW7XTest extends AccountingTestCase
         $this->assertSame('success', $first['status']);
 
         $second = app(ClientController::class)->addCredit($payment);
-        $this->assertSame('error', $second['status']);
+        // Production contract (254bb45a8 / VOU-2026-03849): a benign duplicate retry
+        // (webhook + browser callback + reconciler racing the same payment) returns
+        // success with already_added=true, not an error -- the write-blocking is what
+        // matters, not the label. See DIAG-2.
+        $this->assertSame('success', $second['status']);
+        $this->assertTrue($second['already_added']);
 
         $this->assertSame(1, Credit::where('payment_id', $payment->id)->count());
         $this->assertSame(1, Transaction::withoutGlobalScopes()->where('company_id', $company->id)->count());

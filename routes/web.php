@@ -553,6 +553,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/bank-accounts', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'bankAccounts'])->name('bank-accounts');
         Route::get('/settlements', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'settlements'])->name('settlements');
         Route::post('/settlements', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'recordSettlement'])->name('settlements.record');
+
+        // accounting-builds T9 (Wave 2) — bank statement import + auto-match.
+        Route::get('/bank-statements', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'bankStatements'])->name('bank-statements.index');
+        Route::post('/bank-statements', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'importBankStatement'])->name('bank-statements.import');
+        Route::post('/bank-statements/{bankStatementImport}/match', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'matchBankStatement'])->name('bank-statements.match');
+        Route::get('/bank-statements/{bankStatementImport}/exceptions', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'bankStatementExceptions'])->name('bank-statements.exceptions');
     });
 
     // P2.5.H (p2_5-brief.md §P2.5.H) — client/supplier/agent statement (open_items|full_activity)

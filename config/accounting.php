@@ -1147,6 +1147,11 @@ return [
             'credit' => 'Credit',
             'running_balance' => 'Balance',
         ],
+        // Required for a row to be importable at all — every other mapped column is optional
+        // (missing/blank cells tolerated per row; a required column missing from the FILE itself
+        // rejects the whole import, see BankStatementImporter). 'debit'/'credit' are both
+        // required as HEADER columns even though any given row only ever populates one of them.
+        'required_columns' => ['value_date', 'debit', 'credit'],
         // L16: bank match tolerance 0.001 KWD on base amounts, date window ±3 days.
         'match_tolerance' => 0.001,
         'date_window_days' => 3,

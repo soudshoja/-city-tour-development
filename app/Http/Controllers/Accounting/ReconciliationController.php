@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Accounting;
 use App\Http\Controllers\Controller;
 use App\Jobs\RunReconciliationAutoMatchJob;
 use App\Models\Account;
+use App\Models\BankStatementImport;
 use App\Models\Branch;
 use App\Models\GatewaySettlement;
 use App\Models\ReconciliationFixDraft;
@@ -19,6 +20,11 @@ use App\Services\Accounting\GatewaySettlementService;
 use App\Services\Accounting\ReconciliationCenterService;
 use App\Services\Accounting\ReconciliationFixDraftService;
 use App\Services\Accounting\ReconciliationProposalService;
+use App\Services\Accounting\Reconciliation\BankStatementImportConflict;
+use App\Services\Accounting\Reconciliation\BankStatementImporter;
+use App\Services\Accounting\Reconciliation\BankStatementImportInput;
+use App\Services\Accounting\Reconciliation\BankStatementImportRejected;
+use App\Services\Accounting\Reconciliation\BankStatementMatcher;
 use App\Services\Accounting\Reconciliation\SupplierStatementImportInput;
 use App\Services\Accounting\Reconciliation\SupplierStatementImportRejected;
 use App\Services\Accounting\Reconciliation\SupplierStatementImporter;
@@ -336,6 +342,122 @@ class ReconciliationController extends Controller
             'unmatched_statement' => $exceptions['unmatched_statement']->values(),
             'disputed' => $exceptions['disputed']->values(),
             'unmatched_ledger' => $exceptions['unmatched_ledger']->values(),
+        ]);
+    }
+
+    /**
+     * accounting-builds T9 (Wave 2) — bank-statement import + auto-match tab. Import form + past-
+     * imports list, mirroring T8's supplierStatements() shape exactly.
+     */
+    public function bankStatements(Request $request, AccountResolver $resolver): View
+    {
+        Gate::authorize('view', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        $imports = BankStatementImport::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->latest('id')
+            ->limit(50)
+            ->get();
+
+        $bankAccounts = Account::withoutGlobalScopes()
+            ->whereIn('id', $resolver->bankLeafIds($companyId))
+            ->orderBy('name')
+            ->get(['id', 'name', 'code', 'currency']);
+
+        return view('accounting.reconciliation.bank-statements', [
+            'companyId' => $companyId,
+            'canManage' => Gate::allows('manage', ReconciliationProposal::class),
+            'imports' => $imports,
+            'bankAccounts' => $bankAccounts,
+            'defaultColumns' => (array) config('accounting.bank_statements.columns', []),
+        ]);
+    }
+
+    public function importBankStatement(Request $request, BankStatementImporter $importer): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        $data = $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv,txt', 'max:10240'],
+            'bank_account_id' => ['required', 'integer'],
+            'statement_currency' => ['required', 'string', 'size:3'],
+            'statement_reference' => ['nullable', 'string', 'max:160'],
+            'statement_from' => ['nullable', 'date'],
+            'statement_to' => ['nullable', 'date'],
+            'closing_balance' => ['nullable', 'numeric'],
+            'column_map' => ['nullable', 'array'],
+        ], [
+            'file.mimes' => 'The statement must be a CSV or Excel (.xlsx/.xls) file.',
+            'file.max' => 'The file must not exceed 10MB.',
+        ]);
+
+        $file = $request->file('file');
+
+        try {
+            $import = $importer->import(new BankStatementImportInput(
+                companyId: $companyId,
+                bankAccountId: (int) $data['bank_account_id'],
+                absoluteFilePath: $file->getRealPath(),
+                fileName: $file->getClientOriginalName(),
+                statementCurrency: $data['statement_currency'],
+                columnMapOverride: $data['column_map'] ?? null,
+                statementReference: $data['statement_reference'] ?? null,
+                statementFrom: $data['statement_from'] ?? null,
+                statementTo: $data['statement_to'] ?? null,
+                closingBalance: isset($data['closing_balance']) ? (float) $data['closing_balance'] : null,
+                importedBy: Auth::id(),
+            ));
+        } catch (BankStatementImportConflict $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 409);
+        } catch (BankStatementImportRejected $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true, 'import' => $import->fresh(['lines'])], 201);
+    }
+
+    public function matchBankStatement(Request $request, BankStatementImport $bankStatementImport, BankStatementMatcher $matcher): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+        abort_if((int) $bankStatementImport->company_id !== $companyId, 403, 'Statement import belongs to a different company.');
+
+        $result = $matcher->match($bankStatementImport);
+
+        return response()->json(['success' => true, 'result' => $result->toArray(), 'import' => $bankStatementImport->fresh()]);
+    }
+
+    /**
+     * Exceptions report (both directions) + the running-balance reconciliation report — spec:
+     * "unreconciled report (both directions) with running statement balance vs ledger balance at
+     * statement end (derived from journal lines, never accounts.actual_balance)".
+     */
+    public function bankStatementExceptions(Request $request, BankStatementImport $bankStatementImport, BankStatementMatcher $matcher): JsonResponse
+    {
+        Gate::authorize('view', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+        abort_if((int) $bankStatementImport->company_id !== $companyId, 403, 'Statement import belongs to a different company.');
+
+        $exceptions = $matcher->exceptionsFor($bankStatementImport);
+
+        return response()->json([
+            'success' => true,
+            'import' => $bankStatementImport,
+            'matched' => $bankStatementImport->lines()->where('state', 'matched')->orderBy('row_no')->get(),
+            'unmatched_statement' => $exceptions['unmatched_statement']->values(),
+            'disputed' => $exceptions['disputed']->values(),
+            'unmatched_ledger' => $exceptions['unmatched_ledger']->values(),
+            'report' => $matcher->reconciliationReport($bankStatementImport),
         ]);
     }
 

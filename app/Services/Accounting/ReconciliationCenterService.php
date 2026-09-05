@@ -577,10 +577,20 @@ final class ReconciliationCenterService
      * unmatched, ageing" vs. "explained by a known timing difference" can tell the two apart
      * without double-counting either (see {@see self::explainGap()}).
      *
+     * accounting-builds T9 (Wave 2): extended to return BOTH sides when
+     * `$bankStatementImportId` is given (spec: "unreconciled report (both directions)") — adds a
+     * `statement_items`/`statement_buckets` pair (book lines are `items`/`buckets`, exactly as
+     * before; the STATEMENT side is `App\Models\BankStatementImportLine` rows for that one import
+     * still in state `unmatched`/`disputed`, aged the SAME way against `$asOf` and the SAME
+     * `config('accounting.reconciliation.ageing_over_days')` bucket boundaries the book side
+     * already uses). Additive and OPT-IN: omitting the parameter (every pre-existing caller,
+     * including {@see self::explainGap()}) returns EXACTLY today's book-only shape — no existing
+     * caller's return-array shape changes.
+     *
      * @param  int[]  $accountIds
-     * @return array{items: list<array>, buckets: array<string,float>}
+     * @return array{items: list<array>, buckets: array<string,float>, statement_items?: list<array>, statement_buckets?: array<string,float>}
      */
-    public function unmatchedFor(int $companyId, array $accountIds, string $group, \DateTimeInterface $asOf): array
+    public function unmatchedFor(int $companyId, array $accountIds, string $group, \DateTimeInterface $asOf, ?int $bankStatementImportId = null): array
     {
         $query = $group === self::GROUP_CONTROL
             ? JournalEntry::withoutGlobalScopes()->whereIn('account_id', $accountIds)->whereNull('deleted_at')->whereNull('type_reference_id')
@@ -640,7 +650,67 @@ final class ReconciliationCenterService
             ];
         }
 
-        return ['items' => $items, 'buckets' => $buckets];
+        $result = ['items' => $items, 'buckets' => $buckets];
+
+        if ($bankStatementImportId !== null) {
+            [$result['statement_items'], $result['statement_buckets']] = $this->unmatchedStatementSideFor($bankStatementImportId, $asOfCarbon);
+        }
+
+        return $result;
+    }
+
+    /**
+     * accounting-builds T9 (Wave 2). The STATEMENT side of {@see self::unmatchedFor()}'s "both
+     * directions" extension — every {@see \App\Models\BankStatementImportLine} on one import still
+     * in state `unmatched`/`disputed` (never `matched`), aged against `$asOf` with the SAME bucket
+     * boundaries the book side uses.
+     *
+     * @return array{0: list<array>, 1: array<string,float>}
+     */
+    private function unmatchedStatementSideFor(int $bankStatementImportId, Carbon $asOfCarbon): array
+    {
+        $lines = \App\Models\BankStatementImportLine::where('import_id', $bankStatementImportId)
+            ->whereIn('state', [
+                \App\Models\BankStatementImportLine::STATE_UNMATCHED,
+                \App\Models\BankStatementImportLine::STATE_DISPUTED,
+            ])
+            ->orderBy('row_no')
+            ->get();
+
+        $buckets = ['0_30' => 0.0, '31_60' => 0.0, '61_90' => 0.0, 'over_90' => 0.0];
+        $items = [];
+
+        foreach ($lines as $line) {
+            $lineDate = Carbon::parse($line->value_date);
+            $ageDays = $lineDate->diffInDays($asOfCarbon, false);
+            $net = $line->amount();
+
+            $bucket = match (true) {
+                $ageDays <= 30 => '0_30',
+                $ageDays <= 60 => '31_60',
+                $ageDays <= 90 => '61_90',
+                default => 'over_90',
+            };
+
+            $buckets[$bucket] += $net;
+
+            $items[] = [
+                'id' => $line->id,
+                'row_no' => $line->row_no,
+                'date' => $lineDate->toDateString(),
+                'age_days' => $ageDays,
+                'ageing_bucket' => $bucket,
+                'state' => $line->state,
+                'debit' => (float) $line->debit,
+                'credit' => (float) $line->credit,
+                'reference' => $line->reference,
+                'auth_no' => $line->auth_no,
+                'description' => $line->description,
+                'note' => $line->note,
+            ];
+        }
+
+        return [$items, $buckets];
     }
 
     /**

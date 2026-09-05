@@ -363,6 +363,55 @@ class GatewaySettlementServiceTest extends AccountingTestCase
         $this->assertSame('tap', $settlement->settlement_channel);
     }
 
+    /**
+     * Post-sign-off fix (T7 review packet §12 finding 4 — Fable orchestrator sign-off,
+     * 2026-09-02): production Tap `PaymentMethod` codes (`TapPaymentMethodSeeder`) are
+     * `src_kw.knet` / `src_card` / `src_deema` / `src_sa.mada` / `src_bh.benefit` / `src_qa.qpay`,
+     * not L12's plain vocabulary (`knet` / `card`), and the T7 fixtures seed the bare code
+     * `knet`. `channelFor()` must map BOTH shapes onto the same canonical token.
+     */
+    public function test_channel_for_normalises_production_shaped_tap_source_codes_to_the_canonical_rail(): void
+    {
+        // Production shape (TapPaymentMethodSeeder codes) -> canonical.
+        $this->assertSame('tap:knet', GatewaySettlementService::channelFor('TAP', 'src_kw.knet'));
+        $this->assertSame('tap:card', GatewaySettlementService::channelFor('TAP', 'src_card'));
+        $this->assertSame('tap:deema', GatewaySettlementService::channelFor('TAP', 'src_deema'));
+        $this->assertSame('tap:mada', GatewaySettlementService::channelFor('TAP', 'src_sa.mada'));
+        $this->assertSame('tap:benefit', GatewaySettlementService::channelFor('TAP', 'src_bh.benefit'));
+        $this->assertSame('tap:qpay', GatewaySettlementService::channelFor('TAP', 'src_qa.qpay'));
+
+        // Plain/fixture shape (the L12 vocabulary, and the test fixture's seeded code) -> same
+        // canonical token, unchanged from before this fix.
+        $this->assertSame('tap:knet', GatewaySettlementService::channelFor('TAP', 'knet'));
+        $this->assertSame('tap:card', GatewaySettlementService::channelFor('TAP', 'card'));
+        $this->assertSame('tap:deema', GatewaySettlementService::channelFor('TAP', 'deema'));
+
+        // Case/whitespace tolerance, gateway lower-cased, no rail unchanged.
+        $this->assertSame('tap:knet', GatewaySettlementService::channelFor('TAP', ' SRC_KW.KNET '));
+        $this->assertSame('tap', GatewaySettlementService::channelFor('TAP', null));
+        $this->assertSame('tap', GatewaySettlementService::channelFor('TAP', ''));
+    }
+
+    /**
+     * End-to-end: a receipt carrying the production-shaped Tap source code must stamp the
+     * canonical channel on the posted settlement, not the raw Tap source id.
+     */
+    public function test_a_settlement_recorded_with_a_production_shaped_rail_code_stamps_the_canonical_channel(): void
+    {
+        [$company] = $this->makeEngineOnCompany();
+        $bank = $this->bankAccount($company);
+        $this->seedGatewayClearing($company, 'TAP', 100.000);
+
+        $settlement = $this->service()->record(
+            companyId: $company->id, gateway: 'TAP', payoutReference: 'CHANNEL-PROD-1',
+            payoutDate: Carbon::parse('2026-08-20'), gross: 100.000, fee: 5.000, net: 95.000,
+            bankAccountId: $bank->id,
+            settlementChannel: GatewaySettlementService::channelFor('TAP', 'src_kw.knet'),
+        );
+
+        $this->assertSame('tap:knet', $settlement->settlement_channel);
+    }
+
     // ── Daily clearing->bank JV non-double-move ─────────────────────────────────────────────
 
     public function test_posted_settlement_stops_the_daily_release_job_from_resweeping_covered_payments(): void

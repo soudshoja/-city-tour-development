@@ -573,15 +573,69 @@ final class GatewaySettlementService
      * lower-cased gateway key alone when no rail is available (a settlement or a MyFatoorah
      * advance carries no per-instrument breakdown today — see the review packet's Deviations
      * section for why this degrades gracefully rather than fabricating an `unknown` segment).
+     *
+     * The rail itself is normalised through {@see self::normaliseRailCode()} first — see that
+     * method's docblock (post-sign-off fix, T7 review packet §12 finding 4).
      */
     public static function channelFor(string $gatewayKey, ?string $railCode): string
     {
         $gateway = strtolower(trim($gatewayKey));
+        $rail = self::normaliseRailCode($railCode);
 
-        if ($railCode === null || trim($railCode) === '') {
+        if ($rail === null) {
             return $gateway;
         }
 
-        return $gateway.':'.strtolower(trim($railCode));
+        return $gateway.':'.$rail;
+    }
+
+    /**
+     * Post-sign-off fix (T7 review packet §12 finding 4 — Fable orchestrator sign-off,
+     * 2026-09-02): production Tap `PaymentMethod` codes (seeded by `TapPaymentMethodSeeder`) are
+     * `src_kw.knet`, `src_card`, `src_deema`, `src_sa.mada`, `src_bh.benefit`, `src_qa.qpay` — Tap
+     * source ids, not L12's plain vocabulary. A live receipt therefore stamped `tap:src_kw.knet`
+     * while the plan's own vocabulary and the T7 test fixtures use `tap:knet` (and the fixture
+     * seeder used the bare code `knet`). `PostingService` truncates `settlement_channel` to 24
+     * chars silently, so the raw code could also collide/clip further down the line.
+     *
+     * This is the single place every settlement-channel writer funnels through
+     * ({@see \App\Http\Controllers\PaymentController}, {@see \App\Http\Controllers\ClientController},
+     * {@see \App\Console\Commands\CheckMyFatoorahPayments},
+     * {@see \App\Console\Commands\PaymentReleaseToCompanyBankAccProcess}, and this service's own
+     * `record()` default) — so the rail is canonicalised once, here, rather than scattered across
+     * each call site.
+     *
+     * Rule: a Tap `src_...` source id strips its `src_` prefix, then — for a compound id like
+     * `kw.knet` or `sa.mada` — keeps only the segment after the last `.` (the country/rail prefix
+     * carries no information L12's vocabulary distinguishes on). This maps BOTH the production
+     * shape and the plain rail name onto the same canonical token:
+     *
+     *   'src_kw.knet' -> 'knet'     'knet'  -> 'knet'   (already canonical — passthrough)
+     *   'src_card'    -> 'card'     'card'  -> 'card'   (already canonical — passthrough)
+     *   'src_deema'   -> 'deema'    'deema' -> 'deema'  (already canonical — passthrough)
+     *   'src_sa.mada' -> 'mada'     'src_bh.benefit' -> 'benefit'   'src_qa.qpay' -> 'qpay'
+     *
+     * A code that is already bare (no `src_` prefix) is returned lower-cased and trimmed only —
+     * never touched further — so every pre-existing test fixture that seeds a bare rail (e.g.
+     * `knet`) keeps producing the exact same canonical token it always did.
+     */
+    private static function normaliseRailCode(?string $railCode): ?string
+    {
+        if ($railCode === null || trim($railCode) === '') {
+            return null;
+        }
+
+        $rail = strtolower(trim($railCode));
+
+        if (str_starts_with($rail, 'src_')) {
+            $rail = substr($rail, 4);
+
+            $lastDot = strrpos($rail, '.');
+            if ($lastDot !== false) {
+                $rail = substr($rail, $lastDot + 1);
+            }
+        }
+
+        return $rail;
     }
 }

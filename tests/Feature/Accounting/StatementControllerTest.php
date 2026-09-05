@@ -17,6 +17,7 @@ use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Support\Carbon;
 use Spatie\Permission\Models\Permission;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -27,9 +28,12 @@ use Tests\Support\AccountingTestCase;
  */
 class StatementControllerTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     private function makeCompanyAndAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $admin = User::factory()->create(['role_id' => Role::ADMIN]);
         session(['company_id' => $company->id]);
         $this->trackCompanyForInvariants($company->id);
@@ -76,6 +80,7 @@ class StatementControllerTest extends AccountingTestCase
     public function test_guest_is_redirected_to_login(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $client = Client::factory()->create(['company_id' => $company->id, 'agent_id' => null]);
         $this->trackCompanyForInvariants($company->id);
 
@@ -154,6 +159,7 @@ class StatementControllerTest extends AccountingTestCase
     public function test_agent_statement_renders_for_the_branch_owner(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $branchOwner = User::factory()->create();
         session(['company_id' => $company->id]);
         $this->trackCompanyForInvariants($company->id);
@@ -210,10 +216,12 @@ class StatementControllerTest extends AccountingTestCase
     public function test_user_from_another_company_cannot_view_a_different_companys_agent_statement(): void
     {
         $companyA = Company::factory()->create();
+        $this->grantAccountingModule($companyA);
         $this->trackCompanyForInvariants($companyA->id);
         $agentA = $this->makeAgentInCompany($companyA);
 
         $companyB = Company::factory()->create();
+        $this->grantAccountingModule($companyB);
         $this->trackCompanyForInvariants($companyB->id);
         $branchOwnerB = User::factory()->create();
         Branch::factory()->create(['company_id' => $companyB->id, 'user_id' => $branchOwnerB->id]);
@@ -252,6 +260,7 @@ class StatementControllerTest extends AccountingTestCase
         (new \Database\Seeders\SystemAccountsSeeder)->run();
 
         $companyB = Company::factory()->create();
+        $this->grantAccountingModule($companyB);
         $this->trackCompanyForInvariants($companyB->id);
         \Database\Seeders\CoaSeeder::run($companyB->id);
         (new \Database\Seeders\SystemAccountsSeeder)->run();
@@ -320,6 +329,7 @@ class StatementControllerTest extends AccountingTestCase
     public function test_agent_cannot_view_another_clients_statement(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
 
         $branchOwner = User::factory()->create();

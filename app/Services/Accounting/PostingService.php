@@ -1416,8 +1416,20 @@ final class PostingService
                     // W5.L fix — see LineDraft's own "W5.L FIX ROUND" docblock for the full
                     // rationale, the one documented cheque_date behaviour change, and the exact
                     // column widths truncateNullable() below guards against.
+                    //
+                    // Timezone-safety fix (accounting-builds, 2026-09-02): the column's DB-level
+                    // `useCurrent()` default was dropped (migration
+                    // 2026_09_02_000009_drop_db_clock_defaults_in_accounting_tables.php) because
+                    // MySQL/MariaDB's own clock is UTC while APP_TIMEZONE is Asia/Kuwait. This is
+                    // the one write path that relied on that default ever mattering for a REAL
+                    // cheque line: when a feeder is genuinely recording a cheque (chequeNo is set)
+                    // but has no explicit cheque date to report, a cheque instrument still needs
+                    // *a* date on the ledger line -- it now gets the app clock's `now()` explicitly
+                    // (correct, tz-aware) instead of the DB clock's implicit default (wrong tz).
+                    // A non-cheque line (chequeNo null) still gets an explicit NULL, unchanged from
+                    // the W5.L fix -- no fabricated cheque date on a mundane JV/INV line.
                     'cheque_no' => $this->truncateNullable($line->chequeNo, 100),
-                    'cheque_date' => $line->chequeDate,
+                    'cheque_date' => $line->chequeDate ?? ($line->chequeNo !== null ? now() : null),
                     'cheque_clearance_date' => $line->chequeClearanceDate,
                     'bank_info' => $this->truncateNullable($line->bankInfo, 200),
                     'auth_no' => $this->truncateNullable($line->authNo, 100),

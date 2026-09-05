@@ -1141,4 +1141,231 @@ class ArchitectureTest extends TestCase
 
         return $violations;
     }
+
+    /**
+     * Timezone-safety fix (accounting-builds, 2026-09-02 read-only audit): prod `APP_TIMEZONE` is
+     * `Asia/Kuwait` but MySQL/MariaDB's own clock (`NOW()`/`CURRENT_TIMESTAMP`) is UTC — a column
+     * that defaults to the DB's own clock silently drifts 3 hours from every other date/time this
+     * app writes (all go through PHP's tz-aware `now()`). `journal_entries.cheque_date` was exactly
+     * this bug (`timestamp('cheque_date')->nullable()->useCurrent()`,
+     * `2025_03_25_085713_add_columns_to_general_ledgers_table.php:20`) — fixed by migration
+     * `2026_09_02_000009_drop_db_clock_defaults_in_accounting_tables.php`. This is the CI ratchet
+     * that keeps it fixed: no accounting-table migration may EVER introduce `useCurrent(`,
+     * `useCurrentOnUpdate(`, or a raw `CURRENT_TIMESTAMP` default again.
+     *
+     * Same allow-list shape as {@see self::ALLOW_LISTED_RAW_WRITER_FILES} above: a hit in a
+     * migration NOT on {@see self::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS} fails the build (new
+     * regression); an allow-listed file with no hit also fails (stale entry — remove it once the
+     * migration is deleted or truly no longer matches). Deliberately does NOT flag the two
+     * historical migrations that introduced (2025_03_25) then removed (2026_09_02, this same wave)
+     * the `cheque_date` default — both are named on the allow-list with an explanation, since a
+     * migration file is an immutable historical record and rewriting it would break `php artisan
+     * migrate:fresh` on any environment that already ran it.
+     */
+    private const ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS = [
+        // Introduced the original `journal_entries.cheque_date` useCurrent() default (table was
+        // still named `general_ledgers` at the time). This is the historical bug the 2026-09-02
+        // migration below fixes — kept as an immutable past migration, not rewritten.
+        '2025_03_25_085713_add_columns_to_general_ledgers_table.php',
+        // The fix itself: this migration's down() legitimately RE-ADDS useCurrent() (to make
+        // rollback byte-identical to the pre-fix schema) — that re-add is inside a rollback path,
+        // not a live schema shape, but the whole-file text scan below cannot tell down() apart from
+        // up(), so this file is allow-listed rather than the scanner made AST-aware for one line.
+        '2026_09_02_000009_drop_db_clock_defaults_in_accounting_tables.php',
+        // The scan's regex matches whole-file TEXT, including comments/docblocks (same caveat the
+        // raw-writer scan documents for PostingEngineDisabledException.php above). This migration's
+        // only hit is a docblock MENTION of `useCurrent()` — describing why `cheque_clearance_date`
+        // deliberately does NOT use that shape ("Deliberately a plain `date`, not the `timestamp
+        // ... useCurrent()` shape `cheque_date` uses next to it") — its actual column definition is
+        // a plain nullable `date` with no default at all.
+        '2026_08_29_090000_add_cheque_clearance_date_to_journal_entries_table.php',
+        // PRE-EXISTING GAPS, out of scope for this 2026-09-02 timezone-safety fix (which targeted
+        // specifically `journal_entries.cheque_date` and `transactions.transaction_date` — see this
+        // rule's own class-level docblock). This rule's table-scoped scan surfaced two more real,
+        // live DB-clock defaults on the policed accounting-table list that predate this fix and
+        // were not part of its scope. Allow-listed (not silently fixed) so the ratchet still catches
+        // any NEW db-clock default from here on, while flagging these two as a known, tracked gap
+        // for a future timezone-safety wave rather than expanding this "small, surgical" fix's
+        // blast radius.
+        //   - exchange_rate_histories.changed_at: `$table->timestamp('changed_at')->useCurrent();`
+        '2025_07_30_110917_create_exchange_rate_histories_table.php',
+        //   - payment_applications.applied_at: `$table->timestamp('applied_at')->useCurrent();`
+        '2026_01_12_154855_create_payment_applications_table.php',
+    ];
+
+    /**
+     * Every accounting table this rule polices (P3.j timezone-safety fix scope, matching the phase
+     * brief's own table list). A migration is only flagged when it references one of THESE table
+     * names — a `useCurrent()` on some unrelated table (e.g. a `password_reset_tokens.created_at`)
+     * is a normal Laravel convention this rule has no opinion about.
+     *
+     * `general_ledgers` is included alongside `journal_entries`: it is that same table's ORIGINAL
+     * name before `2025_03_28_145526_rename_table_general_ledgers_to_journal_entries.php` — the
+     * allow-listed 2025_03_25 migration that introduced the historical `cheque_date` default still
+     * refers to the table by its pre-rename name, so this alias is required for that file to
+     * actually produce a hit (and therefore not be flagged as a stale allow-list entry).
+     */
+    private const DB_CLOCK_DEFAULT_POLICED_TABLES = [
+        'transactions', 'journal_entries', 'general_ledgers', 'accounting_periods',
+        'accounting_audit_log', 'reconciliation_', 'gateway_settlements', 'fixed_asset',
+        'supplier_statement_', 'bank_statement_', 'supplier_bank_details', 'serial_schemas',
+        'system_accounts', 'payment_applications', 'exchange_rate_histories',
+    ];
+
+    public function test_no_db_clock_defaults_in_accounting_migrations(): void
+    {
+        $result = $this->scanForDbClockDefaultsInMigrations();
+
+        $message = '';
+
+        if (! empty($result['unlisted'])) {
+            $message .= 'Accounting-table migration(s) found introducing a DB-clock default '
+                .'(useCurrent()/useCurrentOnUpdate()/CURRENT_TIMESTAMP) NOT on the allow-list -- '
+                ."MySQL/MariaDB's own clock is UTC while APP_TIMEZONE is Asia/Kuwait, so a DB-clock "
+                .'default silently drifts from every app-written date/time. Use an explicit '
+                ."PHP now() at the write site instead (see PostingService::post() step 8's cheque_date "
+                .'fallback for the pattern), or if this is a deliberately-reviewed exception, add the '
+                .'file to ArchitectureTest::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS with a note:'
+                ."\n".implode("\n", $result['unlisted'])."\n";
+        }
+
+        if (! empty($result['stale'])) {
+            $message .= 'Allow-listed DB-clock-default migration(s) with NO hit found (stale '
+                .'allow-list entry -- remove from '
+                ."ArchitectureTest::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS):\n"
+                .implode("\n", $result['stale']);
+        }
+
+        $this->assertTrue(empty($result['unlisted']) && empty($result['stale']), $message);
+    }
+
+    /**
+     * Mutation proof (same construction as
+     * {@see self::test_the_raw_writer_ratchet_actually_bites_a_synthetic_violation()}): plants a
+     * synthetic migration carrying a `useCurrent()` default on one of the policed tables, plus one
+     * on an UNPOLICED table (must not be flagged) and a clean migration (must not be flagged), and
+     * asserts the scanner reports exactly the policed one.
+     */
+    public function test_the_db_clock_default_ratchet_actually_bites_a_synthetic_violation(): void
+    {
+        $root = sys_get_temp_dir().'/arch-db-clock-default-ratchet-mutation-'.uniqid();
+
+        try {
+            $violationPath = $root.'/2099_01_01_000000_probe_add_db_clock_default_to_journal_entries.php';
+            @mkdir(dirname($violationPath), 0777, true);
+            file_put_contents(
+                $violationPath,
+                "<?php\n\nSchema::table('journal_entries', function (\$table) {\n"
+                    ."    \$table->timestamp('probe_col')->nullable()->useCurrent();\n});\n"
+            );
+
+            // Unrelated table -- a useCurrent() here is a normal Laravel convention this rule has
+            // no opinion about, and must NOT be reported.
+            $unpolicedPath = $root.'/2099_01_01_000001_probe_add_db_clock_default_to_password_resets.php';
+            file_put_contents(
+                $unpolicedPath,
+                "<?php\n\nSchema::table('password_reset_tokens', function (\$table) {\n"
+                    ."    \$table->timestamp('created_at')->nullable()->useCurrent();\n});\n"
+            );
+
+            $cleanPath = $root.'/2099_01_01_000002_probe_clean_migration.php';
+            file_put_contents(
+                $cleanPath,
+                "<?php\n\nSchema::table('journal_entries', function (\$table) {\n"
+                    ."    \$table->string('probe_col')->nullable();\n});\n"
+            );
+
+            $result = $this->scanForDbClockDefaultsInMigrations($root);
+
+            // Normalise both sides to forward slashes -- getRealPath() returns OS-native separators
+            // (backslash on Windows), same convention as the settlement_channel/reconciled mutation
+            // proofs above.
+            $found = array_map(fn (string $p): string => str_replace('\\', '/', $p), $result['unlisted']);
+
+            $this->assertContains(
+                str_replace('\\', '/', $violationPath),
+                $found,
+                'The DB-clock-default ratchet did NOT flag a synthetic useCurrent() on a policed '
+                .'accounting table. The scanner has stopped matching, so this class of timezone '
+                .'regression would now reach production with a green CI. Fix '
+                .'scanForDbClockDefaultsInMigrations().'
+            );
+
+            $this->assertNotContains(
+                str_replace('\\', '/', $unpolicedPath),
+                $found,
+                'The DB-clock-default ratchet flagged a useCurrent() on an unpoliced table -- this '
+                .'rule must only police the accounting table list.'
+            );
+
+            $this->assertNotContains(
+                str_replace('\\', '/', $cleanPath),
+                $found,
+                'The DB-clock-default ratchet flagged a migration with no DB-clock default at all.'
+            );
+        } finally {
+            $this->removeDirectory($root);
+        }
+    }
+
+    /**
+     * @return array{unlisted: string[], stale: string[]}
+     */
+    private function scanForDbClockDefaultsInMigrations(?string $rootDir = null): array
+    {
+        $migrationsDir = $rootDir ?? database_path('migrations');
+
+        $defaultPattern = '/useCurrent\s*\(|useCurrentOnUpdate\s*\(|CURRENT_TIMESTAMP/i';
+
+        $unlisted = [];
+        $hitAllowListed = [];
+
+        if (! is_dir($migrationsDir)) {
+            return ['unlisted' => $unlisted, 'stale' => self::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS];
+        }
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($migrationsDir, FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || strtolower($file->getExtension()) !== 'php') {
+                continue;
+            }
+
+            $realPath = $file->getRealPath();
+            $filename = $file->getFilename();
+
+            $contents = file_get_contents($realPath);
+            if ($contents === false) {
+                continue;
+            }
+
+            if (preg_match($defaultPattern, $contents) !== 1) {
+                continue;
+            }
+
+            $referencesPolicedTable = false;
+            foreach (self::DB_CLOCK_DEFAULT_POLICED_TABLES as $table) {
+                if (str_contains($contents, "'{$table}") || str_contains($contents, "\"{$table}")) {
+                    $referencesPolicedTable = true;
+                    break;
+                }
+            }
+
+            if (! $referencesPolicedTable) {
+                continue;
+            }
+
+            if (in_array($filename, self::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS, true)) {
+                $hitAllowListed[$filename] = true;
+            } else {
+                $unlisted[] = $realPath;
+            }
+        }
+
+        $stale = array_values(array_diff(self::ALLOW_LISTED_DB_CLOCK_DEFAULT_MIGRATIONS, array_keys($hitAllowListed)));
+
+        return ['unlisted' => $unlisted, 'stale' => $stale];
+    }
 }

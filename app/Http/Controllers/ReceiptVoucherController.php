@@ -1129,7 +1129,14 @@ class ReceiptVoucherController extends Controller
                     'amount' => $line->amount,
                     'voucher_number' => $number,
                     'cheque_no' => $line->chequeNo,
-                    'cheque_date' => $line->chequeDate,
+                    // Timezone-safety fix (accounting-builds, 2026-09-02): journal_entries.cheque_date
+                    // lost its DB-level useCurrent() default (migration
+                    // 2026_09_02_000009_drop_db_clock_defaults_in_accounting_tables.php -- UTC DB
+                    // clock vs Asia/Kuwait APP_TIMEZONE). Same OFF/ON parity fallback as
+                    // PostingService::post() step 8 / BankPaymentController::writeLegacyTransaction():
+                    // a real cheque line (chequeNo set) with no explicit date gets the app clock's
+                    // now(); a non-cheque line still gets NULL.
+                    'cheque_date' => $line->chequeDate ?? ($line->chequeNo !== null ? now() : null),
                     'cheque_clearance_date' => $line->chequeClearanceDate,
                     'bank_info' => $line->bankInfo,
                     'auth_no' => $line->authNo,

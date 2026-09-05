@@ -87,13 +87,25 @@ namespace App\Services\Accounting;
  * for that column versus today's behaviour of never referencing it from the engine at all — see
  * PostingService's own docblock for the one documented BEHAVIOUR CHANGE this closes (cheque_date
  * carries a DB-level `useCurrent()` default that used to silently fire on every engine-posted line
- * because the column was never in the INSERT list; it now receives a real, explicit NULL instead
- * when a feeder has no cheque date to report — a bug fix, not a regression, since a mundane JV/INV
- * line stamped with "now" as a fabricated cheque date has no accounting meaning).
+ * because the column was never in the INSERT list; it now receives a real, explicit value instead
+ * of relying on the implicit default — a bug fix, not a regression, since a mundane JV/INV line
+ * stamped with "now" as a fabricated cheque date has no accounting meaning, so it still gets an
+ * explicit NULL. A genuine cheque line (chequeNo set) with no explicit date still needs *a* date on
+ * the ledger, so it gets the app clock's `now()` explicitly).
+ *
+ * UPDATE (timezone-safety fix, accounting-builds 2026-09-02): the column's DB-level `useCurrent()`
+ * default itself was dropped (migration
+ * `2026_09_02_000009_drop_db_clock_defaults_in_accounting_tables.php`) — MySQL/MariaDB's own clock
+ * is UTC while `APP_TIMEZONE` is `Asia/Kuwait`, so the DB default (already unused for engine-posted
+ * lines since W5.L) was a live timezone-correctness hazard for any future raw insert that still
+ * omitted the column. `PostingService::post()` step 8 now supplies `now()` explicitly for a real
+ * cheque line with no date, so there is no remaining call site anywhere that depends on the DB
+ * default — see that step's own inline comment for the exact fallback logic.
  *
  *   • `$chequeNo` -> `journal_entries.cheque_no` (varchar(100)).
- *   • `$chequeDate` -> `journal_entries.cheque_date` (timestamp, nullable, DB `useCurrent()`
- *     default — see the behaviour-change note above). `\DateTimeInterface`, not `?string`: matches
+ *   • `$chequeDate` -> `journal_entries.cheque_date` (datetime, nullable, no DB default as of the
+ *     2026-09-02 timezone-safety fix — see the UPDATE note above). `\DateTimeInterface`, not
+ *     `?string`: matches
  *     the convention `DocumentDraft::$docDate` already uses, and Illuminate\Database\Connection::
  *     prepareBindings() already formats a bound `DateTimeInterface` for the driver — the same
  *     mechanism that already lets step 7's header write hand `transaction_date` a `Carbon`

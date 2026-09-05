@@ -12,6 +12,7 @@ use App\Models\Supplier;
 use App\Models\SupplierBankDetail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\TestCase;
 
 /**
@@ -26,6 +27,7 @@ use Tests\TestCase;
 class BankPaymentSupplierBankSelectionTest extends TestCase
 {
     use RefreshDatabase;
+    use GrantsAccountingModule;
 
     private Company $company;
 
@@ -43,6 +45,7 @@ class BankPaymentSupplierBankSelectionTest extends TestCase
         $country = Country::factory()->create();
         $companyOwner = User::factory()->create(['role_id' => Role::COMPANY]);
         $this->company = Company::factory()->create(['user_id' => $companyOwner->id, 'country_id' => $country->id]);
+        $this->grantAccountingModule($this->company);
         $this->admin = User::factory()->create(['role_id' => Role::ADMIN]);
         $this->supplier = Supplier::factory()->create(['name' => 'T14 Voucher Supplier']);
 

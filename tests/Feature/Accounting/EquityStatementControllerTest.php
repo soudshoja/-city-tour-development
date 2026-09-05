@@ -15,6 +15,7 @@ use App\Services\Accounting\AccountResolver;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Facades\Artisan;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -25,10 +26,13 @@ use Tests\Support\AccountingTestCase;
  */
 class EquityStatementControllerTest extends AccountingTestCase
 {
+    use GrantsAccountingModule;
+
     /** @return array{0: Company, 1: Branch, 2: User} */
     private function makeCompanyAndAdmin(): array
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
         (new SystemAccountsSeeder)->run();
         $admin = User::factory()->create(['role_id' => Role::ADMIN]);
@@ -61,6 +65,7 @@ class EquityStatementControllerTest extends AccountingTestCase
     public function test_guest_is_redirected_to_login(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         $this->trackCompanyForInvariants($company->id);
 
         $response = $this->get(route('accounting.reports.equity-changes', ['company_id' => $company->id]));
@@ -84,6 +89,7 @@ class EquityStatementControllerTest extends AccountingTestCase
     public function test_forbids_a_role_with_no_accounting_report_permission(): void
     {
         $company = Company::factory()->create();
+        $this->grantAccountingModule($company);
         CoaSeeder::run($company->id);
         (new SystemAccountsSeeder)->run();
         $agent = $this->makeAgentInCompany($company);
@@ -105,6 +111,7 @@ class EquityStatementControllerTest extends AccountingTestCase
         [$companyA, $branchA, $adminA] = $this->makeCompanyAndAdmin();
 
         $companyB = Company::factory()->create();
+        $this->grantAccountingModule($companyB);
         CoaSeeder::run($companyB->id);
         (new SystemAccountsSeeder)->run();
         $ownerB = User::factory()->create();

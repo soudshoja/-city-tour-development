@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Accounting;
 
 use App\Exceptions\Accounting\AccountNotUnderGroupException;
+use App\Exceptions\Accounting\BankLeafCurrencyMismatchException;
 use App\Exceptions\Accounting\CrossTenantAccountException;
 use App\Exceptions\Accounting\FrozenAccountException;
 use App\Exceptions\Accounting\NonLeafAccountException;
@@ -276,14 +277,31 @@ final class AccountResolver
      * somewhere in its ancestor chain — never a name/root_id/parent_id string lookup, matching this
      * whole class's own R7.3/BUG-H6 mandate.
      *
+     * accounting-builds Wave 3 lane I, item A1 (T10 §12 / Lane B sign-off finding): also asserts
+     * the resolved leaf's `accounts.currency` matches $documentCurrency — the currency of the
+     * document this leaf is about to be posted into. Every current caller posts a document with
+     * no real exchange-rate input (see {@see \App\Exceptions\Accounting\BankLeafCurrencyMismatchException}'s
+     * own docblock), so a caller that has no currency of its own (FixedAssetService's hardcoded
+     * 'KWD' lines, the voucher feeders' identical hardcoding) simply omits $documentCurrency and
+     * gets the base-currency comparison for free — that is what "the document's currency" means
+     * when the document carries none. GatewaySettlementService::record() passes its own
+     * (already base-currency-validated) $requestedCurrency explicitly, so the two guards compose
+     * rather than conflict: a non-base SETTLEMENT is refused by
+     * {@see \App\Exceptions\Accounting\GatewaySettlementCurrencyMismatchException} before this
+     * method is ever reached, and a base-currency settlement pointed at a non-base-currency LEAF
+     * is refused here instead — never both at once for the same call.
+     *
      * @throws CrossTenantAccountException when the account does not exist, or belongs to a
      *                                     different company than $companyId.
      * @throws FrozenAccountException when the account is disabled.
      * @throws NonLeafAccountException when the account is not a leaf.
      * @throws AccountNotUnderGroupException when no ancestor of the account is named
      *                                       config('accounting.engine.bank_group_name').
+     * @throws BankLeafCurrencyMismatchException when the leaf's own currency does not match
+     *                                           $documentCurrency (or the base currency, when
+     *                                           $documentCurrency is not supplied).
      */
-    public function assertUnderBankGroup(int $accountId, int $companyId): Account
+    public function assertUnderBankGroup(int $accountId, int $companyId, ?string $documentCurrency = null): Account
     {
         $account = Account::query()->withoutGlobalScopes()->find($accountId);
 
@@ -318,6 +336,33 @@ final class AccountResolver
 
         if (! $this->hasAncestorNamed($account, $bankGroupName)) {
             throw new AccountNotUnderGroupException($account->id, $account->name, $bankGroupName);
+        }
+
+        // `accounts.currency` is nullable (2025_04_03_112301_add_new_columns_in_accounts_table.php)
+        // and CoaSeeder never populates it for any seeded leaf — every real, production bank leaf
+        // in this single-tenant KWD system carries a NULL currency today, not an explicit 'KWD'.
+        // Treating a blank leaf currency as "not declared, therefore no conflict to report" (rather
+        // than as a literal empty-string currency that fails every comparison) is what keeps this
+        // guard backward compatible with every existing bank leaf and every pre-existing caller —
+        // it only ever fires for a leaf that EXPLICITLY carries a different currency, e.g. a leaf a
+        // caller deliberately tagged 'USD'.
+        $leafCurrency = strtoupper(trim((string) $account->currency));
+
+        if ($leafCurrency !== '') {
+            $expectedCurrency = strtoupper(trim(
+                $documentCurrency !== null && trim($documentCurrency) !== ''
+                    ? $documentCurrency
+                    : (string) config('accounting.engine.base_currency', 'KWD')
+            ));
+
+            if ($leafCurrency !== $expectedCurrency) {
+                throw new BankLeafCurrencyMismatchException(
+                    $account->id,
+                    $account->name,
+                    $leafCurrency,
+                    $expectedCurrency,
+                );
+            }
         }
 
         return $account;
@@ -381,6 +426,32 @@ final class AccountResolver
         }
 
         return false;
+    }
+
+    /**
+     * accounting-builds T7 (Lane D): every leaf strictly under the Bank Accounts group ONLY (no
+     * cash, no gateway-clearing pool) — the exact set {@see self::assertUnderBankGroup()} would
+     * accept for a given id, listed rather than probed one id at a time, for the "Record
+     * settlement" screen's bank-account picker (a settlement's `bank_account_id` must always pass
+     * that same check, so offering anything outside this set would only produce a refusal on
+     * submit).
+     *
+     * @return int[]
+     */
+    public function bankLeafIds(int $companyId): array
+    {
+        $bankGroupName = (string) config('accounting.engine.bank_group_name', 'Bank Accounts');
+
+        $companyAccounts = Account::withoutGlobalScopes()->where('company_id', $companyId)->get(['id', 'parent_id', 'name', 'disabled']);
+        $parentIds = $companyAccounts->pluck('parent_id')->filter()->flip();
+
+        return $companyAccounts
+            ->reject(fn (Account $a): bool => $parentIds->has($a->id)) // leaves only
+            ->reject(fn (Account $a): bool => (bool) $a->disabled)
+            ->filter(fn (Account $a): bool => $a->name === $bankGroupName || $this->hasAncestorNamed($a, $bankGroupName))
+            ->pluck('id')
+            ->values()
+            ->all();
     }
 
     /**

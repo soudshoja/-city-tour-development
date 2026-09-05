@@ -9,6 +9,7 @@ use App\Models\Transaction;
 use App\Models\JournalEntry;
 use App\Models\MyFatoorahPayment;
 use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\GatewaySettlementService;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PaymentIdempotencyKey;
 use App\Services\Accounting\PostingSeam;
@@ -347,6 +348,13 @@ class CheckMyFatoorahPayments extends Command
                     // see config('accounting.purpose_codes')'s own docblock for the full rationale.
                     $creditPurposeCode = $payment->invoice_id !== null ? 'RECEIVABLE_CONTROL' : 'CLIENT_ADVANCE';
 
+                    // accounting-builds T7 (Lane D, L12): MyFatoorah's own webhook payload has no
+                    // per-instrument (KNET/card) breakdown captured on $payment today, so this
+                    // falls back to the bare gateway key ('myfatoorah') — see
+                    // GatewaySettlementService::channelFor()'s own docblock for why that
+                    // degrades gracefully rather than fabricating an 'unknown' rail segment.
+                    $settlementChannel = GatewaySettlementService::channelFor('MYFATOORAH', $payment->paymentMethod?->code);
+
                     // ── Engine draft (ON path): a BALANCED two-line document — Dr the MyFatoorah
                     // gateway clearing account (GATEWAY_CLEARING_MYFATOORAH, already seeded by
                     // SystemAccountsSeeder::resolveGatewayClearing() for every company that has a
@@ -398,6 +406,7 @@ class CheckMyFatoorahPayments extends Command
                                 // receivable FROM the gateway (money owed to us until it settles).
                                 ledgerType: 'receivable',
                                 voucherNumber: $payment->voucher_number,
+                                settlementChannel: $settlementChannel,
                             ),
                             new LineDraft(
                                 purposeCode: $creditPurposeCode,

@@ -13,7 +13,11 @@
                 fixDrafts: '{{ url('accounting/reconciliation/fix-drafts') }}',
                 run: '{{ route('accounting.reconciliation.run') }}',
                 runStatus: '{{ route('accounting.reconciliation.run-status') }}',
+                bankAccounts: '{{ route('accounting.reconciliation.bank-accounts') }}',
+                settlements: '{{ route('accounting.reconciliation.settlements') }}',
+                recordSettlement: '{{ route('accounting.reconciliation.settlements.record') }}',
             },
+            gateways: @json($gateways),
         })" x-init="init()" class="my-3">
 
         <!-- Page heading -->
@@ -33,6 +37,10 @@
             </div>
 
             <div class="flex items-center gap-3 flex-wrap">
+                <a href="{{ route('accounting.reconciliation.supplier-statements.index') }}"
+                   class="px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/40">
+                    DOTW statements
+                </a>
                 <div class="flex items-center rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden text-sm">
                     <button type="button" @click="setMode('day')"
                             :class="mode === 'day' ? 'bg-slate-800 text-white' : 'bg-white dark:bg-gray-700 dark:text-gray-200'"
@@ -74,6 +82,64 @@
                     <div class="text-xs uppercase tracking-wide text-gray-400">Duration</div>
                     <div class="font-semibold dark:text-white" x-text="runStatus.durationLabel"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Gateway Settlements (accounting-builds T7, Lane D) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg BoxShadow p-4 mb-6">
+            <div class="flex justify-between items-center mb-3 flex-wrap gap-2">
+                <div>
+                    <h3 class="text-base font-semibold dark:text-white">Gateway settlements</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Real payouts — clearing drains to the bank, with a fee true-up against what was already recognised at receipt.</p>
+                </div>
+                <button type="button" @click="openSettlementModal()" :disabled="!canManage"
+                        class="px-4 py-2 rounded-lg text-sm font-medium bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed">
+                    Record settlement
+                </button>
+            </div>
+
+            <div x-show="settlements.loading" class="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">Loading settlements…</div>
+            <div x-show="settlements.error" x-cloak class="text-sm text-red-700 bg-red-50 dark:bg-red-900/20 rounded-md px-4 py-3" x-text="settlements.error"></div>
+            <div x-show="!settlements.loading && !settlements.error && settlements.items.length === 0" x-cloak class="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">
+                No gateway settlements recorded yet.
+            </div>
+
+            <div x-show="!settlements.loading && settlements.items.length > 0" x-cloak class="overflow-x-auto">
+                <table class="min-w-full table-auto border-collapse text-sm">
+                    <thead class="text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wide">
+                        <tr>
+                            <th class="px-3 py-2 text-left">Gateway</th>
+                            <th class="px-3 py-2 text-left">Channel</th>
+                            <th class="px-3 py-2 text-left">Payout ref</th>
+                            <th class="px-3 py-2 text-left">Payout date</th>
+                            <th class="px-3 py-2 text-right">Gross</th>
+                            <th class="px-3 py-2 text-right">Fee</th>
+                            <th class="px-3 py-2 text-right">Net</th>
+                            <th class="px-3 py-2 text-left">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 dark:divide-gray-700">
+                        <template x-for="s in settlements.items" :key="s.id">
+                            <tr class="text-gray-800 dark:text-gray-100">
+                                <td class="px-3 py-2 font-medium" x-text="s.gateway"></td>
+                                <td class="px-3 py-2 text-gray-500 dark:text-gray-400" x-text="s.settlement_channel || '—'"></td>
+                                <td class="px-3 py-2" x-text="s.payout_reference"></td>
+                                <td class="px-3 py-2" x-text="s.payout_date"></td>
+                                <td class="px-3 py-2 text-right tabular-nums" x-text="fmt(s.gross)"></td>
+                                <td class="px-3 py-2 text-right tabular-nums" x-text="fmt(s.fee)"></td>
+                                <td class="px-3 py-2 text-right tabular-nums font-medium" x-text="fmt(s.net)"></td>
+                                <td class="px-3 py-2">
+                                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold"
+                                          :class="{
+                                              'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300': s.status === 'posted',
+                                              'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300': s.status === 'recorded',
+                                              'bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300': s.status === 'failed',
+                                          }" x-text="s.status"></span>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -346,6 +412,68 @@
                 </div>
             </div>
         </div>
+
+        <!-- Record settlement modal (accounting-builds T7, Lane D) -->
+        <div x-show="settlementModal.open" x-cloak class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg p-6" @click.outside="settlementModal.open = false">
+                <h3 class="text-lg font-semibold dark:text-white mb-1">Record settlement</h3>
+                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">Enter the payout exactly as the gateway reported it. Gross must equal net + fee.</p>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Gateway</label>
+                        <select x-model="settlementModal.gateway" class="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm p-2">
+                            <template x-for="(label, key) in gateways" :key="key">
+                                <option :value="key" x-text="label"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Payout reference</label>
+                        <input type="text" x-model="settlementModal.payout_reference" class="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Payout date</label>
+                        <input type="date" x-model="settlementModal.payout_date" class="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Bank account</label>
+                        <select x-model.number="settlementModal.bank_account_id" class="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm p-2">
+                            <option value="" disabled>Select…</option>
+                            <template x-for="a in bankAccountOptions" :key="a.id">
+                                <option :value="a.id" x-text="a.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Gross</label>
+                        <input type="number" step="0.001" x-model.number="settlementModal.gross" class="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Fee</label>
+                        <input type="number" step="0.001" x-model.number="settlementModal.fee" class="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Net</label>
+                        <input type="number" step="0.001" x-model.number="settlementModal.net" class="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm p-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Recognised fee (at receipt)</label>
+                        <input type="number" step="0.001" x-model.number="settlementModal.recognised_fee" class="w-full rounded-md border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white text-sm p-2">
+                    </div>
+                </div>
+
+                <p x-show="settlementModal.error" x-text="settlementModal.error" class="text-xs text-red-600 mt-3"></p>
+                <div class="flex justify-end gap-2 mt-5">
+                    <button type="button" @click="settlementModal.open = false" class="px-4 py-2 rounded-md text-sm border border-gray-300 dark:border-gray-600">Cancel</button>
+                    <button type="button" @click="submitSettlement()" :disabled="settlementModal.saving"
+                            class="px-4 py-2 rounded-md text-sm bg-slate-800 text-white hover:bg-slate-700 disabled:opacity-50">
+                        <span x-show="!settlementModal.saving">Record</span>
+                        <span x-show="settlementModal.saving">Saving…</span>
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -360,6 +488,14 @@
                 drawer: { open: false, loading: false, error: null, row: null, data: null, tab: 'proposals' },
                 reasonModal: { open: false, title: '', reason: '', error: null, saving: false, action: null, payload: null },
                 fixNowModal: { open: false, kind: null, amount: 0, narration: '', error: null, saving: false },
+                gateways: config.gateways,
+                settlements: { loading: false, error: null, items: [] },
+                bankAccountOptions: [],
+                settlementModal: {
+                    open: false, saving: false, error: null,
+                    gateway: '', payout_reference: '', payout_date: new Date().toISOString().slice(0, 10),
+                    bank_account_id: '', gross: null, fee: null, net: null, recognised_fee: 0,
+                },
 
                 groupOrder: [
                     { key: 'bank_cash', label: 'Bank, cash & gateway/cheque clearing' },
@@ -378,6 +514,7 @@
                 init() {
                     this.loadGrid();
                     this.loadRunStatus();
+                    this.loadSettlements();
                 },
 
                 setMode(mode) {
@@ -556,6 +693,72 @@
                         if (this.drawer.row) this.openRow(this.drawer.row);
                     } finally {
                         this.fixNowModal.saving = false;
+                    }
+                },
+
+                async loadSettlements() {
+                    this.settlements.loading = true;
+                    this.settlements.error = null;
+                    try {
+                        const res = await this.get(config.urls.settlements, { company_id: this.companyId });
+                        const json = await res.json();
+                        if (!json.success) throw new Error(json.message || 'Could not load settlements.');
+                        this.settlements.items = json.settlements;
+                    } catch (e) {
+                        this.settlements.error = e.message;
+                    } finally {
+                        this.settlements.loading = false;
+                    }
+                },
+
+                async loadBankAccounts() {
+                    try {
+                        const res = await this.get(config.urls.bankAccounts, { company_id: this.companyId });
+                        const json = await res.json();
+                        if (json.success) this.bankAccountOptions = json.bank_accounts;
+                    } catch (e) { /* best-effort — the select just stays empty */ }
+                },
+
+                openSettlementModal() {
+                    if (!this.canManage) return;
+                    this.settlementModal = {
+                        open: true, saving: false, error: null,
+                        gateway: Object.keys(this.gateways)[0] || '', payout_reference: '',
+                        payout_date: new Date().toISOString().slice(0, 10),
+                        bank_account_id: '', gross: null, fee: null, net: null, recognised_fee: 0,
+                    };
+                    if (this.bankAccountOptions.length === 0) this.loadBankAccounts();
+                },
+
+                async submitSettlement() {
+                    const m = this.settlementModal;
+                    if (!m.gateway || !m.payout_reference || !m.payout_date || !m.bank_account_id) {
+                        m.error = 'Gateway, payout reference, payout date and bank account are all required.';
+                        return;
+                    }
+                    m.saving = true;
+                    m.error = null;
+                    try {
+                        const res = await this.post(config.urls.recordSettlement, {
+                            gateway: m.gateway,
+                            payout_reference: m.payout_reference,
+                            payout_date: m.payout_date,
+                            bank_account_id: m.bank_account_id,
+                            gross: m.gross,
+                            fee: m.fee,
+                            net: m.net,
+                            recognised_fee: m.recognised_fee || 0,
+                        });
+                        const json = await res.json();
+                        if (!json.success) {
+                            m.error = json.message || 'Could not record this settlement.';
+                            return;
+                        }
+                        m.open = false;
+                        this.loadSettlements();
+                        this.loadGrid();
+                    } finally {
+                        m.saving = false;
                     }
                 },
 

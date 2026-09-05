@@ -9,6 +9,7 @@ use App\Models\JournalEntry;
 use App\Models\Payment;
 use App\Models\Charge;
 use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\GatewaySettlementService;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PaymentIdempotencyKey;
 use App\Services\Accounting\PostingSeam;
@@ -265,6 +266,15 @@ class PaymentReleaseToCompanyBankAccProcess extends Command
 
                 $gatewayKey = strtoupper($gateway);
 
+                // accounting-builds T7 (Lane D, L12): a grouped daily batch spans every receipt
+                // for this (company, gateway, date), which can mix rails — no single PaymentMethod
+                // applies to the group as a whole, so this stamps the bare gateway key only (the
+                // same graceful-degradation GatewaySettlementService::channelFor() already
+                // documents for the no-rail-known case). A payout-driven GWS document
+                // (GatewaySettlementService::post()) carries the settlement's own, more specific
+                // channel instead once a gateway's payouts move onto that path.
+                $settlementChannel = GatewaySettlementService::channelFor($gatewayKey, null);
+
                 // Deliberately NOT AccountResolver::assertUnderBankGroup() here: that call can
                 // THROW (AccountNotUnderGroupException/NonLeafAccountException/…), and unlike
                 // BankPaymentController::clear() (which reuses this SAME resolved account for
@@ -308,6 +318,7 @@ class PaymentReleaseToCompanyBankAccProcess extends Command
                             description: $entryDescription,
                             ledgerType: 'bank',
                             voucherNumber: null,
+                            settlementChannel: $settlementChannel,
                         ),
                         new LineDraft(
                             purposeCode: "GATEWAY_CLEARING_{$gatewayKey}",
@@ -321,6 +332,7 @@ class PaymentReleaseToCompanyBankAccProcess extends Command
                             description: $entryDescription,
                             ledgerType: 'bank',
                             voucherNumber: null,
+                            settlementChannel: $settlementChannel,
                         ),
                     ],
                     idempotencyKey: $idempotencyKey,

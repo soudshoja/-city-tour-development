@@ -63,6 +63,7 @@ use App\Exceptions\Accounting\LegacyInvoiceCoaFailureException;
 use App\Exceptions\Accounting\PaymentUnattributedException;
 use App\Exceptions\Accounting\PostingException;
 use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\GatewaySettlementService;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PaymentIdempotencyKey;
 use App\Services\Accounting\PostingSeam;
@@ -7382,6 +7383,15 @@ class PaymentController extends Controller
                 // ledger filter actually finds this line once the engine is ON.
                 $gatewayKey = strtoupper($gatewayName);
 
+                // accounting-builds T7 (Lane D, L12): the reconciliation matcher pairs a book
+                // line to a bank/gateway statement line by the RAIL it moved through, not just
+                // the gateway — GatewaySettlementService::channelFor() derives 'tap:knet' from
+                // the payment's own resolved PaymentMethod code when one is on file, or falls
+                // back to the bare gateway key ('tap') when it isn't (e.g. no per-instrument
+                // breakdown captured for this payment). Stamped on the clearing/fee legs only —
+                // the receivable leg is a client-side line, not a settlement-side one.
+                $settlementChannel = GatewaySettlementService::channelFor($gatewayKey, $payment->paymentMethod?->code);
+
                 $lines = [
                     new LineDraft(
                         purposeCode: 'RECEIVABLE_CONTROL',
@@ -7414,6 +7424,7 @@ class PaymentController extends Controller
                         invoiceDetailId: $invoiceDetail->id,
                         ledgerType: 'bank',
                         voucherNumber: $payment->voucher_number,
+                        settlementChannel: $settlementChannel,
                     ),
                 ];
 
@@ -7439,6 +7450,7 @@ class PaymentController extends Controller
                         invoiceDetailId: $invoiceDetail->id,
                         ledgerType: 'charges',
                         voucherNumber: $payment->voucher_number,
+                        settlementChannel: $settlementChannel,
                     );
                 }
 

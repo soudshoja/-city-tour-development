@@ -476,6 +476,102 @@ class ArchitectureTest extends TestCase
     }
 
     /**
+     * accounting-builds T8 (Lane E, MP-8-3): "matcher writes reconciled=1 directly ->
+     * ArchitectureTest post-hoc rule (from T0b, generalised to reconciled) fails." Generalises
+     * {@see self::test_no_post_hoc_settlement_channel_updates()}'s shape to the `reconciled`
+     * column, with one necessary difference: that rule excludes the WHOLE
+     * app/Services/Accounting/ directory because settlement_channel has exactly one legitimate
+     * writer (PostingService's own INSERT, which the ->update() pattern never matches anyway).
+     * `reconciled` is different — {@see \App\Services\Accounting\ReconciliationService} and
+     * {@see \App\Services\Accounting\ReconciliationProposalService} are TWO pre-existing,
+     * legitimate writers already living in that same directory (property-assignment + save(),
+     * e.g. `$book->reconciled = 1; $book->save();`, not just ->update()), so a directory-level
+     * exclusion would blind this rule to exactly the file it exists to police —
+     * SupplierStatementMatcher.php, which lives in the SAME app/Services/Accounting/ tree. This
+     * rule therefore allow-lists the two known-legitimate FILES individually (same shape as
+     * ArchitectureTest::ALLOW_LISTED_RAW_WRITER_FILES above), not a directory, and scans every
+     * other file under app/ (this directory included) for either write style: `->update([...
+     * 'reconciled' ...])` or a direct `->reconciled = ` property assignment (excluding `==`/`=>`
+     * via a negative lookahead so a mere comparison/array-literal-value read is not flagged).
+     *
+     * A matcher/importer in this task must only ever create/update SupplierStatementImportLine
+     * rows and ReconciliationProposal rows (state) — flipping journal_entries.reconciled itself
+     * happens exclusively through ReconciliationProposalService::approve()'s existing,
+     * owner-gated flow (spec: "reconciliation is read + state only").
+     */
+    private const ALLOW_LISTED_RECONCILED_WRITER_FILES = [
+        'app/Services/Accounting/ReconciliationService.php',
+        'app/Services/Accounting/ReconciliationProposalService.php',
+    ];
+
+    public function test_no_post_hoc_reconciled_updates(): void
+    {
+        $violations = $this->findPostHocReconciledUpdates();
+
+        $this->assertEmpty(
+            $violations,
+            'Post-hoc journal_entries.reconciled write found outside '
+                .implode(', ', self::ALLOW_LISTED_RECONCILED_WRITER_FILES)
+                ." (MP-8-3: reconciliation is read + state only — flipping 'reconciled' happens "
+                .'ONLY through ReconciliationProposalService::approve()):'."\n".implode("\n", $violations)
+        );
+    }
+
+    /**
+     * @return string[] absolute paths with a hit.
+     */
+    private function findPostHocReconciledUpdates(): array
+    {
+        $appDir = base_path('app');
+
+        $violations = [];
+
+        if (! is_dir($appDir)) {
+            return $violations;
+        }
+
+        // Either write style: ->update([...'reconciled'...]) or a direct property assignment
+        // (->reconciled = ...), excluding == / => so a comparison or an unrelated array literal
+        // key=>value read is never flagged.
+        $pattern = '/->\s*update\s*\(\s*\[[^\]]*[\'"]reconciled[\'"]|->reconciled\s*=(?!=)/s';
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($appDir, FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || strtolower($file->getExtension()) !== 'php') {
+                continue;
+            }
+
+            $realPath = $file->getRealPath();
+            $normalizedPath = str_replace('\\', '/', $realPath);
+            $relativePath = null;
+            foreach (self::ALLOW_LISTED_RECONCILED_WRITER_FILES as $allowed) {
+                if (str_ends_with($normalizedPath, $allowed)) {
+                    $relativePath = $allowed;
+                    break;
+                }
+            }
+
+            if ($relativePath !== null) {
+                continue;
+            }
+
+            $contents = file_get_contents($realPath);
+            if ($contents === false) {
+                continue;
+            }
+
+            if (preg_match($pattern, $contents) === 1) {
+                $violations[] = $realPath;
+            }
+        }
+
+        return $violations;
+    }
+
+    /**
      * P2.5.B (p2_5-brief.md §P2.5.B; BUG-C4, doc 08): "Add ArchitectureTest rule: no report query
      * references journal_entries.created_at for period filtering." A permanent CI ratchet, not
      * skipped -- ReportController::profitLoss() (the one confirmed BUG-C4 offender) and every

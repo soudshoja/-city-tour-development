@@ -1109,11 +1109,17 @@ return [
                 'confirmation_code' => 'Confirmation Code',
                 'guest' => 'Guest Name',
                 'checkin' => 'Check-in Date',
+                'checkout' => 'Check-out Date',
                 'amount' => 'Amount',
                 'currency' => 'Currency',
                 'statement_date' => 'Statement Date',
+                'statement_line_reference' => 'Statement Line Ref',
                 'description' => 'Description',
             ],
+            // Required for a row to be importable at all — every other mapped column is optional
+            // (missing/blank cells are tolerated per row; a required column missing from the FILE
+            // itself rejects the whole import, see SupplierStatementImporter).
+            'required_columns' => ['booking_ref', 'amount', 'currency'],
         ],
         // L16: DOTW match tolerance is base-currency 0.001 KWD (or original_amount when the
         // statement currency equals the line's original_currency), no date window — booking-ref

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Accounting;
 
+use App\Exceptions\Accounting\UnmappedPurposeException;
+use App\Models\GatewaySettlement;
 use App\Models\JournalEntry;
 use App\Models\ReconciliationProposal;
 use App\Models\ReconciliationRun;
@@ -40,10 +42,26 @@ use Illuminate\Support\Facades\DB;
  * Idempotent per line: every detector skips a `book_journal_entry_id` that already has a
  * `pending` proposal, so re-running the same day (nightly or Run-now) never duplicates a queue
  * entry — matches every other engine-adjacent idempotency convention in this codebase.
+ *
+ *   4. {@see self::detectGatewaySettlementItems()} — accounting-builds T7 (Lane D, external
+ *      kind `gateway_settlement`, `source = 'external'`, matching L13). For every `posted`
+ *      {@see GatewaySettlement} carrying an optional `raw.payout_items` array (one entry per
+ *      underlying charge in the payout batch — `reference` = auth_no/payment_reference, `amount`,
+ *      optional `date`), proposes a match against an unreconciled line on that gateway's
+ *      GATEWAY_CLEARING_{gw} leaf: `confidence = exact` when `reference` matches the line's
+ *      `auth_no` exactly; `confidence = tolerance` when no reference match but the amount is
+ *      within `config('accounting.engine.balance_tolerance')` and (when the item carries a date)
+ *      within the same ±3-day window {@see \App\Services\Accounting\Reconciliation} statement
+ *      matchers use elsewhere in this phase. Never matches a line on the WRONG gateway's clearing
+ *      leaf (the leaf is resolved per-settlement, from that settlement's own `gateway` column) —
+ *      the exact class of cross-party mismatch T8's own matcher guards against for suppliers.
  */
 final class ReconciliationAutoMatchService
 {
-    public function __construct(private readonly ReconciliationCenterService $center) {}
+    public function __construct(
+        private readonly ReconciliationCenterService $center,
+        private readonly AccountResolver $accountResolver,
+    ) {}
 
     public function run(int $companyId, string $trigger = ReconciliationRun::TRIGGER_MANUAL, ?int $triggeredBy = null): ReconciliationRun
     {
@@ -61,6 +79,7 @@ final class ReconciliationAutoMatchService
             $created += $this->detectClearingRollforward($companyId, $run->id);
             $created += $this->detectSubLedgerVsControl($companyId, $run->id);
             $created += $this->detectReceiptInvoiceConsistency($companyId, $run->id);
+            $created += $this->detectGatewaySettlementItems($companyId, $run->id);
 
             $exactCount = ReconciliationProposal::forCompany($companyId)
                 ->where('run_id', $run->id)
@@ -276,6 +295,104 @@ final class ReconciliationAutoMatchService
                 'period_month' => (int) Carbon::parse($line->posting_date ?? $line->transaction_date)->month,
             ]);
             $created++;
+        }
+
+        return $created;
+    }
+
+    /**
+     * accounting-builds T7 (Lane D). See class docblock's own note on this detector — matches
+     * `payout_items` from every `posted` {@see GatewaySettlement} against unreconciled lines on
+     * THAT settlement's own GATEWAY_CLEARING_{gw} leaf only.
+     */
+    private function detectGatewaySettlementItems(int $companyId, int $runId): int
+    {
+        $settlements = GatewaySettlement::forCompany($companyId)
+            ->where('status', GatewaySettlement::STATUS_POSTED)
+            ->whereNotNull('raw')
+            ->get();
+
+        if ($settlements->isEmpty()) {
+            return 0;
+        }
+
+        $tolerance = (float) config('accounting.engine.balance_tolerance', 0.001);
+        $created = 0;
+
+        foreach ($settlements as $settlement) {
+            $items = (array) ($settlement->raw['payout_items'] ?? []);
+            if ($items === []) {
+                continue;
+            }
+
+            try {
+                $clearingAccountId = $this->accountResolver->resolve("GATEWAY_CLEARING_{$settlement->gateway}", $companyId)->id;
+            } catch (UnmappedPurposeException) {
+                continue; // this company has no mapped clearing leaf for this gateway — nothing to match against
+            }
+
+            $candidates = JournalEntry::withoutGlobalScopes()
+                ->where('account_id', $clearingAccountId)
+                ->whereNull('deleted_at')
+                ->where('reconciled', 0)
+                ->get();
+
+            foreach ($items as $item) {
+                $reference = isset($item['reference']) ? (string) $item['reference'] : null;
+                $amount = isset($item['amount']) ? (float) $item['amount'] : null;
+                $itemDate = isset($item['date']) ? Carbon::parse((string) $item['date']) : null;
+
+                $match = null;
+                $confidence = null;
+
+                if ($reference !== null && $reference !== '') {
+                    $match = $candidates->first(fn (JournalEntry $line) => $line->auth_no === $reference);
+                    if ($match !== null) {
+                        $confidence = ReconciliationProposal::CONFIDENCE_EXACT;
+                    }
+                }
+
+                if ($match === null && $amount !== null) {
+                    $match = $candidates->first(function (JournalEntry $line) use ($amount, $itemDate, $tolerance) {
+                        $lineAmount = abs((float) $line->debit - (float) $line->credit);
+                        if (abs($lineAmount - $amount) > $tolerance) {
+                            return false;
+                        }
+                        if ($itemDate === null) {
+                            return true;
+                        }
+                        $lineDate = Carbon::parse($line->posting_date ?? $line->transaction_date);
+
+                        return abs($lineDate->diffInDays($itemDate)) <= 3;
+                    });
+                    if ($match !== null) {
+                        $confidence = ReconciliationProposal::CONFIDENCE_TOLERANCE;
+                    }
+                }
+
+                if ($match === null || $this->alreadyPending($match->id)) {
+                    continue;
+                }
+
+                $lineAmount = abs((float) $match->debit - (float) $match->credit);
+
+                ReconciliationProposal::create([
+                    'company_id' => $companyId,
+                    'run_id' => $runId,
+                    'account_id' => $clearingAccountId,
+                    'source' => 'external',
+                    'kind' => ReconciliationProposal::KIND_GATEWAY_SETTLEMENT,
+                    'confidence' => $confidence,
+                    'book_journal_entry_id' => $match->id,
+                    'matched_reference' => $reference ?? ('gateway_settlement:'.$settlement->id),
+                    'amount' => $amount ?? $lineAmount,
+                    'difference_amount' => $amount !== null ? round($amount - $lineAmount, 3) : 0,
+                    'status' => ReconciliationProposal::STATUS_PENDING,
+                    'period_year' => (int) Carbon::parse($match->posting_date ?? $match->transaction_date)->year,
+                    'period_month' => (int) Carbon::parse($match->posting_date ?? $match->transaction_date)->month,
+                ]);
+                $created++;
+            }
         }
 
         return $created;

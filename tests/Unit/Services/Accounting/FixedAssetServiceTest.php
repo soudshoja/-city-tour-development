@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Services\Accounting;
 
+use App\Exceptions\Accounting\BankLeafCurrencyMismatchException;
 use App\Models\Account;
 use App\Models\Branch;
 use App\Models\Company;
@@ -141,6 +142,56 @@ class FixedAssetServiceTest extends AccountingTestCase
         $lineCount = \App\Models\JournalEntry::withoutGlobalScopes()->whereNull('deleted_at')
             ->where('account_id', $costAccount->id)->where('task_id', $asset->id)->count();
         $this->assertSame(1, $lineCount, 'A second capitalise() call must not create a second cost line.');
+    }
+
+    /**
+     * accounting-builds Wave 3 lane I item A1 (T10 §12 / Lane B sign-off finding): a bank leaf
+     * explicitly denominated in a currency other than the document's (a fixed-asset document has
+     * none of its own — every line here is hardcoded 'KWD', so the document's currency is the
+     * company's base currency) must be rejected by
+     * {@see \App\Services\Accounting\AccountResolver::assertUnderBankGroup()}'s own currency
+     * guard, composed transparently through {@see FixedAssetService::capitalise()}.
+     */
+    public function test_capitalise_rejects_a_usd_bank_leaf_for_a_kwd_asset(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $asset = $this->makeAsset($company, ['branch_id' => $branch->id]);
+
+        $bankAccount = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1201')->firstOrFail();
+        $bankAccount->currency = 'USD';
+        $bankAccount->save();
+
+        try {
+            $this->service()->capitalise($asset, null, $bankAccount->id);
+            $this->fail('Expected BankLeafCurrencyMismatchException.');
+        } catch (BankLeafCurrencyMismatchException $e) {
+            $this->assertSame($bankAccount->id, $e->accountId);
+            $this->assertSame('USD', $e->accountCurrency);
+            $this->assertSame('KWD', $e->documentCurrency);
+        }
+
+        $asset->refresh();
+        $this->assertNull($asset->acquisition_transaction_id, 'A currency-refused capitalise() must post nothing and leave the asset uncapitalised.');
+    }
+
+    /**
+     * Companion acceptance case: a bank leaf explicitly denominated in KWD (the document's own
+     * currency) must be accepted, exactly as before this guard existed.
+     */
+    public function test_capitalise_accepts_a_kwd_bank_leaf(): void
+    {
+        [$company, $branch] = $this->makeEngineOnCompany();
+        $asset = $this->makeAsset($company, ['branch_id' => $branch->id]);
+
+        $bankAccount = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1201')->firstOrFail();
+        $bankAccount->currency = 'KWD';
+        $bankAccount->save();
+
+        $result = $this->service()->capitalise($asset, null, $bankAccount->id);
+
+        $this->assertNotNull($result);
+        $asset->refresh();
+        $this->assertSame(FixedAsset::STATUS_ACTIVE, $asset->status);
     }
 
     public function test_capitalise_engine_off_is_a_logged_noop(): void

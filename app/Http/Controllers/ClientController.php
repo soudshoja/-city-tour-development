@@ -32,6 +32,7 @@ use App\Models\InvoicePartial;
 use App\Models\Notification;
 use App\Models\PaymentMethod;
 use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\GatewaySettlementService;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PaymentIdempotencyKey;
 use App\Services\Accounting\PostedDocument;
@@ -1221,6 +1222,16 @@ class ClientController extends Controller
             $clearingTransactionType = $gatewayKey ? 'GATEWAYDEBITED' : 'RECEIPT';
             $narration = 'Client Advance via '.$payment->voucher_number;
 
+            // accounting-builds T7 (Lane D, L12): same channel derivation
+            // PaymentController::createInvoicePaymentCOA() uses — {gateway}:{rail} when a
+            // PaymentMethod is on file, bare gateway key when not, 'cash' for a genuinely
+            // gateway-less CASH_IN_HAND topup (no gateway at all -> no clearing/fee legs exist
+            // to stamp, but the constant name still communicates the instrument on the receipt
+            // leg's own reporting, matching L12's own example list).
+            $settlementChannel = $gatewayKey
+                ? GatewaySettlementService::channelFor($gatewayKey, $payment->paymentMethod?->code)
+                : 'cash';
+
             // Verify-fix (lead finding, w7-final-gate.md §1a BLOCKER 1): splitting the fee here
             // is NOT optional cosmetics -- it is what keeps GATEWAY_CLEARING_{gateway} netting to
             // zero across a topup+release cycle. PaymentReleaseToCompanyBankAccProcess's own
@@ -1286,6 +1297,7 @@ class ClientController extends Controller
                     ledgerType: 'bank',
                     partyName: $client->full_name,
                     voucherNumber: $payment->voucher_number,
+                    settlementChannel: $settlementChannel,
                 ),
             ];
 
@@ -1302,6 +1314,7 @@ class ClientController extends Controller
                     description: ($paidBy === 'Company' ? 'Company Pays Gateway Fee: ' : 'Client Pays Gateway Fee: ').$gatewayKey,
                     ledgerType: 'charges',
                     voucherNumber: $payment->voucher_number,
+                    settlementChannel: $settlementChannel,
                 );
             }
 

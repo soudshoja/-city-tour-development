@@ -399,8 +399,16 @@ class FixedAssetController extends Controller
         $companyId = $this->resolveCompanyId($request);
         abort_if($companyId === null, 400, 'No company selected.');
 
-        $year = (int) $request->query('year', (int) now()->format('Y'));
-        $month = (int) $request->query('month', (int) now()->format('m'));
+        // Post-fix re-verify fix (Opus escalation pass, T10): the pre-filled month must be one the
+        // user can actually POST, and depreciateRun() now refuses a month that has not ended. The
+        // previous default was `now()` — the CURRENT, still-running month — so the two-click path
+        // (land on the screen → Preview with the untouched defaults → "Post this run") pointed
+        // straight at the one month the guard rejects. Default to the PREVIOUS calendar month
+        // instead, which is exactly what `fixed-assets:depreciate`'s own `{month}` argument defaults
+        // to and what the `monthlyOn(1, '00:30')` schedule posts.
+        $defaultMonth = Carbon::now()->subMonthNoOverflow();
+        $year = (int) $request->query('year', (int) $defaultMonth->format('Y'));
+        $month = (int) $request->query('month', (int) $defaultMonth->format('m'));
 
         $preview = null;
         if ($request->has('year') && $request->has('month')) {
@@ -428,9 +436,37 @@ class FixedAssetController extends Controller
             'month' => ['required', 'integer', 'min:1', 'max:12'],
         ]);
 
+        $monthEnd = Carbon::create((int) $validated['year'], (int) $validated['month'], 1)->endOfMonth();
+
+        // Post-fix re-verify fix (Opus escalation pass, T10, defect: future-month posting). The run
+        // posts a FULL month of straight-line depreciation dated at the month's end and keys it
+        // `fa-dep:{asset}:{yyyy-mm}` (DepreciationRunService). Nothing anywhere in the stack —
+        // controller, service, or console command — checks the month against the calendar, so this
+        // screen let a `manage`-tier accountant post real, future-dated `DEP` documents for months
+        // that have not happened (confirmed live: on 2026-09-02 a run for 2027-06 posted
+        // `fa-dep:{asset}:2027-06`, posting_date 2027-06-30, flash "1 document(s) posted"). That
+        // mistake is NOT self-correcting: because the idempotency key is already taken, the
+        // scheduled run silently SKIPS that month when it actually arrives, so the only remedy is a
+        // manual reversal by someone who first notices. T3's own intent is "the month that has
+        // ended" — the schedule fires `monthlyOn(1, '00:30')` and `fixed-assets:depreciate` defaults
+        // its `{month}` argument to the PREVIOUS calendar month.
+        //
+        // Deliberately narrow: the guard is UI-layer only. The console command keeps its full
+        // catch-up freedom (any month, but only via an explicit ops-typed argument), and the
+        // DRY-RUN preview in depreciateForm() stays unrestricted so any future month can still be
+        // inspected — this refuses only the irreversible real post.
+        if ($monthEnd->copy()->startOfDay()->gt(Carbon::today())) {
+            throw ValidationException::withMessages([
+                'month' => sprintf(
+                    '%04d-%02d has not ended yet — depreciation can only be posted for a month that is over. You can preview it as often as you like; post it once the month closes.',
+                    (int) $validated['year'],
+                    (int) $validated['month'],
+                ),
+            ]);
+        }
+
         $engineEnabled = app(PostingSeam::class)->isEnabledFor($companyId);
 
-        $monthEnd = Carbon::create((int) $validated['year'], (int) $validated['month'], 1)->endOfMonth();
         $periodStatus = app(PeriodGuard::class)->statusFor($companyId, $monthEnd);
 
         $result = $runner->runForMonth($companyId, (int) $validated['year'], (int) $validated['month'], dryRun: false, userId: Auth::id());

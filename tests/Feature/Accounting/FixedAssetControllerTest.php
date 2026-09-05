@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Accounting;
 
+use App\Models\Account;
 use App\Models\AccountingPeriod;
 use App\Models\Agent;
 use App\Models\AgentType;
@@ -292,6 +293,40 @@ class FixedAssetControllerTest extends AccountingTestCase
         DB::disableQueryLog();
 
         $this->assertLessThan($firstCallQueries, $secondCallQueries, 'a repeat show() view for the same company should be cheaper once the bank-leaf lookup is cached');
+    }
+
+    /**
+     * Post-fix re-verify pinning test (Opus escalation pass, T10): the 60-second bank-leaf cache
+     * added by the previous pass MUST stay scoped per company. The cache key carries the resolved
+     * company id — drop it and one company's bank/cash dropdown would be served to the next
+     * company viewed within the TTL, offering account ids that belong to somebody else (the
+     * capitalise/dispose endpoints would still reject them server-side via
+     * AccountResolver::assertUnderBankGroup()'s own company check, so this is a data-exposure and
+     * usability failure rather than a bad-posting one — but it is a leak, and nothing else pins it).
+     */
+    public function test_bank_leaf_cache_is_scoped_per_company(): void
+    {
+        [$companyA, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $assetA = $this->makeDraftAsset($companyA);
+
+        [$companyB] = $this->makeEngineOnCompanyWithAdmin();
+        $assetB = $this->makeDraftAsset($companyB, ['code' => 'FA-CTRL-B-001']);
+
+        $responseA = $this->actingAs($admin)->get(route('accounting.fixed-assets.show', $assetA).'?company_id='.$companyA->id);
+        $responseA->assertOk();
+        $leavesA = collect($responseA->viewData('bankLeaves'))->pluck('id')->all();
+
+        $responseB = $this->actingAs($admin)->get(route('accounting.fixed-assets.show', $assetB).'?company_id='.$companyB->id);
+        $responseB->assertOk();
+        $leavesB = collect($responseB->viewData('bankLeaves'))->pluck('id')->all();
+
+        $this->assertNotEmpty($leavesA, 'the fixture COA must yield bank leaves or this test proves nothing');
+        $this->assertNotEmpty($leavesB);
+        $this->assertEmpty(array_intersect($leavesA, $leavesB), 'cross-company cache leak: company A and B were offered the same account ids');
+
+        foreach ($leavesB as $id) {
+            $this->assertSame($companyB->id, Account::withoutGlobalScopes()->find($id)->company_id);
+        }
     }
 
     public function test_disposed_asset_show_page_hides_the_dispose_panel_and_skips_the_bank_leaf_lookup(): void
@@ -723,6 +758,107 @@ class FixedAssetControllerTest extends AccountingTestCase
 
         $response->assertRedirect(route('accounting.fixed-assets.depreciate', ['year' => 2026, 'month' => 1]));
         $this->assertSame(1, FixedAssetDepreciation::query()->count());
+    }
+
+    /**
+     * Post-fix re-verify pinning test (Opus escalation pass, T10): a real run for a month that has
+     * not ended must be REFUSED, not posted. Before the fix, on 2026-09-02 a run for 2027-06 posted
+     * `fa-dep:{asset}:2027-06` (posting_date 2027-06-30) and reported "1 document(s) posted" — an
+     * irreversible, future-dated ledger document that the scheduled run then silently SKIPS when
+     * 2027-06 arrives, because the idempotency key is already taken. The guard is UI-layer only:
+     * `fixed-assets:depreciate` keeps its explicit catch-up freedom, and the dry-run preview below
+     * stays unrestricted.
+     */
+    public function test_depreciate_run_refuses_a_month_that_has_not_ended_yet(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $this->makeActiveAsset($company, ['useful_life_months' => 48, 'cost' => 4800, 'salvage' => 0]);
+
+        $future = Carbon::now()->addMonthsNoOverflow(9);
+
+        $response = $this->actingAs($admin)->post(route('accounting.fixed-assets.depreciate.run'), [
+            'year' => (int) $future->format('Y'), 'month' => (int) $future->format('m'),
+        ]);
+
+        $response->assertSessionHasErrors('month');
+        $response->assertSessionMissing('success');
+        $this->assertSame(0, FixedAssetDepreciation::query()->count(), 'a future month must post nothing at all');
+    }
+
+    /** The CURRENT, still-running month is refused for the same reason — it has not ended either. */
+    public function test_depreciate_run_refuses_the_current_still_running_month(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $this->makeActiveAsset($company, ['useful_life_months' => 48, 'cost' => 4800, 'salvage' => 0]);
+
+        // Freeze mid-month so the assertion does not flip on the last calendar day of a real month.
+        Carbon::setTestNow(Carbon::create(2026, 9, 2, 10, 0, 0));
+
+        try {
+            $response = $this->actingAs($admin)->post(route('accounting.fixed-assets.depreciate.run'), [
+                'year' => 2026, 'month' => 9,
+            ]);
+
+            $response->assertSessionHasErrors('month');
+            $this->assertSame(0, FixedAssetDepreciation::query()->count());
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    /** A month that HAS ended still posts — the guard must not refuse the legitimate catch-up case. */
+    public function test_depreciate_run_still_posts_a_month_that_has_already_ended(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $this->makeActiveAsset($company, ['useful_life_months' => 48, 'cost' => 4800, 'salvage' => 0]);
+
+        $past = Carbon::now()->subMonthNoOverflow();
+
+        $response = $this->actingAs($admin)->post(route('accounting.fixed-assets.depreciate.run'), [
+            'year' => (int) $past->format('Y'), 'month' => (int) $past->format('m'),
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $this->assertSame(1, FixedAssetDepreciation::query()->count());
+    }
+
+    /**
+     * The preview screen's pre-filled month must be one the run guard accepts — the previous default
+     * was `now()` (the still-running month), i.e. the exact month the guard refuses, so the untouched
+     * two-click default path led straight to a validation error.
+     */
+    public function test_depreciate_form_defaults_to_the_previous_calendar_month(): void
+    {
+        [, $admin] = $this->makeEngineOnCompanyWithAdmin();
+
+        Carbon::setTestNow(Carbon::create(2026, 9, 2, 10, 0, 0));
+
+        try {
+            $response = $this->actingAs($admin)->get(route('accounting.fixed-assets.depreciate'));
+
+            $response->assertOk();
+            $this->assertSame(2026, $response->viewData('year'));
+            $this->assertSame(8, $response->viewData('month'));
+        } finally {
+            Carbon::setTestNow();
+        }
+    }
+
+    /** The dry-run preview stays open for ANY month, including a future one — it posts nothing. */
+    public function test_depreciate_form_still_previews_a_future_month_without_posting(): void
+    {
+        [$company, $admin] = $this->makeEngineOnCompanyWithAdmin();
+        $this->makeActiveAsset($company, ['useful_life_months' => 48, 'cost' => 4800, 'salvage' => 0]);
+
+        $future = Carbon::now()->addMonthsNoOverflow(9);
+
+        $response = $this->actingAs($admin)->get(route('accounting.fixed-assets.depreciate', [
+            'year' => (int) $future->format('Y'), 'month' => (int) $future->format('m'),
+        ]));
+
+        $response->assertOk();
+        $this->assertTrue($response->viewData('preview')['dry_run']);
+        $this->assertSame(0, FixedAssetDepreciation::query()->count());
     }
 
     public function test_depreciate_run_engine_off_posts_nothing_and_says_so(): void

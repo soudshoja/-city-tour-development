@@ -10,9 +10,15 @@ use App\Models\Branch;
 use App\Models\ReconciliationFixDraft;
 use App\Models\ReconciliationProposal;
 use App\Models\Role;
+use App\Models\Supplier;
+use App\Models\SupplierStatementImport;
 use App\Services\Accounting\ReconciliationCenterService;
 use App\Services\Accounting\ReconciliationFixDraftService;
 use App\Services\Accounting\ReconciliationProposalService;
+use App\Services\Accounting\Reconciliation\SupplierStatementImportInput;
+use App\Services\Accounting\Reconciliation\SupplierStatementImportRejected;
+use App\Services\Accounting\Reconciliation\SupplierStatementImporter;
+use App\Services\Accounting\Reconciliation\SupplierStatementMatcher;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -220,6 +226,112 @@ class ReconciliationController extends Controller
         abort_if($companyId === null, 400, 'No company selected.');
 
         return response()->json(['success' => true, 'run_status' => $center->runStatus($companyId)]);
+    }
+
+    /**
+     * accounting-builds T8 (Lane E) — DOTW supplier-statement reconciliation tab. Import form +
+     * past-imports list on its own page (reachable from the Reconciliation Center screen).
+     */
+    public function supplierStatements(Request $request): View
+    {
+        Gate::authorize('view', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        $imports = SupplierStatementImport::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->latest('id')
+            ->limit(50)
+            ->get();
+
+        $suppliers = Supplier::query()
+            ->activeForCompany($companyId)
+            ->orderBy('name')
+            ->get(['suppliers.id', 'suppliers.name']);
+
+        return view('accounting.reconciliation.supplier-statements', [
+            'companyId' => $companyId,
+            'canManage' => Gate::allows('manage', ReconciliationProposal::class),
+            'imports' => $imports,
+            'suppliers' => $suppliers,
+            'defaultColumns' => (array) config('accounting.supplier_statements.dotw.columns', []),
+        ]);
+    }
+
+    public function importSupplierStatement(Request $request, SupplierStatementImporter $importer): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+
+        $data = $request->validate([
+            'file' => ['required', 'file', 'mimes:xlsx,xls,csv,txt', 'max:10240'],
+            'supplier_id' => ['required', 'integer'],
+            'statement_currency' => ['required', 'string', 'size:3'],
+            'statement_reference' => ['nullable', 'string', 'max:160'],
+            'period_from' => ['nullable', 'date'],
+            'period_to' => ['nullable', 'date'],
+            'column_map' => ['nullable', 'array'],
+        ], [
+            'file.mimes' => 'The statement must be a CSV or Excel (.xlsx/.xls) file.',
+            'file.max' => 'The file must not exceed 10MB.',
+        ]);
+
+        $file = $request->file('file');
+
+        try {
+            $import = $importer->import(new SupplierStatementImportInput(
+                companyId: $companyId,
+                supplierId: (int) $data['supplier_id'],
+                absoluteFilePath: $file->getRealPath(),
+                fileName: $file->getClientOriginalName(),
+                statementCurrency: $data['statement_currency'],
+                columnMapOverride: $data['column_map'] ?? null,
+                statementReference: $data['statement_reference'] ?? null,
+                periodFrom: $data['period_from'] ?? null,
+                periodTo: $data['period_to'] ?? null,
+                importedBy: Auth::id(),
+            ));
+        } catch (SupplierStatementImportRejected $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['success' => true, 'import' => $import->fresh(['lines'])], 201);
+    }
+
+    public function matchSupplierStatement(Request $request, SupplierStatementImport $supplierStatementImport, SupplierStatementMatcher $matcher): JsonResponse
+    {
+        Gate::authorize('manage', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+        abort_if((int) $supplierStatementImport->company_id !== $companyId, 403, 'Statement import belongs to a different company.');
+
+        $result = $matcher->match($supplierStatementImport);
+
+        return response()->json(['success' => true, 'result' => $result->toArray(), 'import' => $supplierStatementImport->fresh()]);
+    }
+
+    public function supplierStatementExceptions(Request $request, SupplierStatementImport $supplierStatementImport, SupplierStatementMatcher $matcher): JsonResponse
+    {
+        Gate::authorize('view', ReconciliationProposal::class);
+
+        $companyId = $this->resolveCompanyId($request);
+        abort_if($companyId === null, 400, 'No company selected.');
+        abort_if((int) $supplierStatementImport->company_id !== $companyId, 403, 'Statement import belongs to a different company.');
+
+        $exceptions = $matcher->exceptionsFor($supplierStatementImport);
+
+        return response()->json([
+            'success' => true,
+            'import' => $supplierStatementImport,
+            'matched' => $supplierStatementImport->lines()->where('state', 'matched')->orderBy('row_no')->get(),
+            'unmatched_statement' => $exceptions['unmatched_statement']->values(),
+            'disputed' => $exceptions['disputed']->values(),
+            'unmatched_ledger' => $exceptions['unmatched_ledger']->values(),
+        ]);
     }
 
     /** @return array{0:int,1:Carbon,2:string} */

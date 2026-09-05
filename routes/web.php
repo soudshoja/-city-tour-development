@@ -516,6 +516,12 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/fix-drafts/{fixDraft}/discard', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'discardFixDraft'])->name('fix-drafts.discard');
         Route::post('/run', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'runNow'])->name('run');
         Route::get('/run-status', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'runStatus'])->name('run-status');
+
+        // accounting-builds T8 (Lane E) — DOTW supplier-statement reconciliation.
+        Route::get('/supplier-statements', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'supplierStatements'])->name('supplier-statements.index');
+        Route::post('/supplier-statements', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'importSupplierStatement'])->name('supplier-statements.import');
+        Route::post('/supplier-statements/{supplierStatementImport}/match', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'matchSupplierStatement'])->name('supplier-statements.match');
+        Route::get('/supplier-statements/{supplierStatementImport}/exceptions', [\App\Http\Controllers\Accounting\ReconciliationController::class, 'supplierStatementExceptions'])->name('supplier-statements.exceptions');
     });
 
     // P2.5.H (p2_5-brief.md §P2.5.H) — client/supplier/agent statement (open_items|full_activity)

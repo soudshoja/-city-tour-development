@@ -42,6 +42,10 @@ class GenerateHoldDeadlineRemindersTest extends TestCase
         parent::setUp();
         Company::forgetModuleCache();
 
+        // 2026-09-02 send-fence hotfix: REMINDERS_SEND_ENABLED now defaults FALSE. This file
+        // exercises process:reminder --proceed directly, so it opts back in explicitly.
+        config(['accounting.reminders.send.enabled' => true]);
+
         $country = Country::factory()->create();
         $companyOwner = User::factory()->create(['role_id' => Role::COMPANY]);
         $this->company = Company::factory()->create(['user_id' => $companyOwner->id, 'country_id' => $country->id]);
@@ -190,5 +194,48 @@ class GenerateHoldDeadlineRemindersTest extends TestCase
         Artisan::call('process:reminder', ['--proceed' => true]);
 
         $this->assertSame('sent', $reminder->fresh()->status);
+    }
+
+    /**
+     * Generation-side safety fence (2026-09-02 hotfix): the task query in
+     * GenerateHoldDeadlineReminders has no lower bound on deadline_at, so a first run against
+     * existing production data would backfill a reminder for every already-long-past deadline,
+     * immediately due. A task whose deadline was 30 days ago must produce NO reminder row at all.
+     */
+    public function test_a_deeply_past_deadline_produces_no_reminder_row(): void
+    {
+        $staleTask = Task::factory()->create([
+            'company_id' => $this->company->id,
+            'agent_id' => $this->agent->id,
+            'client_id' => $this->client->id,
+            'supplier_id' => $this->task->supplier_id,
+            'status' => 'confirmed',
+            'deadline_at' => now()->subDays(30),
+        ]);
+
+        Artisan::call('reminder:generate-deadlines');
+
+        $this->assertSame(0, Reminder::where('task_id', $staleTask->id)->count());
+    }
+
+    /**
+     * Counterpart to the above: a task whose deadline is tomorrow is well within the
+     * stale_after_hours window (default 24h) for at least one of its offsets, so it must still
+     * produce reminder row(s) as before.
+     */
+    public function test_a_near_future_deadline_still_produces_a_reminder_row(): void
+    {
+        $upcomingTask = Task::factory()->create([
+            'company_id' => $this->company->id,
+            'agent_id' => $this->agent->id,
+            'client_id' => $this->client->id,
+            'supplier_id' => $this->task->supplier_id,
+            'status' => 'confirmed',
+            'deadline_at' => now()->addDay(),
+        ]);
+
+        Artisan::call('reminder:generate-deadlines');
+
+        $this->assertGreaterThan(0, Reminder::where('task_id', $upcomingTask->id)->count());
     }
 }

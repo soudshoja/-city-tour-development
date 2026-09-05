@@ -41,6 +41,11 @@ class SendRemindersRepairTest extends TestCase
         parent::setUp();
         Company::forgetModuleCache();
 
+        // 2026-09-02 send-fence hotfix: REMINDERS_SEND_ENABLED now defaults FALSE, so --proceed
+        // would otherwise exit before even reaching cancelStaleReminders(). This file predates
+        // the fence and exercises the sender directly, so it opts back in explicitly.
+        config(['accounting.reminders.send.enabled' => true]);
+
         $country = Country::factory()->create();
         $owner = User::factory()->create(['role_id' => Role::COMPANY]);
         $this->company = Company::factory()->create(['user_id' => $owner->id, 'country_id' => $country->id]);

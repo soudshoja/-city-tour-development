@@ -35,6 +35,14 @@ class GenerateHoldDeadlineReminders extends Command
         $tasks = $query->get();
         $created = 0;
         $skipped = 0;
+        $stale = 0;
+
+        // Safety fence (2026-09-02 hotfix): the query above has no lower bound on deadline_at, so
+        // a first run against existing production data (deadlines already long past) would
+        // backfill a reminder row for every one of them, immediately due. A computed
+        // scheduled_at older than this cutoff is skipped instead of created.
+        $staleAfterHours = (int) config('accounting.reminders.generate.stale_after_hours', 24);
+        $staleCutoff = Carbon::now()->subHours($staleAfterHours);
 
         foreach ($tasks as $task) {
             $companyId = (int) $task->company_id;
@@ -51,6 +59,12 @@ class GenerateHoldDeadlineReminders extends Command
                 // deadline -- hence the explicit scheduled_at match rather than a bare
                 // (task_id, reminder_kind) existence check.
                 $scheduledAt = $deadline->copy()->subHours($offsetHours);
+
+                if ($scheduledAt->lt($staleCutoff)) {
+                    $stale++;
+
+                    continue;
+                }
 
                 $exists = Reminder::where('task_id', $task->id)
                     ->where('reminder_kind', 'ticketing_deadline')
@@ -92,8 +106,13 @@ class GenerateHoldDeadlineReminders extends Command
             }
         }
 
-        $this->info("Created {$created} reminder(s), skipped {$skipped} already-existing offset(s).");
-        Log::info('reminder.generate_deadlines_completed', ['created' => $created, 'skipped' => $skipped]);
+        $this->info("Created {$created} reminder(s), skipped {$skipped} already-existing offset(s), skipped {$stale} stale (>{$staleAfterHours}h past due) offset(s).");
+        Log::info('reminder.generate_deadlines_completed', [
+            'created' => $created,
+            'skipped' => $skipped,
+            'stale_skipped' => $stale,
+            'stale_after_hours' => $staleAfterHours,
+        ]);
 
         return 0;
     }

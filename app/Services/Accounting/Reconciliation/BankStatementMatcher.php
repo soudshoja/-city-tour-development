@@ -99,6 +99,30 @@ final class BankStatementMatcher
      */
     private function matchLine(BankStatementImport $import, BankStatementImportLine $line, array &$consumedJournalEntryIds): array
     {
+        // Idempotent short-circuit: a MATCHED line with a still-LIVE (pending or approved)
+        // proposal is already settled — skip recomputation entirely. Without this, re-running
+        // match() (the nightly detector sweep, or an operator re-clicking "match" on an
+        // already-matched import — both call this unconditionally over every line) would
+        // re-derive the candidate from scratch; once the matched proposal is APPROVED, approval
+        // sets the candidate's `journal_entries.reconciled = 1`, which every tier's baseQuery
+        // excludes (`->where('reconciled', 0)`) — so the SAME candidate that was correctly
+        // matched moments ago would no longer be found, and this line would be wrongly reverted
+        // to 'unmatched' (matched_journal_entry_id nulled, note overwritten), even though the
+        // underlying ledger line remains correctly reconciled and the proposal remains approved.
+        // A REJECTED proposal is deliberately NOT live here (see ensureProposal()'s matching
+        // status filter) — rejecting a match must allow a corrected re-match to reconsider it,
+        // per spec ("rejected -> allowed").
+        if ($line->state === BankStatementImportLine::STATE_MATCHED) {
+            $live = $this->liveReferenceFor($line);
+            if ($live !== null) {
+                if ($live->book_journal_entry_id !== null) {
+                    $consumedJournalEntryIds[(int) $live->book_journal_entry_id] = true;
+                }
+
+                return ['state' => $line->state, 'tier' => null];
+            }
+        }
+
         $tolerance = (float) config('accounting.bank_statements.match_tolerance', 0.001);
         $windowDays = (int) config('accounting.bank_statements.date_window_days', 3);
 
@@ -238,10 +262,12 @@ final class BankStatementMatcher
      */
     private function ensureProposal(BankStatementImportLine $line, int $bookJournalEntryId, string $confidence): void
     {
-        $reference = 'bank_stmt_line:'.$line->id;
-
-        $existing = ReconciliationProposal::where('matched_reference', $reference)->first();
-        if ($existing !== null) {
+        // Only a LIVE (pending or approved) proposal blocks re-proposing — a REJECTED one must
+        // not, so a corrected re-match can raise a fresh proposal (spec: "rejected -> allowed").
+        // The matchLine() short-circuit above already prevents a LIVE match from ever reaching
+        // this far a second time, so this check only ever bites the "rejected, now re-derived"
+        // path or a genuinely-first call.
+        if ($this->liveReferenceFor($line) !== null) {
             return;
         }
 
@@ -270,7 +296,7 @@ final class BankStatementMatcher
             'confidence' => $confidence,
             'book_journal_entry_id' => $bookJournalEntryId,
             'matched_journal_entry_id' => null,
-            'matched_reference' => $reference,
+            'matched_reference' => 'bank_stmt_line:'.$line->id,
             'amount' => $line->amount(),
             'difference_amount' => $line->difference,
             'status' => ReconciliationProposal::STATUS_PENDING,
@@ -281,6 +307,19 @@ final class BankStatementMatcher
     {
         return ReconciliationProposal::where('book_journal_entry_id', $bookJournalEntryId)
             ->where('kind', ReconciliationProposal::KIND_BANK_STATEMENT)
+            ->whereIn('status', [ReconciliationProposal::STATUS_PENDING, ReconciliationProposal::STATUS_APPROVED])
+            ->first();
+    }
+
+    /**
+     * This ONE statement line's own live (pending or approved) proposal, if any — the
+     * re-match short-circuit's and ensureProposal()'s shared oracle for "is this line already
+     * settled by a claim still in force". A rejected proposal for the same line is deliberately
+     * excluded (not live), so a corrected re-match can reconsider it.
+     */
+    private function liveReferenceFor(BankStatementImportLine $line): ?ReconciliationProposal
+    {
+        return ReconciliationProposal::where('matched_reference', 'bank_stmt_line:'.$line->id)
             ->whereIn('status', [ReconciliationProposal::STATUS_PENDING, ReconciliationProposal::STATUS_APPROVED])
             ->first();
     }

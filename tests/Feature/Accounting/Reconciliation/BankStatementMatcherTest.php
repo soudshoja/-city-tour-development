@@ -14,6 +14,7 @@ use App\Models\ReconciliationProposal;
 use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Accounting\Reconciliation\BankStatementMatcher;
+use App\Services\Accounting\ReconciliationProposalService;
 use Database\Seeders\CoaSeeder;
 use Illuminate\Support\Carbon;
 use Tests\Support\AccountingTestCase;
@@ -235,6 +236,115 @@ class BankStatementMatcherTest extends AccountingTestCase
         $this->assertEqualsWithDelta(1.0, $line->difference, 0.0001);
     }
 
+    /**
+     * ADVERSARIAL VERIFY (T9, polarity, highest risk): a deposit (statement credit, money IN) and
+     * a payment (statement debit, money OUT) of the SAME amount on the SAME day must each match
+     * their own correctly-signed ledger line and never cross-match the other. Independent of any
+     * of the builder's own precedence tests (each of those only ever posts a 'debit'-side ledger
+     * line) — this fixture posts BOTH a debit-side and a credit-side ledger line simultaneously.
+     */
+    public function test_a_same_day_same_amount_deposit_and_payment_never_cross_match(): void
+    {
+        [$company, $branch, $leaf] = $this->makeCompanyWithBankLeaf();
+        $date = Carbon::parse('2026-08-19');
+
+        $depositLine = $this->postBankLine($company, $branch, $leaf, 'debit', 50.000, $date, authNo: 'AUTH-DEP');
+        $paymentLine = $this->postBankLine($company, $branch, $leaf, 'credit', 50.000, $date, authNo: 'AUTH-PAY');
+
+        $import = BankStatementImport::create([
+            'company_id' => $company->id, 'bank_account_id' => $leaf->id, 'file_name' => 'polarity.csv',
+            'statement_currency' => 'KWD', 'content_hash' => hash('sha256', uniqid('', true)),
+            'column_map' => [], 'status' => BankStatementImport::STATUS_STAGED,
+        ]);
+        // Row 1: statement CREDIT = money IN = our books' DEBIT — must match $depositLine only.
+        BankStatementImportLine::create([
+            'import_id' => $import->id, 'row_no' => 1, 'value_date' => $date, 'debit' => 0,
+            'credit' => 50.000, 'auth_no' => 'AUTH-DEP', 'state' => BankStatementImportLine::STATE_UNMATCHED,
+        ]);
+        // Row 2: statement DEBIT = money OUT = our books' CREDIT — must match $paymentLine only.
+        BankStatementImportLine::create([
+            'import_id' => $import->id, 'row_no' => 2, 'value_date' => $date, 'debit' => 50.000,
+            'credit' => 0, 'auth_no' => 'AUTH-PAY', 'state' => BankStatementImportLine::STATE_UNMATCHED,
+        ]);
+
+        $this->matcher()->match($import->fresh(['lines']));
+
+        $lines = $import->fresh(['lines'])->lines()->orderBy('row_no')->get();
+        $depositRow = $lines[0];
+        $paymentRow = $lines[1];
+
+        $this->assertSame(BankStatementImportLine::STATE_MATCHED, $depositRow->state);
+        $this->assertSame($depositLine->id, $depositRow->matched_journal_entry_id);
+        $this->assertNotSame($paymentLine->id, $depositRow->matched_journal_entry_id);
+
+        $this->assertSame(BankStatementImportLine::STATE_MATCHED, $paymentRow->state);
+        $this->assertSame($paymentLine->id, $paymentRow->matched_journal_entry_id);
+        $this->assertNotSame($depositLine->id, $paymentRow->matched_journal_entry_id);
+    }
+
+    /**
+     * Same fixture, but with NO auth_no/reference (amount+date tier only) and unsigned amounts
+     * that literally coincide (50.000 both ways) — the polarity translation is the ONLY thing
+     * stopping a receipt from being proposed as a match for a payment.
+     */
+    public function test_a_same_day_same_amount_deposit_and_payment_never_cross_match_on_amount_date_tier_alone(): void
+    {
+        [$company, $branch, $leaf] = $this->makeCompanyWithBankLeaf();
+        $date = Carbon::parse('2026-08-19');
+
+        $depositLine = $this->postBankLine($company, $branch, $leaf, 'debit', 65.000, $date);
+        $paymentLine = $this->postBankLine($company, $branch, $leaf, 'credit', 65.000, $date);
+
+        $import = BankStatementImport::create([
+            'company_id' => $company->id, 'bank_account_id' => $leaf->id, 'file_name' => 'polarity2.csv',
+            'statement_currency' => 'KWD', 'content_hash' => hash('sha256', uniqid('', true)),
+            'column_map' => [], 'status' => BankStatementImport::STATUS_STAGED,
+        ]);
+        BankStatementImportLine::create([
+            'import_id' => $import->id, 'row_no' => 1, 'value_date' => $date, 'debit' => 0,
+            'credit' => 65.000, 'state' => BankStatementImportLine::STATE_UNMATCHED,
+        ]);
+        BankStatementImportLine::create([
+            'import_id' => $import->id, 'row_no' => 2, 'value_date' => $date, 'debit' => 65.000,
+            'credit' => 0, 'state' => BankStatementImportLine::STATE_UNMATCHED,
+        ]);
+
+        $this->matcher()->match($import->fresh(['lines']));
+
+        $lines = $import->fresh(['lines'])->lines()->orderBy('row_no')->get();
+        $this->assertSame($depositLine->id, $lines[0]->matched_journal_entry_id);
+        $this->assertSame($paymentLine->id, $lines[1]->matched_journal_entry_id);
+    }
+
+    /**
+     * ADVERSARIAL VERIFY (T9, tier 2 exactness): a short reference ("123") that happens to appear
+     * as a SUBSTRING inside a longer, unrelated voucher number ("V-9123-AB") must NEVER be treated
+     * as a match — the tier-2 comparison is `where('voucher_number', $ref)`, plain equality, not a
+     * LIKE/substring probe.
+     */
+    public function test_reference_match_is_exact_never_a_substring(): void
+    {
+        [$company, $branch, $leaf] = $this->makeCompanyWithBankLeaf();
+        $date = Carbon::parse('2026-08-19');
+
+        // Unrelated line whose voucher number merely CONTAINS "123" as a substring — a DIFFERENT
+        // amount (outside the 0.001 tolerance) so tier 3 (amount+date) could never legitimately
+        // pick it either; the only way it could be picked is a tier-2 substring false positive.
+        $this->postBankLine($company, $branch, $leaf, 'debit', 30.500, $date, voucherNumber: 'V-9123-AB');
+        // The genuinely exact match.
+        $exactLine = $this->postBankLine($company, $branch, $leaf, 'debit', 30.000, $date->copy()->addDay(), voucherNumber: '123');
+
+        $import = $this->makeImportWithLine($company, $leaf, [
+            'value_date' => $date, 'credit' => 30.000, 'reference' => '123',
+        ]);
+
+        $this->matcher()->match($import);
+
+        $line = $import->lines->first()->fresh();
+        $this->assertSame(BankStatementImportLine::STATE_MATCHED, $line->state);
+        $this->assertSame($exactLine->id, $line->matched_journal_entry_id, 'must match the EXACT "123" voucher, never the substring-containing one');
+    }
+
     // ── Window boundary (±3 days INCLUSIVE, day 4 EXCLUDED) ─────────────────────────────────────
 
     public function test_window_boundary_day_3_matches_day_4_does_not(): void
@@ -410,6 +520,81 @@ class BankStatementMatcherTest extends AccountingTestCase
             1,
             ReconciliationProposal::where('kind', ReconciliationProposal::KIND_BANK_STATEMENT)->count()
         );
+    }
+
+    /**
+     * REGRESSION (found in adversarial verify, T9): re-running match() over an import AFTER its
+     * proposal is APPROVED must never revert the now-reconciled statement line back to
+     * 'unmatched'. Before the fix, matchLine() unconditionally re-derived every line on every
+     * call with no regard to its already-settled state; once approve() sets the candidate's
+     * `journal_entries.reconciled = 1`, every tier's own `->where('reconciled', 0)` filter
+     * excludes that SAME candidate on the next match() call (the nightly detector sweep runs
+     * match() over every staged/matched import unconditionally — see
+     * ReconciliationAutoMatchService::detectBankStatementMatches()), so the line was silently
+     * reset to 'unmatched' with `matched_journal_entry_id` nulled out, even though the ledger
+     * line remained correctly reconciled and the proposal remained approved — a stale,
+     * contradictory read that would also wrongly re-trip PeriodCloseChecklistService's
+     * "N statement lines unmatched" WARN for an already-resolved line.
+     */
+    public function test_rematching_after_approval_does_not_revert_an_already_matched_line(): void
+    {
+        [$company, $branch, $leaf] = $this->makeCompanyWithBankLeaf();
+        $date = Carbon::parse('2026-08-27');
+        $owner = User::factory()->create();
+
+        $bookLine = $this->postBankLine($company, $branch, $leaf, 'debit', 33.000, $date, authNo: 'AUTH-REM-1');
+        $import = $this->makeImportWithLine($company, $leaf, ['value_date' => $date, 'credit' => 33.000, 'auth_no' => 'AUTH-REM-1']);
+
+        $this->matcher()->match($import);
+
+        $proposal = ReconciliationProposal::where('kind', ReconciliationProposal::KIND_BANK_STATEMENT)
+            ->where('book_journal_entry_id', $bookLine->id)->firstOrFail();
+
+        app(ReconciliationProposalService::class)->approve($proposal, $owner);
+        $this->assertSame(1, (int) $bookLine->fresh()->reconciled);
+
+        // Simulate the nightly detector sweep (or an operator re-clicking "match") re-running
+        // match() over the SAME already-matched import.
+        $this->matcher()->match($import->fresh(['lines']));
+
+        $line = $import->fresh(['lines'])->lines->first();
+        $this->assertSame(BankStatementImportLine::STATE_MATCHED, $line->state);
+        $this->assertSame($bookLine->id, $line->matched_journal_entry_id);
+        $this->assertSame(1, ReconciliationProposal::where('kind', ReconciliationProposal::KIND_BANK_STATEMENT)
+            ->where('book_journal_entry_id', $bookLine->id)->count());
+    }
+
+    /**
+     * The other half of the same fix: a REJECTED proposal must not permanently block a corrected
+     * re-match on the SAME statement line — ensureProposal()'s existing-reference check now only
+     * treats a LIVE (pending/approved) proposal as blocking, per spec ("rejected -> allowed").
+     */
+    public function test_rejecting_then_rematching_the_same_line_raises_a_fresh_proposal(): void
+    {
+        [$company, $branch, $leaf] = $this->makeCompanyWithBankLeaf();
+        $date = Carbon::parse('2026-08-27');
+        $owner = User::factory()->create();
+
+        $bookLine = $this->postBankLine($company, $branch, $leaf, 'debit', 44.000, $date, authNo: 'AUTH-REM-2');
+        $import = $this->makeImportWithLine($company, $leaf, ['value_date' => $date, 'credit' => 44.000, 'auth_no' => 'AUTH-REM-2']);
+
+        $this->matcher()->match($import);
+
+        $proposal = ReconciliationProposal::where('kind', ReconciliationProposal::KIND_BANK_STATEMENT)
+            ->where('book_journal_entry_id', $bookLine->id)->firstOrFail();
+
+        app(ReconciliationProposalService::class)->reject($proposal, 'wrong candidate', $owner);
+
+        $this->matcher()->match($import->fresh(['lines']));
+
+        $line = $import->fresh(['lines'])->lines->first();
+        $this->assertSame(BankStatementImportLine::STATE_MATCHED, $line->state);
+
+        $liveCount = ReconciliationProposal::where('kind', ReconciliationProposal::KIND_BANK_STATEMENT)
+            ->where('book_journal_entry_id', $bookLine->id)
+            ->where('status', ReconciliationProposal::STATUS_PENDING)
+            ->count();
+        $this->assertSame(1, $liveCount, 'a fresh pending proposal should be raised after rejection');
     }
 
     /** A ledger line already claimed by an EARLIER import's live proposal never raises a second one. */

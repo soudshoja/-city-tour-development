@@ -25,20 +25,24 @@ use Tests\TestCase;
  * or any other definition mismatch -- cannot recur for ANY artisan-backed scheduled command in
  * routes/console.php.
  *
- * Two more pre-existing, unrelated bugs surfaced while building this guard, deliberately NOT
- * fixed by this hotfix (out of scope -- neither touches process:reminder/--proceed, and this
- * hotfix is meant to stay surgical) but flagged to the team via KNOWN_PRE_EXISTING_ISSUES below
- * so this guard stays green instead of masking them:
- *   - `perform:payment-release-to-company-bankacc-process` names a command that does not exist;
+ * Hotfix (2026-09-02, follow-up): the two pre-existing issues noted below at the time this guard
+ * landed (commit 7708c092) are now ALSO fixed, in routes/console.php:
+ *   - `perform:payment-release-to-company-bankacc-process` named a command that does not exist;
  *     the actual signature (App\Console\Commands\PaymentReleaseToCompanyBankAccProcess) is
- *     `app:payment-release-to-company-bankacc-process`, so this scheduled job has always failed
- *     with "Command ... is not defined."
- *   - `accounting:reconcile` is scheduled as `['--auto' => true]`, the EXACT SAME bug pattern as
+ *     `app:payment-release-to-company-bankacc-process` -- this scheduled job had always failed
+ *     with "Command ... is not defined." since this repo's initial commit (2026-05-10). Corrected
+ *     to the real command name; all other schedule attributes (cron, runInBackground) unchanged.
+ *   - `accounting:reconcile` was scheduled as `['--auto' => true]`, the EXACT SAME bug pattern as
  *     this hotfix's process:reminder fix, against a `{--auto}` flag that
  *     App\Console\Commands\AccountingReconcileAuto also declares value-less and requires truthy
- *     -- so the nightly auto-reconciliation job has also always failed to actually reconcile.
- *     Accounting is a separately owner-gated area (see project CLAUDE.md's "Accounting cutover"
- *     section); not touched here without explicit sign-off.
+ *     -- so the nightly auto-reconciliation job had also always failed to actually reconcile.
+ *     Switched to the string form (`Schedule::command('accounting:reconcile --auto')`), matching
+ *     the process:reminder fix; owner-approved as safe to activate (engine is globally OFF on
+ *     prod, and posting_engine_enabled is false for every company today, so this currently runs
+ *     as a 0-company no-op regardless -- see the scheduler-dormant-jobs impact assessment).
+ * Both entries are removed from KNOWN_PRE_EXISTING_ISSUES below so the generic guard
+ * (test_every_scheduled_artisan_command_renders_arguments_its_definition_accepts) now covers them
+ * like any other scheduled command.
  *
  * akeed-dotwai:sync-hotels / akeed-dotwai:sync-catalogs are NOT in that list: they are correctly
  * gated by ->when(fn () => config('akeed_dotwai.enabled')), which is false in this environment,
@@ -48,10 +52,7 @@ use Tests\TestCase;
  */
 class ScheduleRenderingTest extends TestCase
 {
-    private const KNOWN_PRE_EXISTING_ISSUES = [
-        'perform:payment-release-to-company-bankacc-process',
-        'accounting:reconcile',
-    ];
+    private const KNOWN_PRE_EXISTING_ISSUES = [];
 
     public function test_process_reminder_proceed_flag_renders_without_a_value(): void
     {

@@ -14,6 +14,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
+use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\TestCase;
 
 /**
@@ -37,13 +38,16 @@ use Tests\TestCase;
 class JournalEntriesViewSafetyTest extends TestCase
 {
     use RefreshDatabase;
+    use GrantsAccountingModule;
 
     /**
      * Creates a company owned directly by a fresh Role::COMPANY user (mirrors
      * tests/Feature/Security/AccountingRouteGateTest.php's pattern) with
-     * every permission these routes might check, and no module preset
-     * applied — a legacy company, which keeps full access to every
-     * accounting route.
+     * every permission these routes might check. config/modules.php defaults
+     * accounting DISABLED for every company regardless of age, so the
+     * module is granted explicitly here — without it, module:accounting
+     * 404s every route below before the Policy/permission checks these
+     * tests actually mean to exercise ever run.
      *
      * @return array{0: User, 1: Company}
      */
@@ -51,6 +55,7 @@ class JournalEntriesViewSafetyTest extends TestCase
     {
         $user = User::factory()->create(['role_id' => Role::COMPANY]);
         $company = Company::factory()->create(['user_id' => $user->id]);
+        $this->grantAccountingModule($company);
 
         $role = Role::create([
             'name' => 'company',

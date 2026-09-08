@@ -10,10 +10,10 @@ use App\Models\Client;
 use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\JournalEntry;
+use App\Models\Role;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 /**
@@ -49,7 +49,21 @@ class CtF29MobileInvoiceRoutesAuthTest extends TestCase
      */
     private function makeInvoiceWithLedgerRows(): array
     {
-        $owner = User::factory()->create();
+        // role_id must be Role::COMPANY: App\Models\JournalEntry uses the
+        // BelongsToCompany trait (devline-only -- not present on the branch
+        // this fix originated on), whose global scope resolves the acting
+        // user's company via getCompanyId(), and getCompanyId() only reads
+        // $user->company (the has-one this fixture sets up via
+        // Company::user_id) for Role::COMPANY. The factory default
+        // (Role::ADMIN) resolves to session('company_id', 1) instead, which
+        // silently scopes JournalEntry queries to company 1 regardless of
+        // the fixture's real company -- deleteInvoice()'s
+        // `JournalEntry::where('invoice_id', ...)->delete()` would then
+        // affect 0 rows whenever the fixture's company id isn't 1, which is
+        // a pre-existing devline behaviour unrelated to CT-F29's auth fix.
+        $owner = User::factory()->create([
+            'role_id' => Role::COMPANY,
+        ]);
 
         $company = Company::factory()->create([
             'user_id' => $owner->id,
@@ -144,7 +158,14 @@ class CtF29MobileInvoiceRoutesAuthTest extends TestCase
             'user_id' => $otherOwner->id,
         ]);
 
-        Sanctum::actingAs($otherOwner);
+        // devline note: App\Models\User here has no HasApiTokens trait and
+        // config/sanctum.php's guard is ['web'] (see a719261c1), so
+        // auth:sanctum in practice checks the web session guard --
+        // Laravel\Sanctum\Sanctum::actingAs() requires HasApiTokens and
+        // would throw. $this->actingAs() (the pattern devline's own
+        // tests/Feature/Security/RoutesHardeningTest.php already uses for
+        // this same route family) is the faithful equivalent here.
+        $this->actingAs($otherOwner);
 
         $response = $this->deleteJson("/api/invoice/delete/{$fixture['invoice']->id}");
 
@@ -157,7 +178,7 @@ class CtF29MobileInvoiceRoutesAuthTest extends TestCase
     {
         $fixture = $this->makeInvoiceWithLedgerRows();
 
-        Sanctum::actingAs($fixture['owner']);
+        $this->actingAs($fixture['owner']);
 
         $response = $this->deleteJson("/api/invoice/delete/{$fixture['invoice']->id}");
 

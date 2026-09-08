@@ -42,15 +42,22 @@ Route::group([
     Route::post('/task-from-email', [TaskController::class, 'handleTaskFromEmail']);
 });
 
-Route::get('/invoice/create', [MobileController::class, 'create'])->name('invoice.create');
-Route::post('/invoice', [MobileController::class, 'store']);
-Route::get('/invoice/{agentId}', [MobileController::class, 'getInvoiceByAgentId']);
-Route::get('/invoice/by/{Id}', [MobileController::class, 'getInvoiceById']);
-Route::post('/invoice/partial', [MobileController::class, 'savePartial']);
-Route::post('/invoice/remove/partial', [MobileController::class, 'removePartial']);
-Route::put('/invoice/{id}', [MobileController::class, 'updateInvoice']);
-Route::delete('/invoice/delete/{id}', [MobileController::class, 'deleteInvoice']);
-Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);
+// CT-F29: MobileController invoice/transaction routes delete and mutate ledger
+// rows (Transaction/JournalEntry) and must require an authenticated caller.
+// Mirrors the auth:sanctum group already used below for the payments/{id}/*
+// routes -- the only other precedent for protecting a MobileController-style
+// API route in this file.
+Route::middleware('auth:sanctum')->group(function () {
+    Route::get('/invoice/create', [MobileController::class, 'create'])->name('invoice.create');
+    Route::post('/invoice', [MobileController::class, 'store']);
+    Route::get('/invoice/{agentId}', [MobileController::class, 'getInvoiceByAgentId']);
+    Route::get('/invoice/by/{Id}', [MobileController::class, 'getInvoiceById']);
+    Route::post('/invoice/partial', [MobileController::class, 'savePartial']);
+    Route::post('/invoice/remove/partial', [MobileController::class, 'removePartial']);
+    Route::put('/invoice/{id}', [MobileController::class, 'updateInvoice']);
+    Route::delete('/invoice/delete/{id}', [MobileController::class, 'deleteInvoice']);
+    Route::get('/transaction/{agentId}', [MobileController::class, 'getTransactionByAgentId']);
+});
 
 Route::post('payment/webhook-fatoorah', [PaymentController::class, 'handleWebhookFatoorah']);
 Route::post('payment/hesabe-webhook', [PaymentController::class, 'handleHesabeWebhook'])->name('payment.hesabe.webhook');

@@ -581,14 +581,30 @@ class EnsureSystemLeaves extends Command
             $renumberedCount += $result['renumbered'];
             $refusedCount += $result['refused'];
 
-            if (! $dryRun && $result['created'] > 0) {
+            // CT-A3 wave-1 server-replay finding (2026-09-09): this used to gate on
+            // `$result['created'] > 0`, so the purpose remap below fired ONLY when a leaf was
+            // literally INSERTED. That is exactly backwards for this command's own documented
+            // "adopt the leaf that is already there and re-map the purpose code it backs" case:
+            // on a real chart every one of CT-A3's three new core entries (UNBILLED_SUPPLIER_COST
+            // -> the pre-existing 1430, COMMISSION_EXPENSE -> 5130, COMMISSION_PAYABLE -> 2210)
+            // finds its target ALREADY PRESENT, counts as `skipped`, creates nothing — and the
+            // remap never ran, leaving all three purposes unmapped with the command reporting a
+            // clean exit 0. Reproduced on the City Travelers scratch database: "0 leaf(s)
+            // created, 43 skipped", and `system_accounts` had no row for any of the three.
+            //
+            // A company that was PROCESSED at all now needs the remap, whether its leaves were
+            // created or adopted. SystemAccountsSeeder is idempotent by construction (every row
+            // is `updateOrCreate`d back to the same values), so running it for an
+            // already-correct company costs a pass and changes nothing — the old gate bought no
+            // safety, only this defect.
+            if (! $dryRun) {
                 $companiesNeedingRemap[(int) $company->id] = true;
             }
         }
 
         if (! $dryRun && $companiesNeedingRemap !== []) {
             $this->newLine();
-            $this->info('  Re-running SystemAccountsSeeder mapping (MARKUP_INCOME, SALARY_PAYABLE, GATEWAY_FEE_EXPENSE_KNET, GATEWAY_FEE_EXPENSE_UPAYMENT, GATEWAY_CLEARING_KNET, GATEWAY_CLEARING_UPAYMENT) for every processed company...');
+            $this->info('  Re-running SystemAccountsSeeder mapping for every processed company (whether its leaves were created or adopted)...');
             // SystemAccountsSeeder::run() maps EVERY company in one pass (file's own docblock) —
             // there is no per-company / per-purpose-code entry point. Safe and idempotent to run
             // for the whole set even when --company scoped this run to one, or when some

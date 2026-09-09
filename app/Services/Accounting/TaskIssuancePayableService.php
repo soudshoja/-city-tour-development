@@ -110,6 +110,10 @@ final class TaskIssuancePayableService
         $supplier = $task->supplier_id ? Supplier::find($task->supplier_id) : null;
         $decision = $this->rule->decide($task, $supplier);
 
+        // NOTE (CT-A3 wave-1 server-replay finding): the two later `skipped` logs below OVERRIDE
+        // `reason` via array_merge, not the `+` union operator — PHP's `+` keeps the LEFT
+        // operand's key, so `$context + ['reason' => 'already_invoiced']` silently kept the
+        // decision's own 'committed' and the operator could not tell the two apart in the log.
         $context = array_merge($decision->toLogContext(), [
             'task_id' => $task->id,
             'company_id' => $companyId,
@@ -131,7 +135,7 @@ final class TaskIssuancePayableService
         $amount = round((float) ($task->total ?? 0), 3);
 
         if ($amount <= (float) config('accounting.engine.balance_tolerance', 0.0005)) {
-            Log::debug('accounting.supplier_payable.skipped', $context + ['reason' => 'zero_supplier_cost']);
+            Log::debug('accounting.supplier_payable.skipped', array_merge($context, ['reason' => 'zero_supplier_cost']));
 
             return null;
         }
@@ -140,7 +144,7 @@ final class TaskIssuancePayableService
         // SERVICE_COST / SERVICE_PAYABLE pair, so accruing here would double the payable. This is
         // the owner's "if the task auto-invoices in the same transaction, post straight to COGS".
         if ($this->hasPostedSaleDocument($task, $companyId)) {
-            Log::debug('accounting.supplier_payable.skipped', $context + ['reason' => 'already_invoiced']);
+            Log::debug('accounting.supplier_payable.skipped', array_merge($context, ['reason' => 'already_invoiced']));
 
             return null;
         }

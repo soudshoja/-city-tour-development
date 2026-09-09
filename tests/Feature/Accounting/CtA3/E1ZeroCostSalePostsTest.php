@@ -118,6 +118,39 @@ class E1ZeroCostSalePostsTest extends AccountingTestCase
     }
 
     /**
+     * CT-A3 wave-1 server-replay finding (2026-09-09): the same failure mode on the OTHER leg.
+     * After E1 fixed the zero-COST case, the replay refused 7 more documents on
+     * "`DocumentDraft::$lines[0]` amount must be > 0" — invoice_details whose task_price AND task
+     * total are both 0.000 (detail ids 14399-14402, 14509, 14615-14616). The AR/revenue pair is
+     * now omitted when the SELL is zero, exactly as the cost pair is when the COST is zero.
+     */
+    public function test_a_zero_sell_zero_cost_sale_builds_no_lines_at_all(): void
+    {
+        $lines = (new SaleDraftBuilder)->buildLines($this->agentInput(0.0, 0.0));
+
+        $this->assertSame(
+            [],
+            $lines,
+            'Nothing happened — no money in either direction — so there is no document. The '
+            .'caller must treat an empty array as "no document", never as an error.'
+        );
+    }
+
+    public function test_a_zero_sell_sale_that_still_has_a_cost_posts_only_the_cost_pair(): void
+    {
+        $lines = (new SaleDraftBuilder)->buildLines($this->agentInput(0.0, 100.0));
+
+        $this->assertSame(
+            ['SERVICE_COST', 'SERVICE_PAYABLE'],
+            array_map(fn ($l) => $l->purposeCode, $lines),
+            'Cost incurred with nothing billed yet is legitimate under gross — the cost pair '
+            .'stands on its own and still balances.'
+        );
+        $this->assertEqualsWithDelta(100.0, $lines[0]->amount, 0.0005);
+        $this->assertEqualsWithDelta(100.0, $lines[1]->amount, 0.0005);
+    }
+
+    /**
      * The real proof: the whole document goes through `PostingService::post()` and comes back a
      * `PostedDocument` instead of throwing `NonNegativeAmountException`.
      */

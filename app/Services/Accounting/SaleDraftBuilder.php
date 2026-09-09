@@ -112,7 +112,9 @@ final class SaleDraftBuilder
      * the input (it is still read by config, reports and `resolvePostingBasis()`, and a future
      * ruling could re-diverge the two) but it no longer changes what this builder emits.
      *
-     * @return LineDraft[] 2 or 4 lines — see {@see self::buildGrossBasisLines()}'s docblock.
+     * @return LineDraft[] 4, 2 or 0 lines — see {@see self::buildGrossBasisLines()}'s docblock.
+     *                     An EMPTY array means "nothing happened" (sell and cost both zero) and
+     *                     the caller must post no document at all.
      */
     public function buildLines(SaleDraftInput $input): array
     {
@@ -166,8 +168,26 @@ final class SaleDraftBuilder
         $costPurposeCode = $deferRevenue ? 'PREPAID_SUPPLIER_COST' : 'SERVICE_COST';
         $costServiceType = $deferRevenue ? null : $input->serviceType;
 
-        $lines = [
-            new LineDraft(
+        $lines = [];
+
+        // CT-A3 wave-1 server-replay finding (2026-09-09): the AR/revenue pair is now omitted when
+        // the SELL is zero, exactly as the cost pair below is omitted when the COST is zero. The
+        // replay refused 7 more sale documents on `DocumentDraft::$lines[0] amount must be > 0` —
+        // invoice_details whose task_price AND task total are both 0.000 (detail ids 14399-14402,
+        // 14509, 14615-14616) — the same failure mode E1/CT-F34 fixed on the cost side, just on
+        // the other leg. Refusing them makes invoice creation FAIL rather than degrade, for a
+        // document that carries no money in either direction.
+        //
+        // The three shapes this produces:
+        //   sell > 0, cost > 0  -> 4 lines (the ordinary gross sale)
+        //   sell > 0, cost = 0  -> 2 lines (a pure-fee sale — E1/CT-F34)
+        //   sell = 0, cost > 0  -> 2 lines (cost incurred with nothing billed yet; legitimate
+        //                          under gross, where the cost pair stands on its own)
+        //   sell = 0, cost = 0  -> [] — nothing happened. The CALLER must treat an empty array as
+        //                          "no document", never as an error; PostingService rejects an
+        //                          empty line set by construction.
+        if ($input->sellAmount > $tolerance) {
+            $lines[] = new LineDraft(
                 purposeCode: 'RECEIVABLE_CONTROL',
                 accountId: null,
                 side: 'debit',
@@ -183,8 +203,9 @@ final class SaleDraftBuilder
                 taskId: $input->taskId,
                 ledgerType: 'receivable',
                 partyName: $input->clientName,
-            ),
-            new LineDraft(
+            );
+
+            $lines[] = new LineDraft(
                 purposeCode: $revenuePurposeCode,
                 accountId: null,
                 side: 'credit',
@@ -205,8 +226,8 @@ final class SaleDraftBuilder
                 taskId: $input->taskId,
                 ledgerType: 'income',
                 partyName: $input->agentName,
-            ),
-        ];
+            );
+        }
 
         // Cost-of-sales pair — OMITTED TOGETHER when cost isn't known/incurred yet (<= tolerance),
         // matching PostingService's own amount > 0 rule rather than rejecting a sale that has no

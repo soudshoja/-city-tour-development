@@ -2039,6 +2039,27 @@ class InvoiceController extends Controller
             }
         }
 
+        // CT-A3 wave-1 server-replay finding (2026-09-09): SaleDraftBuilder returns an EMPTY line
+        // array when a sale carries neither a sell price nor a supplier cost — nothing happened,
+        // so there is no document to post. Before the builder omitted the zero legs, that shape
+        // reached PostingService as a 0.000-amount line and threw NonNegativeAmountException
+        // straight out of this method uncaught, failing invoice creation for a line carrying no
+        // money in either direction (7 documents on the City Travelers dev data). Returning null
+        // here matches this method's own documented contract: anything that is not a string means
+        // "proceed".
+        if ($lines === []) {
+            Log::info('accounting.sale.nothing_to_post', [
+                'company_id' => $companyId,
+                'invoice_id' => $invoiceId,
+                'invoice_detail_id' => $invoiceDetailId,
+                'task_id' => $task->id ?? null,
+                'sell' => $selling,
+                'cost' => (float) ($task->total ?? 0),
+            ]);
+
+            return null;
+        }
+
         $draft = new DocumentDraft(
             companyId: $companyId,
             branchId: (int) ($agent->branch_id ?? 0),

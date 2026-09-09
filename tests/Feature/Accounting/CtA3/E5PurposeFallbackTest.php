@@ -54,12 +54,16 @@ class E5PurposeFallbackTest extends AccountingTestCase
             ->value('account_id');
     }
 
-    private function deleteMapping(int $companyId, string $purposeCode, string $serviceType): void
+    private function deleteMapping(int $companyId, string $purposeCode, ?string $serviceType): void
     {
         DB::table('system_accounts')
             ->where('company_id', $companyId)
             ->where('purpose_code', $purposeCode)
-            ->where('service_type', $serviceType)
+            ->when(
+                $serviceType === null,
+                fn ($q) => $q->whereNull('service_type'),
+                fn ($q) => $q->where('service_type', $serviceType)
+            )
             ->delete();
     }
 
@@ -133,26 +137,33 @@ class E5PurposeFallbackTest extends AccountingTestCase
 
     /**
      * Case 3 (second half): a service type with NO mapped SERVICE_COST row resolves to
-     * COST_OF_SALES_CONTROL, and a warning names the service type. COST_OF_SALES_CONTROL is
-     * deliberately never auto-seeded by SystemAccountsSeeder (out of this build's file scope), so
-     * this test maps it by hand — exactly the operator action the fix exists to make possible
-     * instead of hand-creating a 13th per-service orphan leaf.
+     * COST_OF_SALES_CONTROL, and a warning names the service type.
+     *
+     * CT-A3 E5 follow-up (2026-09-09): COST_OF_SALES_CONTROL is now SEEDED — CoaSeeder mints the
+     * single `5129 Cost of Sales Control` leaf and SystemAccountsSeeder maps it, so a freshly
+     * seeded company has a working fallback out of the box. That is the whole point of the owner
+     * ruling ("resolve to the company's single PAYABLE_CONTROL / COGS leaf"): ONE control account,
+     * not the 13 per-service orphan leaves CT-A2 had to hand-create.
      */
     public function test_unmapped_service_cost_falls_back_to_cost_of_sales_control_and_logs(): void
     {
         $company = $this->makeCompany();
         $this->deleteMapping($company->id, 'SERVICE_COST', 'hotel');
 
-        $costControlLeaf = Account::factory()->create(['company_id' => $company->id]);
+        $costControlLeafId = $this->mappedAccountId($company->id, 'COST_OF_SALES_CONTROL', null);
 
-        DB::table('system_accounts')->insert([
-            'company_id' => $company->id,
-            'purpose_code' => 'COST_OF_SALES_CONTROL',
-            'service_type' => null,
-            'account_id' => $costControlLeaf->id,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $this->assertNotNull(
+            $costControlLeafId,
+            'A freshly seeded company must already have COST_OF_SALES_CONTROL mapped — the '
+            .'fallback is useless without a leaf to land on.'
+        );
+        $this->assertSame(
+            '5129',
+            (string) Account::query()->withoutGlobalScopes()->find($costControlLeafId)->code,
+            'It maps to the single 5129 Cost of Sales Control leaf, not a per-service one.'
+        );
+
+        $costControlLeaf = Account::query()->withoutGlobalScopes()->find($costControlLeafId);
 
         Log::spy();
 
@@ -175,16 +186,18 @@ class E5PurposeFallbackTest extends AccountingTestCase
     /**
      * Case 4: when neither the per-service row nor its fallback is mapped, UnmappedPurposeException
      * is thrown and its message names BOTH purpose codes — never a silent skip, never a fabricated
-     * account. Uses SERVICE_COST/COST_OF_SALES_CONTROL, which SystemAccountsSeeder never auto-maps.
+     * account. Both mappings are deleted here to construct that state deliberately, since
+     * COST_OF_SALES_CONTROL is now seeded (see the case above).
      */
     public function test_neither_service_cost_nor_its_fallback_mapped_throws_naming_both_codes(): void
     {
         $company = $this->makeCompany();
         $this->deleteMapping($company->id, 'SERVICE_COST', 'hotel');
+        $this->deleteMapping($company->id, 'COST_OF_SALES_CONTROL', null);
 
         $this->assertNull(
             $this->mappedAccountId($company->id, 'COST_OF_SALES_CONTROL', null),
-            'Precondition: COST_OF_SALES_CONTROL must NOT be mapped for this company — it is never auto-seeded.'
+            'Precondition: the fallback must be unmapped for this case to mean anything.'
         );
 
         try {

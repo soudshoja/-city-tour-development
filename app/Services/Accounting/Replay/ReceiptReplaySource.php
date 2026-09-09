@@ -80,7 +80,10 @@ final class ReceiptReplaySource implements ReplaySource
     {
         /** @var InvoiceReceipt $row */
         $amount = round((float) ($row->amount ?? 0), 3);
-        $decision = $this->rule->decide($row);
+        // decideFor(), not decide(): decide() takes a STATUS STRING (the live approve() path
+        // asks about the status it is moving TO). Passing the row itself was a TypeError that
+        // refused all 109 receipts on the first server dry run -- see this wave's report §5.
+        $decision = $this->rule->decideFor($row);
 
         if (! $decision->shouldPost) {
             return ReplayOutcome::skipped($row->id, $decision->reason, $amount);

@@ -189,6 +189,22 @@ class W21AccountingReplayCommandTest extends AccountingTestCase
         [$company, $branch, $agent, $client] = $this->makeFixture();
         $this->makeSoldTask($company, $branch, $agent, $client);
 
+        // An APPROVED receipt, so `--class=all` really drives the receipt source too. The first
+        // server dry run of this command refused all 109 real receipts on a TypeError that a
+        // fixture without one could not have caught (this wave's report §5).
+        $receipt = \App\Models\InvoiceReceipt::create([
+            'type' => 'account',
+            'company_id' => $company->id,
+            'branch_id' => $branch->id,
+            'doc_date' => now()->subDay()->toDateString(),
+            'client_id' => $client->id,
+            'account_id' => Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1351')->value('id'),
+            'amount' => 25.000,
+            'remainder_amount' => 0,
+            'remainder_policy' => 'credit',
+            'status' => 'approved',
+        ]);
+
         $before = $this->engineDocuments($company->id);
         $beforeLines = JournalEntry::where('company_id', $company->id)->count();
 
@@ -216,6 +232,10 @@ class W21AccountingReplayCommandTest extends AccountingTestCase
         // issuance accrual is correctly NOT posted, because the task is already invoiced.
         $this->assertNotNull($this->documentByKey($company->id, 'invoice-detail:'.InvoiceDetail::first()->id.':sale'));
         $this->assertNotNull($this->documentByKey($company->id, 'invoice-detail:'.InvoiceDetail::first()->id.':agent-commission'));
+        $this->assertNotNull(
+            $this->documentByKey($company->id, 'rv:'.$receipt->id),
+            'The receipt class must actually post -- not refuse.'
+        );
 
         $this->artisan('accounting:replay', ['--company' => $company->id, '--class' => 'all'])
             ->assertExitCode(0)

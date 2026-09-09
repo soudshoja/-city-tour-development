@@ -68,8 +68,21 @@ class AccountingReplay extends Command
 
     protected $description = 'Replay historical documents through the posting engine under each feeder\'s own idempotency key (cutover backfill).';
 
-    /** The order classes run in: a document that another document reverses must post first. */
-    private const CLASS_ORDER = ['issuance', 'sale', 'commission', 'receipt', 'reassign', 'refund'];
+    /**
+     * The order classes run in, whatever order the operator types them in.
+     *
+     * `sale` FIRST, then `issuance`. Both orders are correct -- SaleReplaySource reverses any
+     * accrual it supersedes, exactly as the live feeder does -- but this one produces the ledger
+     * the live system would have produced, with no churn. Wave 1's ruling is that a task which
+     * auto-invoices never accrues at all (its cost goes straight to COGS on the sale); running
+     * issuance first instead accrues 3,357 already-invoiced tasks and then immediately reverses
+     * every one of them, which is 6,714 audited documents saying nothing. Measured on the City
+     * Travelers scratch database: issuance-first posts 9,033 accruals worth KWD 1,378,062.288,
+     * sale-first posts 5,676 worth 897,356.597 -- the same figure CT-A3 wave 1 recorded.
+     *
+     * `refund` LAST: it reverses the sale and the commission, so both must exist first.
+     */
+    private const CLASS_ORDER = ['sale', 'commission', 'issuance', 'receipt', 'reassign', 'refund'];
 
     public function handle(): int
     {

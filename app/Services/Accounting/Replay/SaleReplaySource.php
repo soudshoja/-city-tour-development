@@ -9,6 +9,7 @@ use App\Services\Accounting\DocumentDraft;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\SaleDraftBuilder;
 use App\Services\Accounting\SaleDraftInput;
+use App\Services\Accounting\TaskIssuancePayableService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 
@@ -147,6 +148,17 @@ final class SaleReplaySource implements ReplaySource
             );
 
             $posted = $this->posting->post($draft);
+
+            // The "reclassify to COGS on invoice" half of wave 1's E-iss ruling, and the exact
+            // thing `InvoiceController::postSaleJournalEntries()` does after its own post: if this
+            // task was accrued at issuance (Dr 1430 / Cr SERVICE_PAYABLE because it had no invoice
+            // yet), the sale document just posted its OWN cost pair, so the accrual comes off. A
+            // no-op for a task that was never accrued -- which, because `accounting:replay` runs
+            // the sale class BEFORE the issuance class, is every task on a clean backfill. It is
+            // here anyway so that `--class=sale` after `--class=issuance` cannot leave the payable
+            // counted twice; a replay source that quietly diverges from its feeder is how a
+            // backfill and live traffic end up with different ledgers.
+            app(TaskIssuancePayableService::class)->reverseForTask($task);
 
             return ReplayOutcome::posted($row->id, (int) $posted->transaction->id, $selling);
         } catch (\Throwable $e) {

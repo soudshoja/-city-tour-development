@@ -246,12 +246,26 @@ class TaskStatusServiceDepositVoidTest extends AccountingTestCase
         $this->assertNotNull($arReversalLine);
         $this->assertEqualsWithDelta(500.0, (float) $arReversalLine->credit, 0.001, 'CRN 500 on the AR line.');
 
-        // The reversal's debit side (cost 350 + margin 150, split across the payable/revenue
-        // lines SaleDraftBuilder's own NET-basis shape produces) must sum back to the same 500
-        // the AR credit line above carries -- the reversal is a balanced flip of the whole
-        // original document, not a partial one.
+        // OWNER RULING R-CT1, 2026-09-09 -- GROSS basis. The original sale is now four lines
+        // (Dr AR 500 / Cr revenue 500 / Dr cost 350 / Cr payable 350), so its reversal flips all
+        // four: debits of 500 (revenue) + 350 (payable) = 850, credits of 500 (AR) + 350 (cost).
+        // Was 500 under the superseded net shape, whose sale carried no cost pair at all. The
+        // invariant being pinned is unchanged -- the reversal is a BALANCED flip of the WHOLE
+        // original document, never a partial one -- so it is asserted directly as such.
         $totalDebit = (float) $reversalLines->sum('debit');
-        $this->assertEqualsWithDelta(500.0, $totalDebit, 0.001, 'Reversal debits (cost 350 + margin 150) sum to the original sell.');
+        $totalCredit = (float) $reversalLines->sum('credit');
+        $this->assertEqualsWithDelta(850.0, $totalDebit, 0.001, 'Gross reversal debits: revenue 500 + payable 350.');
+        $this->assertEqualsWithDelta(
+            $totalDebit,
+            $totalCredit,
+            0.001,
+            'The reversal is a balanced flip of the whole original document, not a partial one.'
+        );
+        $this->assertSame(
+            $reversalLines->count(),
+            JournalEntry::where('transaction_id', $saleTransaction->id)->count(),
+            'Every line of the original sale is reversed -- same line count on both documents.'
+        );
 
         // Disposition amount itself = the consumed deposit (200), not netted (no fee this time).
         $dispositionAmount = (float) $result['disposition']->lines[0]->amount;

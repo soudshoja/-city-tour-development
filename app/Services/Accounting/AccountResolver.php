@@ -12,6 +12,7 @@ use App\Exceptions\Accounting\NonLeafAccountException;
 use App\Exceptions\Accounting\UnmappedPurposeException;
 use App\Models\Account;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Resolves a leaf account by purpose code for a company — the fix vehicle for R7.3 / BUG-H6 /
@@ -59,7 +60,7 @@ final class AccountResolver
             ->first();
 
         if ($mapping === null) {
-            throw new UnmappedPurposeException($purposeCode, $companyId, $serviceType);
+            return $this->resolveViaFallback($purposeCode, $companyId, $serviceType);
         }
 
         $account = Account::query()
@@ -131,6 +132,74 @@ final class AccountResolver
         }
 
         return $account;
+    }
+
+    /**
+     * CT-A3 E5 (CT-F37) — the fallback path resolve() takes when the direct
+     * (companyId, purposeCode, serviceType) lookup misses. Only ever reached from resolve()'s own
+     * `$mapping === null` branch, so this method owns the whole "no direct mapping" outcome: it
+     * either returns a fallback account resolved (and safety-checked) exactly like a direct hit,
+     * or throws the identical UnmappedPurposeException a direct miss always threw, with a message
+     * naming every fallback code that was tried.
+     *
+     * `config('accounting.purpose_codes.purpose_fallbacks')` is keyed by the ORIGINAL purpose
+     * code (e.g. 'SERVICE_PAYABLE') and lists, in order, the GLOBAL (service_type=null) purpose
+     * codes to try instead — never consulted when $serviceType is null (a global purpose code has
+     * nowhere further to fall back to) or when no chain is configured for $purposeCode, so every
+     * purpose code with no configured chain keeps today's exact miss behaviour.
+     *
+     * Recurses into resolve() for each fallback code — that is what makes the fallback account
+     * run through the SAME tenant/leaf/disabled checks a direct hit gets (a fallback code mapped
+     * to a GROUP account still throws NonLeafAccountException, a cross-tenant mapping still throws
+     * CrossTenantAccountException, etc.) — only UnmappedPurposeException is caught here, so the
+     * loop can move on to the next link; every other exception a fallback resolution can throw
+     * propagates immediately, exactly as it would from a direct resolve() call.
+     *
+     * @throws UnmappedPurposeException when $purposeCode has no configured fallback chain (or
+     *                                  $serviceType is null), or every configured fallback code is
+     *                                  itself unmapped for $companyId.
+     */
+    private function resolveViaFallback(string $purposeCode, int $companyId, ?string $serviceType): Account
+    {
+        $chain = $serviceType !== null
+            ? (array) config("accounting.purpose_codes.purpose_fallbacks.{$purposeCode}", [])
+            : [];
+
+        foreach ($chain as $fallbackPurposeCode) {
+            try {
+                $account = $this->resolve($fallbackPurposeCode, $companyId, null);
+            } catch (UnmappedPurposeException) {
+                continue;
+            }
+
+            // Every fallback that actually fires is logged so the accounting team can see which
+            // service types are riding the control account instead of their own dedicated leaf.
+            Log::warning('accounting.purpose_fallback', [
+                'company_id' => $companyId,
+                'purpose_code' => $purposeCode,
+                'service_type' => $serviceType,
+                'fallback_purpose_code' => $fallbackPurposeCode,
+                'resolved_account_id' => $account->id,
+            ]);
+
+            return $account;
+        }
+
+        throw new UnmappedPurposeException(
+            $purposeCode,
+            $companyId,
+            $serviceType,
+            $chain === []
+                ? null
+                : sprintf(
+                    'No system_accounts mapping for purpose_code=%s, company_id=%d, service_type=%s, '
+                    .'and none of its configured fallback purpose code(s) (%s) are mapped either.',
+                    $purposeCode,
+                    $companyId,
+                    $serviceType,
+                    implode(', ', $chain)
+                )
+        );
     }
 
     /**

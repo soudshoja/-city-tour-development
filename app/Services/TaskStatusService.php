@@ -28,6 +28,7 @@ use App\Services\Accounting\PostingSeam;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\SaleDraftBuilder;
 use App\Services\Accounting\SaleDraftInput;
+use App\Services\Accounting\TaskIssuancePayableService;
 use App\Services\TaskStatus\MappedStatus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -315,6 +316,25 @@ class TaskStatusService
         $companyId = (int) $task->company_id;
         $status = strtolower((string) $task->status);
         $engineOn = $companyId > 0 && app(PostingSeam::class)->isEnabledFor($companyId);
+
+        // CT-A3 wave 1 feeder E-iss (owner rulings 2026-09-09, R-CT3). Runs FIRST, on EVERY
+        // status, and for the engine-ON path only. Owner: "anything comes into task where its
+        // been issued/vouchered and needs to be paid to supplier we want to automatically add it
+        // to the right account so we know how much we need to pay regardless of them being
+        // invoiced".
+        //
+        // Called unconditionally rather than from inside the per-status branches below, because
+        // status TRANSITIONS are what drive it in both directions and no single branch sees them
+        // all: a task held today and confirmed tomorrow accrues on the later dispatch; a task
+        // that reaches `void`/`cancelled`/`refund` has its accrual reversed on that dispatch.
+        // Everything else about whether to post is decided by master data in
+        // {@see \App\Services\Accounting\SupplierPayableRule}, not here — including the
+        // "not hold or some supplier confirmed" gate — and the whole call is a cheap no-op when
+        // the rule says nothing is due. It never posts for a task whose sale document already
+        // carries the cost, so the `issued` -> auto-invoice path below is unaffected.
+        if ($engineOn) {
+            app(TaskIssuancePayableService::class)->postIfDue($task);
+        }
 
         if ($engineOn && $status === 'issued') {
             $this->issue($task);
@@ -1044,6 +1064,16 @@ class TaskStatusService
                 ];
             }
 
+            // CT-A3 wave 1, feeder E-iss (owner ruling 2026-09-09): "Reversal on task
+            // cancel/void". A task voided BEFORE it was ever invoiced still carries its issuance
+            // accrual (Dr 1430 / Cr SERVICE_PAYABLE) — the agency no longer owes the supplier, so
+            // the accrual comes off here, through PostingService::reverse(). A no-op when the
+            // task was never accrued (already invoiced, supplier on hold, trigger not reached),
+            // so it is safe on every void path. Deliberately BEFORE the sale reversal below: the
+            // two documents are independent and reversing the accrual first keeps the AP control
+            // monotonic for anyone watching it during the transaction.
+            app(TaskIssuancePayableService::class)->reverseForTask($task);
+
             $this->normalizeTicketStatus($task);
             $this->assertVoidPreconditions($task);
 
@@ -1430,7 +1460,8 @@ class TaskStatusService
             narration: 'Agent commission on void fee: '.$task->reference,
             lines: [
                 new LineDraft(
-                    purposeCode: 'SALARY_EXPENSE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_EXPENSE',
                     accountId: null,
                     side: $expenseSide,
                     amount: $absCommission,
@@ -1445,7 +1476,8 @@ class TaskStatusService
                     partyName: $agent->name,
                 ),
                 new LineDraft(
-                    purposeCode: 'SALARY_PAYABLE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_PAYABLE',
                     accountId: null,
                     side: $liabilitySide,
                     amount: $absCommission,
@@ -1764,7 +1796,7 @@ class TaskStatusService
      *     boundary {@see self::issue()}'s own docblock states for the ordinary import path -- this
      *     sub-wave "does not touch void/reissue/bulk-void" per W6.C's own brief section).
      *
-     * @param  array{fee?: float|null, user_id?: int|null} $opts
+     * @param  array{fee?: float|null, user_id?: int|null}  $opts
      * @return array{idempotent: bool, reversal: ?PostedDocument, new_sale: ?PostedDocument,
      *               fee: ?PostedDocument, commission_unearn: ?PostedDocument,
      *               commission_earn: ?PostedDocument, fee_commission: ?PostedDocument,
@@ -2089,9 +2121,9 @@ class TaskStatusService
      * a third ledger document (see {@see self::reissue()}'s own docblock for why).
      *
      * @return array{type: string, amount: float} `type` is `dbn` (newSell > oldSell -- the client
-     *                                             now owes more), `crn` (newSell < oldSell -- the
-     *                                             client is credited), or `none` (equal, within
-     *                                             tolerance). `amount` is always >= 0.
+     *                                            now owes more), `crn` (newSell < oldSell -- the
+     *                                            client is credited), or `none` (equal, within
+     *                                            tolerance). `amount` is always >= 0.
      */
     private function reissueFareDifference(float $oldSell, float $newSell): array
     {
@@ -2245,7 +2277,8 @@ class TaskStatusService
             narration: 'Agent commission on reissued sale: '.$newTask->reference,
             lines: [
                 new LineDraft(
-                    purposeCode: 'SALARY_EXPENSE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_EXPENSE',
                     accountId: null,
                     side: 'debit',
                     amount: $commission,
@@ -2262,7 +2295,8 @@ class TaskStatusService
                     partyName: $agent->name,
                 ),
                 new LineDraft(
-                    purposeCode: 'SALARY_PAYABLE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_PAYABLE',
                     accountId: null,
                     side: 'credit',
                     amount: $commission,
@@ -2336,7 +2370,8 @@ class TaskStatusService
             narration: 'Agent commission on reissue fee: '.$newTask->reference,
             lines: [
                 new LineDraft(
-                    purposeCode: 'SALARY_EXPENSE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_EXPENSE',
                     accountId: null,
                     side: $expenseSide,
                     amount: $absCommission,
@@ -2351,7 +2386,8 @@ class TaskStatusService
                     partyName: $agent->name,
                 ),
                 new LineDraft(
-                    purposeCode: 'SALARY_PAYABLE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_PAYABLE',
                     accountId: null,
                     side: $liabilitySide,
                     amount: $absCommission,

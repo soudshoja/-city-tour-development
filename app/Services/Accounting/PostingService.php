@@ -2,6 +2,7 @@
 
 namespace App\Services\Accounting;
 
+use App\Enums\LedgerType;
 use App\Exceptions\Accounting\CrossTenantAccountException;
 use App\Exceptions\Accounting\DuplicatePaymentReferenceException;
 use App\Exceptions\Accounting\FcConsistencyException;
@@ -1404,7 +1405,18 @@ final class PostingService
                     // (AccountingController/BankPaymentController filter on it); $transactionType
                     // remains this engine's own audit-label vocabulary. See LineDraft's own
                     // docblock for why these are deliberately two separate fields, not one.
-                    'type' => $line->ledgerType ?? $line->transactionType,
+                    //
+                    // CT-A3 E7 (CT-F36) fix: W1.1 wrote `$ledgerType ?? $transactionType` verbatim,
+                    // so a feeder that omitted $ledgerType silently wrote its internal audit label
+                    // (CUSTOMERDEBITED, SUPPLIERCREDITED, …) straight into this column, alongside
+                    // the legacy report vocabulary other feeders wrote here — two disjoint value
+                    // spaces in one column (CT-A1 §3.4: grouping revenue by `type='income'` returns
+                    // 48% of revenue). LedgerType::resolve() is the single seam every line's `type`
+                    // now passes through: an already-canonical value is unchanged, a known legacy/
+                    // audit-label value is mapped onto its canonical counterpart, and a genuinely
+                    // unrecognised value is logged and written as NULL rather than raw. See
+                    // LedgerType's own class docblock for the full mapping table and rationale.
+                    'type' => LedgerType::resolve($line->ledgerType, $line->transactionType),
                     'currency' => $line->currency,
                     'exchange_rate' => $line->exchangeRate,
                     'amount' => $r['amount'],

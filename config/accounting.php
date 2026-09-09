@@ -1279,4 +1279,46 @@ return [
         'reversing_statuses' => ['void', 'cancelled', 'refund', 'refunded', 'expired'],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Receipts (CT-A3 wave 2, W2-2) - OWNER RULING R-CT3 applied to money IN
+    |--------------------------------------------------------------------------
+    |
+    | Wave 1 set the pattern on the supplier payable: the TRIGGER and the ACCOUNT come from
+    | configured master-data status, never from a code constant. These two blocks are the same
+    | thing for receipts, read by App\Services\Accounting\ReceiptPostingRule and by nothing
+    | else.
+    |
+    | The defaults reproduce the behaviour that was hard-coded in ReceiptVoucherController before
+    | wave 2, so turning this on changes no existing number - EXCEPT for `bounced`, which was
+    | previously in no list at all: bounce() reversed the cheque-CLEARANCE journal but left the
+    | receipt document itself (Dr cheque-in-hand / Cr AR) standing and the invoice marked paid, so
+    | a bounced cheque quietly collected a receivable that was never collected. Listing it here as
+    | a reversing status is the fix.
+    */
+    'receipt' => [
+
+        // Statuses at which a receipt document MUST be on the ledger.
+        'posting_statuses' => ['approved'],
+
+        // Statuses that take an already-posted receipt back OFF the ledger, through
+        // PostingService::reverse() - a dated REV document, never an UPDATE or a delete.
+        //   bounced  - the cheque did not clear; the money never arrived.
+        //   reversed - an operator reversed the voucher (destroy()).
+        //   rejected - the voucher was refused at approval.
+        'reversing_statuses' => ['bounced', 'reversed', 'rejected'],
+
+        // Statuses that carry no ledger footprint at all: drafted, not yet actioned.
+        'draft_statuses' => ['pending'],
+
+        'instrument' => [
+            // The purpose code used ONLY when a receipt names no settlement channel and carries no
+            // explicit bank account - a genuine over-the-counter cash receipt. Every other receipt
+            // resolves its account from the payment method's own configured `charges.acc_bank_id`.
+            // Each use is logged as accounting.receipt.instrument.fallback_used so the payment
+            // methods still missing an account are findable rather than invisible.
+            'fallback_purpose' => 'CASH_IN_HAND',
+        ],
+    ],
+
 ];

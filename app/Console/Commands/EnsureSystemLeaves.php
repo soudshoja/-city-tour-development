@@ -497,6 +497,37 @@ class EnsureSystemLeaves extends Command
             'purposeCode' => 'COST_OF_SALES_CONTROL',
             'core' => true,
         ],
+        // CT-A4 — the three W4.R refund leaves. CoaSeeder seeds all three for a FRESH company
+        // (codes 4136 / 5124 / 5125, with their own comments there), and SystemAccountsSeeder
+        // already maps all three by name — but nothing ever backfilled them for an EXISTING
+        // company, so on the City Travelers dev chart all three purposes were simply absent.
+        // Measured by the first `accounting:coa-linkage --apply` run against a faithful copy of
+        // that chart: after every other repair, 94 of 98 purposes resolved and the residual
+        // BLOCKING three were exactly these — enough to refuse every refund document wave 2's
+        // RefundPostingService produces. CORE for the same reason as 'Cash Over/Short' (5127) and
+        // 'Cost of Sales Control' (5129) above: both parent chains are on every CoaSeeder chart,
+        // old or new.
+        [
+            'leafName' => 'Penalty Pass-Through Recovery',
+            'code' => '4136',
+            'parentChain' => ['Commission & Service Fee Income', 'Direct Income', 'Income'],
+            'purposeCode' => 'PENALTY_PASSTHROUGH_RECOVERY',
+            'core' => true,
+        ],
+        [
+            'leafName' => 'Refund Penalty Cost',
+            'code' => '5124',
+            'parentChain' => ['Direct Expenses (Cost of Sales)', 'Expenses'],
+            'purposeCode' => 'PENALTY_COST_EXPENSE',
+            'core' => true,
+        ],
+        [
+            'leafName' => 'Airline Refund Clawback',
+            'code' => '5125',
+            'parentChain' => ['Direct Expenses (Cost of Sales)', 'Expenses'],
+            'purposeCode' => 'AIRLINE_CLAWBACK_EXPENSE',
+            'core' => true,
+        ],
     ];
 
     /**

@@ -2769,6 +2769,15 @@ class TaskController extends Controller
                 }
             }
 
+            // CT-A3 verify R1. The ISSUANCE ACCRUAL is the fourth core document a void reverses
+            // (TaskStatusService::void() calls TaskIssuancePayableService::reverseForTask() before
+            // it touches the sale), and un-void named no key for it -- so an un-voided UNINVOICED
+            // booking came back to life owing its supplier nothing, permanently: the key
+            // `task:{id}:issuance-payable` stays occupied by the reversed header, so no later
+            // dispatch or replay can ever re-post it. It is not in $coreKeys above because the
+            // restore is the same REV-of-REV done by the service that owns that chain.
+            app(\App\Services\Accounting\TaskIssuancePayableService::class)->restoreForTask($originalTask);
+
             $voidDocs = Transaction::withoutGlobalScopes()
                 ->whereNull('deleted_at')
                 ->where('company_id', $companyId)
@@ -2776,7 +2785,13 @@ class TaskController extends Controller
                 ->where(function ($q) use ($originalTask) {
                     $q->where('idempotency_key', 'void:' . $originalTask->id . ':fee')
                         ->orWhere('idempotency_key', 'void:' . $originalTask->id . ':fee-commission')
-                        ->orWhere('idempotency_key', 'void:' . $originalTask->id . ':disposition');
+                        ->orWhere('idempotency_key', 'void:' . $originalTask->id . ':disposition')
+                        // CT-A3 verify R1: wave 2's own W2-5 document. void() posts a configured
+                        // supplier cancellation fee (Dr SUPPLIER_CHARGE_EXPENSE / Cr
+                        // SERVICE_PAYABLE, key `void:{task}:supplier-cxl-fee`); un-void was never
+                        // taught about it, so an un-voided booking kept a payable to the supplier
+                        // for a cancellation that no longer exists, plus the matching expense.
+                        ->orWhere('idempotency_key', 'void:' . $originalTask->id . ':supplier-cxl-fee');
                 })
                 ->get();
 

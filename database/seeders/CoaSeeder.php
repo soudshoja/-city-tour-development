@@ -370,6 +370,16 @@ class CoaSeeder extends Seeder
             // (Cost of Sales)' after 5121-5125/5127 -- NOT 5126, reserved for P5.13's not-yet-built
             // agent-loss-recovery leaf (same reservation CASH_OVER_SHORT's own comment above notes).
             ['code' => '5128', 'name' => 'Supplier Fees & Surcharges', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            // CT-A3 E5 (CT-F37) — the COST_OF_SALES_CONTROL purpose code's target leaf: the ONE
+            // cost-of-sales control account an unmapped per-service SERVICE_COST/{type} falls back
+            // to (AccountResolver::resolveViaFallback()). This is the "single COGS leaf" the owner
+            // ruling names — deliberately ONE account, not the 13 per-service control leaves CT-A2
+            // had to hand-create just to make its replay run and recorded as scaffolding, "not a
+            // recommendation". A company that DOES map SERVICE_COST per service type keeps using
+            // its own leaves; nothing here changes that path.
+            // CODE 5129: the next free code under this parent (5110-5128 are all taken above),
+            // verified against CoaSeeder, EnsureSystemLeaves and SystemAccountsSeeder.
+            ['code' => '5129', 'name' => 'Cost of Sales Control', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
 
             ['code' => '5150', 'name' => 'Stock Expenses', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5151', 'name' => 'Cost of Goods Sold', 'level' => 4, 'parent' => 'Stock Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],

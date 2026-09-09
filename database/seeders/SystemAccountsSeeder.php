@@ -452,6 +452,20 @@ class SystemAccountsSeeder extends Seeder
             ['Accrued Expenses', 'Liabilities']
         );
 
+        // CT-A3 E5 (CT-F37): the ONE cost-of-sales control leaf an unmapped per-service
+        // SERVICE_COST/{type} falls back to (AccountResolver::resolveViaFallback()). Mapped by
+        // CHAIN for the same GROUP-not-leaf reason as every other leaf under 'Direct Expenses
+        // (Cost of Sales)'. The payable side of the same fallback reuses PAYABLE_CONTROL, already
+        // mapped above.
+        $this->mapByChain(
+            $companyId,
+            $companyLabel,
+            'COST_OF_SALES_CONTROL',
+            null,
+            'Cost of Sales Control',
+            ['Direct Expenses (Cost of Sales)', 'Expenses']
+        );
+
         // W5.L (w5-brief.md §W5.L item 4) — five voucher/instrument anchor purpose codes. See
         // config('accounting.purpose_codes')'s own docblock note on this array for the full
         // rationale behind each leaf choice.

@@ -467,6 +467,18 @@ class EnsureSystemLeaves extends Command
             'purposeCode' => 'COMMISSION_PAYABLE',
             'core' => true,
         ],
+        // CT-A3 E5 (CT-F37) — the ONE cost-of-sales control leaf an unmapped per-service
+        // SERVICE_COST/{type} falls back to. CORE: 'Direct Expenses (Cost of Sales)' is on every
+        // CoaSeeder chart, old or new, same reasoning as 'Cash Over/Short' (5127) above. The
+        // PAYABLE side of the same fallback needs no entry here: PAYABLE_CONTROL is already a
+        // seeded, mapped purpose on every chart.
+        [
+            'leafName' => 'Cost of Sales Control',
+            'code' => '5129',
+            'parentChain' => ['Direct Expenses (Cost of Sales)', 'Expenses'],
+            'purposeCode' => 'COST_OF_SALES_CONTROL',
+            'core' => true,
+        ],
     ];
 
     /**

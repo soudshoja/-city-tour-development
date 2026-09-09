@@ -47,6 +47,7 @@ use App\Services\Accounting\PostingService;
 use App\Services\Accounting\RevenueRecognitionService;
 use App\Services\Accounting\SaleDraftBuilder;
 use App\Services\Accounting\SaleDraftInput;
+use App\Services\Accounting\SupplierReassignDraftBuilder;
 use App\Services\Accounting\SupplierCostCorrectionDraftBuilder;
 use App\Services\Accounting\SupplierCostCorrectionInput;
 use App\Services\TaskStatusService;
@@ -5613,6 +5614,31 @@ class TaskController extends Controller
         }
     }
 
+    /**
+     * CT-A3 E3 -- CT-F39. HEAD's implementation of this method wrote a ONE-SIDED credit to the new
+     * payable account and only "reversed" the old side when a replicate-based heuristic happened
+     * to fire, so on the City Travelers data it produced 1,511 documents carrying KWD 220,908.987
+     * of credits against KWD 477.800 of debits (CT-A1 §0 item 2). 1,435 of them were later
+     * neutralised by parking the difference in Equity 3900 Suspense; the flow itself was never
+     * fixed and wrote 685 more documents in 2026. CT-A2 §5 row 14 additionally found the engine had
+     * NO counterpart at all, so a cutover would have silently stopped a live operation.
+     *
+     * This method now routes through {@see PostingSeam}: with the engine ON it posts ONE balanced
+     * JV/PAYEE_REASSIGN reclassification document built by
+     * {@see SupplierReassignDraftBuilder} -- Dr each account still carrying this task's payable /
+     * Cr the new payable account -- and the legacy one-sided writer below NEVER RUNS. With the
+     * engine OFF the legacy closure runs byte-for-byte as before, so nothing changes for a company
+     * that has not cut over.
+     *
+     * Idempotency is by construction, not by a key alone: the builder derives its amounts from the
+     * ledger's CURRENT net position per account, so once the money has moved there is nothing left
+     * to move and a retry posts nothing. This matters because every caller
+     * ({@see self::handlePaymentMethodChange()}, TaskWebhook, the import paths) sets
+     * `tasks.payment_method_account_id` BEFORE calling, so "did the task change?" is not a question
+     * this method can ask. The document key additionally carries the count of reassignment
+     * documents already posted for the task, so a genuine A -> B -> A -> B sequence produces four
+     * distinct documents instead of colliding on one key.
+     */
     public function updateJournalPaymentMethod(Task $task, int $payment_method_account_id): JsonResponse
     {
         Log::info('Task ID: ' . $task->id . '. Updating journal entries for payment method account ID: ' . $payment_method_account_id);
@@ -5631,6 +5657,15 @@ class TaskController extends Controller
 
         $supplier = Supplier::find($task->supplier_id);
         $branchId = $this->getTaskBranchId($task);
+        $companyId = (int) $task->company_id;
+
+        // ENGINE PATH. Built and posted here rather than inside a $legacy-style closure because
+        // this feeder's two paths return different shapes and the seam deliberately does not paper
+        // over that (see PostingSeam's own docblock). The seam's routing decision is re-used
+        // verbatim via isEnabledFor(), so there is exactly one gate, not two.
+        if ($companyId > 0 && app(PostingSeam::class)->isEnabledFor($companyId)) {
+            return $this->postSupplierReassignDocument($task, $paymentMethodAccount, $supplier, $branchId, $companyId);
+        }
 
         $liabilities = Account::where('name', 'like', '%Liabilities%')
             ->where('company_id', $task->company_id)
@@ -5781,6 +5816,102 @@ class TaskController extends Controller
                 'message' => 'Failed to create transaction or journal entry: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * CT-A3 E3 -- the ENGINE half of {@see self::updateJournalPaymentMethod()}. Posts ONE balanced
+     * `JV`/`PAYEE_REASSIGN` document (Dr old payable party / Cr new payable party, same amount)
+     * and returns the same JsonResponse contract every existing caller already checks
+     * (`status`, `message`, `data.task_id`, `data.transaction_id`,
+     * `data.payment_method_account_id`), so no call site needed changing.
+     *
+     * "Nothing to move" is a SUCCESS, not an error: it is what a retry, a re-import, or a task that
+     * never carried a payable looks like, and the caller contract has no way to express a
+     * distinction that would only ever be noise. `data.transaction_id` is null in that case and the
+     * decision is logged.
+     */
+    private function postSupplierReassignDocument(
+        Task $task,
+        Account $paymentMethodAccount,
+        ?Supplier $supplier,
+        $branchId,
+        int $companyId
+    ): JsonResponse {
+        $lines = app(SupplierReassignDraftBuilder::class)->buildLines(
+            $task,
+            $companyId,
+            $paymentMethodAccount,
+            $supplier?->id,
+            $supplier?->name,
+        );
+
+        if ($lines === []) {
+            Log::info('accounting.supplier_reassign.nothing_to_move', [
+                'task_id' => $task->id,
+                'company_id' => $companyId,
+                'payment_method_account_id' => $paymentMethodAccount->id,
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Payment account already carries this task\'s payable; nothing to reclassify.',
+                'data' => [
+                    'task_id' => $task->id,
+                    'transaction_id' => null,
+                    'payment_method_account_id' => $paymentMethodAccount->id,
+                ],
+            ], 200);
+        }
+
+        // Sequence, so a genuine A -> B -> A -> B sequence produces four documents rather than
+        // colliding on one key. Safe under retry because a retry never reaches this line: the
+        // builder returns [] once the money has already moved.
+        $sequence = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where('idempotency_key', 'like', 'task:' . $task->id . ':supplier-reassign:%')
+            ->count();
+
+        $docDate = $task->supplier_pay_date ?? $task->issued_date ?? $task->created_at;
+
+        $draft = new \App\Services\Accounting\DocumentDraft(
+            companyId: $companyId,
+            branchId: $branchId !== null ? (int) $branchId : null,
+            docType: 'JV',
+            // 'PAYEE_REASSIGN', not 'SUPPLIER_REASSIGN': transactions.sub_type is varchar(16) and
+            // the longer name silently truncates (MySQL strict mode rejects it outright, which is
+            // how this was caught). Same 16-char ceiling every other sub_type in this codebase
+            // lives under -- e.g. 'AGENT_COMMISSION' is exactly 16.
+            subType: 'PAYEE_REASSIGN',
+            docDate: $docDate ? Carbon::parse($docDate) : Carbon::now(),
+            narration: 'Update For Whom to Pay: ' . $task->reference,
+            lines: $lines,
+            idempotencyKey: 'task:' . $task->id . ':supplier-reassign:' . $sequence . ':' . $paymentMethodAccount->id,
+            sourceType: 'Payment',
+            sourceId: $task->id,
+            userId: Auth::id(),
+        );
+
+        $posted = app(PostingService::class)->post($draft);
+
+        Log::info('accounting.supplier_reassign.posted', [
+            'task_id' => $task->id,
+            'company_id' => $companyId,
+            'transaction_id' => $posted->transaction->id,
+            'payment_method_account_id' => $paymentMethodAccount->id,
+            'lines' => count($lines),
+            'sequence' => $sequence,
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Journal entries updated successfully.',
+            'data' => [
+                'task_id' => $task->id,
+                'transaction_id' => $posted->transaction->id,
+                'payment_method_account_id' => $paymentMethodAccount->id,
+            ],
+        ], 200);
     }
 
     public function handleTaskFromEmail(Request $request): JsonResponse

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Accounting;
 
+use App\Exceptions\Accounting\NonNegativeAmountException;
 use App\Models\Setting;
 
 /**
@@ -167,6 +168,36 @@ final class SaleDraftBuilder
         $revenueServiceType = $deferRevenue ? null : $input->serviceType;
         $costPurposeCode = $deferRevenue ? 'PREPAID_SUPPLIER_COST' : 'SERVICE_COST';
         $costServiceType = $deferRevenue ? null : $input->serviceType;
+
+        // ── CT-A3 R2-7 — VERIFY-CT-A3-STACK-R1 §3.3 D15 ──────────────────────────────────────
+        // The two omission tests below are `> $tolerance`, not `abs(...) > $tolerance`. That reads
+        // as "omit the pair when there is no money", and it is — for a ZERO. For a NEGATIVE it
+        // reads as "omit the pair silently": `task_price = -100` built a clean, balanced, cost-only
+        // document, and the receivable and the revenue both vanished with no log and no refusal.
+        // `invoice_details.task_price` is a SIGNED column and 22 of its 23 write paths do not
+        // validate the sign, so this is reachable from ordinary data entry, not only from a bug.
+        //
+        // A negative sell or cost is not a sale this builder knows how to express (a credit note is
+        // a CRN, and a supplier refund is a supplier credit — both have their own documents). So it
+        // is REFUSED, by name, with the amount in the message. Zero keeps its existing, correct
+        // omission behaviour.
+        foreach ([['sellAmount', $input->sellAmount], ['costAmount', $input->costAmount]] as [$field, $amount]) {
+            if ($amount < -$tolerance) {
+                throw new NonNegativeAmountException(
+                    amount: (float) $amount,
+                    context: sprintf(
+                        'SaleDraftBuilder: %s is %s on invoice_detail #%s (task #%s). A sale document cannot '
+                        .'carry a negative amount — a reduction is a credit note (CRN) or a supplier credit, '
+                        .'each of which has its own document. Refusing rather than silently omitting the leg, '
+                        .'which would post a balanced document with the receivable and the revenue missing.',
+                        $field,
+                        number_format((float) $amount, 3),
+                        $input->invoiceDetailId === null ? 'null' : (string) $input->invoiceDetailId,
+                        $input->taskId === null ? 'null' : (string) $input->taskId
+                    )
+                );
+            }
+        }
 
         $lines = [];
 

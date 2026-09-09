@@ -702,6 +702,54 @@ class ReceiptVoucherController extends Controller
         $amount = round((float) $invoiceReceipt->amount, 3);
 
         $chequesInHand = $this->accountResolver->resolve('CHEQUES_IN_HAND', $companyId);
+
+        // ── CT-A3 R2-7 — VERIFY-CT-A3-STACK-R1 §3.3 D9 and D9b ───────────────────────────────
+        // This method credits CHEQUES_IN_HAND and debits a bank leaf UNCONDITIONALLY, on the
+        // assumption that the receipt document put the money in the cheque float. It only ever
+        // did for a genuinely POST-DATED cheque: {@see ReceiptPostingRule::instrumentAccountFor()}
+        // debits CHEQUES_IN_HAND only when `cheque_date > docDate`, and a same-day, past-dated or
+        // NULL-dated cheque takes the bank / channel / CASH_IN_HAND branch instead. Nothing
+        // requires post-dating (`cheque_date` validates as `nullable|date`, with no `after:`) and
+        // the UI offers "clear" for any cheque — so clearing one of those DEBITED THE BANK A SECOND
+        // TIME and left the cheque float permanently negative by the cheque amount (D9).
+        //
+        // D9b is the same method with no status guard at all: it read neither `status` nor
+        // `transaction_id`, so a PENDING (unposted) receipt could be "cleared", posting
+        // `rv-clear:{id}` with no `rv:{id}` behind it — bank overstated, float negative, nothing on
+        // AR, and the voucher then permanently unpostable via bounce().
+        //
+        // Both are closed by asking the LEDGER what this receipt actually did, structurally, rather
+        // than assuming: find the live receipt document, and clear only if its instrument leg is
+        // the cheque float. Never by description, and never by re-deriving the post-dating test —
+        // re-deriving it would just be a second copy of the rule that produced the mismatch.
+        $receiptDocument = $this->resolvePostedDocumentFor($invoiceReceipt);
+
+        if ($receiptDocument === null || $receiptDocument->posting_status !== 'posted') {
+            return back()->with('error',
+                'This receipt voucher has no posted document, so there is nothing in the cheque float to clear. '
+                .'Approve the voucher first.');
+        }
+
+        $instrumentLegOnFloat = JournalEntry::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('transaction_id', $receiptDocument->id)
+            ->where('account_id', $chequesInHand->id)
+            ->where('debit', '>', 0)
+            ->exists();
+
+        if (! $instrumentLegOnFloat) {
+            Log::warning('accounting.rv_clear_refused_not_on_float', [
+                'invoice_receipt_id' => $invoiceReceipt->id,
+                'company_id' => $companyId,
+                'transaction_id' => $receiptDocument->id,
+                'cheques_in_hand_account_id' => $chequesInHand->id,
+            ]);
+
+            return back()->with('error',
+                'This cheque was never held in the cheque float — the receipt already debited a bank or cash '
+                .'account directly (it was not post-dated), so there is nothing to reclassify. Clearing it '
+                .'would debit the bank a second time.');
+        }
         $bankAccount = $this->accountResolver->assertUnderBankGroup((int) $data['bank_account_id'], $companyId);
 
         $narration = "Cheque clearance for Receipt Voucher #{$invoiceReceipt->id}";

@@ -73,7 +73,8 @@ final class RefundPostingService
      *               supplier_credit: array<int,PostedDocument>,
      *               commission_unearn: array<int,PostedDocument>,
      *               commission_earn: array<int,PostedDocument>, clawback: ?PostedDocument,
-     *               disposition: ?PostedDocument}
+     *               disposition: ?PostedDocument,
+     *               skipped_details: array<int, array{refund_detail_id:int, task_id:?int, reason:string}>}
      */
     public function post(Refund $refund, ?int $userId): array
     {
@@ -122,8 +123,48 @@ final class RefundPostingService
             $supplierCreditDocs = [];
             $commissionEarnDocs = [];
 
+            $skippedDetails = [];
+
             foreach ($refund->refundDetails as $detail) {
-                $crnDocs[] = $this->postCrnForDetail($refund, $detail, $companyId, $docDate, $userId);
+                // ── CT-A3 R2-7 — VERIFY-CT-A3-STACK-R1 §3.3 D10 ──────────────────────────────
+                // This whole method is ONE DB::transaction and this loop had no per-detail guard,
+                // so a SINGLE uninvoiced detail rolled back the CRN, the recharge, the supplier
+                // credit, the commission legs and the disposition for EVERY OTHER detail — and the
+                // operator saw only "Refund processing failed." On a population where 63% of issued
+                // tasks were never invoiced (CT-A1 §0), a mixed refund posted nothing at all.
+                //
+                // Exactly ONE exception class is tolerated here, and only because it is the
+                // ORDINARY shape rather than an error: an uninvoiced task has no sale to reverse
+                // and no receivable to credit, and its supplier cost is settled by a different path
+                // entirely ({@see TaskIssuancePayableService::settleAccrualOnRefund()}) — see
+                // RefundWithoutInvoiceDetailException's own docblock. The WHOLE detail is skipped,
+                // not just its credit note: running the supplier-credit document for it as well
+                // would relieve the same accrual twice, once here and once there.
+                //
+                // Everything else still aborts the entire refund. A refund that posts half its
+                // documents because one of them hit an unexpected error is worse than one that
+                // posts none.
+                try {
+                    $crnDocs[] = $this->postCrnForDetail($refund, $detail, $companyId, $docDate, $userId);
+                } catch (\App\Exceptions\Accounting\RefundWithoutInvoiceDetailException $e) {
+                    $skippedDetails[] = [
+                        'refund_detail_id' => (int) $detail->id,
+                        'task_id' => $detail->task_id !== null ? (int) $detail->task_id : null,
+                        'reason' => 'no_invoice_detail',
+                    ];
+
+                    Log::info('accounting.refund.detail_skipped', [
+                        'refund_id' => $refund->id,
+                        'refund_detail_id' => $detail->id,
+                        'company_id' => $companyId,
+                        'task_id' => $detail->task_id,
+                        'reason' => 'no_invoice_detail',
+                        'note' => 'the task was never invoiced; its supplier cost is settled by '
+                            .'TaskIssuancePayableService::settleAccrualOnRefund(), not by this document set',
+                    ]);
+
+                    continue;
+                }
 
                 $unearn = $this->postCommissionUnearnForDetail($refund, $detail, $companyId, $docDate, $userId);
                 if ($unearn !== null) {
@@ -176,6 +217,14 @@ final class RefundPostingService
                 ])->save();
             }
 
+            if ($skippedDetails !== []) {
+                AccountingLog::event('refund_details_skipped', [
+                    'refund_id' => $refund->id,
+                    'company_id' => $companyId,
+                    'skipped' => $skippedDetails,
+                ]);
+            }
+
             return [
                 'crn' => $crnDocs,
                 'recharge' => $recharge,
@@ -184,6 +233,9 @@ final class RefundPostingService
                 'commission_earn' => $commissionEarnDocs,
                 'clawback' => $clawback,
                 'disposition' => $disposition,
+                // CT-A3 R2-7 (D10): the details this refund could NOT carry, so a caller can say so
+                // instead of reporting a clean success over a partial document set.
+                'skipped_details' => $skippedDetails,
             ];
         });
     }
@@ -923,9 +975,29 @@ final class RefundPostingService
      */
     private function taskNetOnPurpose(Task $task, int $companyId, string $purposeCode, ?string $serviceType): float
     {
+        // ── CT-A3 R2-7 — VERIFY-CT-A3-STACK-R1 §3.4, the taskNetOnPurpose RISK ───────────────
+        // This used to `catch (\Throwable)` and return 0.0. The docblock's reasoning covers ONE
+        // case honestly -- a purpose that is not mapped for this company resolves to no account, so
+        // nothing is on it -- but the catch was wide enough to swallow NonLeafAccountException too,
+        // and that one means the opposite: the account EXISTS and carries a position this method
+        // could not read. A zero outstanding against a non-zero target makes payableDelta NEGATIVE
+        // in postSupplierCreditForDetail(), which CREDITS SERVICE_PAYABLE -- creating a payable
+        // rather than clearing one. On a chart with account #124's is_group damage (wave 2 §4.5, 8
+        // reassignments already refusing on exactly this) that exception is not hypothetical.
+        //
+        // So: the documented case is still absorbed, loudly enough to find; everything else
+        // propagates and refuses the refund.
         try {
             $account = app(AccountResolver::class)->resolve($purposeCode, $companyId, $serviceType);
-        } catch (\Throwable $e) {
+        } catch (\App\Exceptions\Accounting\UnmappedPurposeException $e) {
+            Log::info('accounting.refund.position_unmapped', [
+                'company_id' => $companyId,
+                'task_id' => $task->id,
+                'purpose_code' => $purposeCode,
+                'service_type' => $serviceType,
+                'note' => 'nothing can sit on an account this chart does not have; treated as a zero position',
+            ]);
+
             return 0.0;
         }
 
@@ -963,9 +1035,13 @@ final class RefundPostingService
      */
     private function costCarrierPurposeFor(Task $task, int $companyId): string
     {
+        // CT-A3 R2-7: narrowed for the same reason as taskNetOnPurpose() above. "This chart has no
+        // 1430" is a real, documented answer (a company that never used the deferral model); "the
+        // 1430 leaf is damaged and could not be resolved" is not, and must not silently route a
+        // refund's cost relief to the wrong account.
         try {
             $accrualAccount = app(AccountResolver::class)->resolve('UNBILLED_SUPPLIER_COST', $companyId);
-        } catch (\Throwable $e) {
+        } catch (\App\Exceptions\Accounting\UnmappedPurposeException $e) {
             return 'SERVICE_COST';
         }
 

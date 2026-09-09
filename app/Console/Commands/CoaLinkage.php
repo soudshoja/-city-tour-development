@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\Account;
+use App\Models\CoaLinkageChange;
 use App\Models\CoaLinkageFinding;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\AccountService;
@@ -12,6 +13,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 /**
@@ -79,7 +81,8 @@ class CoaLinkage extends Command
                             {--company= : Company id to process (default: every company that has accounts)}
                             {--dry-run : Report the full change list without writing anything (the default whenever --apply is absent)}
                             {--apply : Actually write the changes}
-                            {--allow-move : Permit relocating an account that carries journal activity; without it every move is refused and reported}';
+                            {--allow-move : Permit relocating an account that carries journal activity; without it every move is refused and reported}
+                            {--rollback= : Undo one previous --apply run by its run id, restoring every report_type / is_group / account_type_id this command changed}';
 
     protected $description = 'CT-A4 — verify and repair chart-of-accounts linkage: mint the control leaves a used chart needs, map every engine purpose code, backfill account_type_id/report_type/is_group, and record every duplicate, unused leaf and cross-company row as a flag-only finding.';
 
@@ -188,9 +191,74 @@ class CoaLinkage extends Command
         'VAT_OUTPUT' => 'deliberate: Kuwait v1 has no VAT; GCC VAT is P9. SystemAccountsSeeder reports the gap rather than guessing a leaf.',
     ];
 
+    /**
+     * CT-A3 R2-5. Purpose FAMILIES (matched by prefix) whose absence is a RULING, not a blocker.
+     *
+     * `GATEWAY_CLEARING_` / `GATEWAY_FEE_EXPENSE_`: `SystemAccountsSeeder::resolveGatewayClearing()`
+     * deliberately refuses to fall back onto an unrelated sibling once the `1300 Payment Gateway`
+     * pool has any children, because real production data proved that pool holds genuinely
+     * non-gateway instruments ('Cash', 'Cheques', 'Deema', 'Tabby'). A company that does not
+     * transact on a given gateway has no leaf for it and needs none; a company that DOES will be
+     * refused loudly by AccountResolver at posting time. Either way it is a leaf an operator NAMES
+     * on the Purpose Mapping screen — this command must never guess it.
+     *
+     * Classified `ruling` rather than `hygiene` so it still stands out in the findings table, and
+     * so this command's own exit code (R2-5: non-zero while any BLOCKING finding remains) means
+     * "something is genuinely unpostable", not "you have not configured a gateway you do not use".
+     * CT-A4's own CoaLinkageCommandTest already carved this family out of its assertion by hand;
+     * the carve-out now lives in the command, where the exit code can honour it.
+     *
+     * @var array<string, string>
+     */
+    private const NON_BLOCKING_PURPOSE_PREFIXES = [
+        'GATEWAY_CLEARING_' => 'deliberate: a per-gateway clearing leaf exists only for a gateway the company actually transacts on. SystemAccountsSeeder refuses to guess one from the 1300 pool, which holds non-gateway instruments. An operator names it on the Purpose Mapping screen.',
+        'GATEWAY_FEE_EXPENSE_' => 'deliberate: same as GATEWAY_CLEARING_ — a fee leaf for a gateway the company does not use is not a defect.',
+    ];
+
+    /**
+     * CT-A3 R2-5 / MERGE FIX — the purpose the merge of wave 2 and CT-A4 left BLOCKING on day one.
+     *
+     * Wave 2 §4.7 REGISTERED `REFUND_PAYOUT_CASH_BANK` so it could be mapped, and deliberately did
+     * not auto-map it in the SEEDER: *"which account client money leaves from is the company's own
+     * choice, and seeding a guess would put real money in an account nobody chose."* That reasoning
+     * is right for a seeder, which runs on every chart and knows nothing about the company. It is
+     * NOT right for THIS command, which is an explicit, operator-invoked, dry-runnable,
+     * NOW-REVERSIBLE repair that reads the company's own configured master data.
+     *
+     * Left as it was, the merged stack shipped a day-one operator task: `--apply` reported a
+     * BLOCKING unresolved purpose and EVERY `refund_out` disposition threw UnmappedPurposeException
+     * until someone picked an account by hand. So this command resolves the company's DEFAULT
+     * REFUND-PAYOUT INSTRUMENT the same way the receipt instrument leg does (R-CT3: configured
+     * payment-method account, `charges.acc_bank_id`, asserted under the bank group — never a code
+     * constant, never a name), in this precedence:
+     *
+     *   1. The company's SYSTEM-DEFAULT active payment method (`charges.is_system_default`) whose
+     *      `acc_bank_id` resolves under the bank group. This is the operator's own recorded choice
+     *      of default instrument, so mapping onto it is reading configuration, not guessing.
+     *   2. If there is no system default: the ONE distinct bank account shared by every active
+     *      payment method that has one. Unambiguous by construction — and FLAGGED as a `ruling`
+     *      finding, because it was inferred rather than chosen.
+     *   3. Otherwise the cash/bank CONTROL leaf the configured receipt fallback purpose resolves to
+     *      (`config('accounting.receipt.instrument.fallback_purpose')`, default CASH_IN_HAND) —
+     *      FLAGGED, loudly, as a `ruling` finding naming the account, so refunds work on day one
+     *      and the operator can still re-point them.
+     *
+     * Never overwrites an existing mapping: if the purpose already resolves, this does nothing.
+     */
+    private const REFUND_PAYOUT_PURPOSE = 'REFUND_PAYOUT_CASH_BANK';
+
     private bool $apply = false;
 
     private bool $allowMove = false;
+
+    /** CT-A3 R2-5: one id per --apply INVOCATION, echoed for --rollback. */
+    private string $runId = '';
+
+    /** @var array<int, array{company_id:int, subject_id:int, column_name:string, before:?string, after:?string}> */
+    private array $columnChanges = [];
+
+    /** CT-A3 R2-5: set when any BLOCKING finding survives the repair — drives the exit code. */
+    private bool $blockingRemains = false;
 
     /** @var array<int, array{company: int, action: string, subject: string, detail: string}> */
     private array $changeLog = [];
@@ -200,11 +268,25 @@ class CoaLinkage extends Command
         $this->apply = (bool) $this->option('apply');
         $this->allowMove = (bool) $this->option('allow-move');
 
+        // CT-A3 R2-5 (verify-R1 D14): the way back. Runs before every other branch because it is
+        // its own mode, not a variant of the repair.
+        if (($rollbackRunId = (string) ($this->option('rollback') ?? '')) !== '') {
+            if ($this->apply || $this->option('dry-run')) {
+                $this->error('Pass --rollback on its own, not with --apply or --dry-run.');
+
+                return self::FAILURE;
+            }
+
+            return $this->rollbackRun($rollbackRunId);
+        }
+
         if ($this->apply && $this->option('dry-run')) {
             $this->error('Pass --dry-run OR --apply, not both.');
 
             return self::FAILURE;
         }
+
+        $this->runId = (string) Str::ulid();
 
         $companyIds = $this->resolveCompanyIds();
 
@@ -238,8 +320,113 @@ class CoaLinkage extends Command
 
         $this->newLine();
         $this->renderChangeLog();
+        $this->flushColumnChanges();
+
+        // CT-A3 R2-5 (verify-R1 D14, second half): *"--apply exits 0 even with BLOCKING findings —
+        // failure is set only on a thrown exception. Do not gate a deploy on this command's exit
+        // status."* A command whose exit code cannot be gated on is a command every runbook will
+        // gate on anyway. It now means what an operator assumes it means.
+        // Gated on --apply, not on every mode. A DRY RUN's findings describe the chart AS IT
+        // STANDS -- nothing has been repaired yet, so of course purposes are unresolved; making a
+        // dry run exit non-zero would mean "this command has work to do", which is not a failure
+        // and would train every operator to ignore the code. An APPLY's findings describe the chart
+        // AFTER the repair, and a purpose still unresolved there is a document the engine will
+        // refuse to post.
+        if ($this->apply && $this->blockingRemains) {
+            $this->newLine();
+            $this->error('BLOCKING findings remain — see coa_linkage_findings WHERE severity = \'blocking\'.');
+            $this->line('  These are purposes the engine will REFUSE to post on. Nothing here needs a guess:');
+            $this->line('  each names the leaf an operator must pick on the Purpose Mapping screen.');
+
+            return self::FAILURE;
+        }
 
         return $exit;
+    }
+
+    /**
+     * CT-A3 R2-5 (verify-R1 D14) — undo one previous `--apply` run, exactly.
+     *
+     * Restores every `report_type` / `is_group` / `account_type_id` that run changed, to the value
+     * that was there BEFORE it — never to a value re-derived from the rules, which would just be
+     * the repair again. Rows already rolled back are skipped, so a second `--rollback` of the same
+     * run is a no-op rather than a re-application of stale before-values.
+     *
+     * Refuses when the current value no longer matches what the run WROTE: something else has
+     * changed that account since, and silently overwriting it would make this command a second
+     * source of unexplained column edits. Those rows are named and left alone.
+     */
+    private function rollbackRun(string $runId): int
+    {
+        $rows = DB::table('coa_linkage_changes')
+            ->where('run_id', $runId)
+            ->whereNull('rolled_back_at')
+            ->orderBy('id')
+            ->get();
+
+        if ($rows->isEmpty()) {
+            $this->warn("No un-rolled-back changes recorded for run '{$runId}'.");
+            $this->line('  Run ids are echoed by every --apply run and stored in coa_linkage_changes.run_id.');
+
+            return self::SUCCESS;
+        }
+
+        $restored = 0;
+        $skipped = [];
+
+        DB::transaction(function () use ($rows, &$restored, &$skipped) {
+            foreach ($rows as $row) {
+                if (! in_array($row->column_name, CoaLinkageChange::REVERSIBLE_COLUMNS, true)) {
+                    $skipped[] = "account #{$row->subject_id}: column '{$row->column_name}' is not reversible";
+
+                    continue;
+                }
+
+                $current = DB::table('accounts')->where('id', $row->subject_id)->value($row->column_name);
+
+                if ((string) $current !== (string) $row->after_value) {
+                    $skipped[] = sprintf(
+                        'account #%d.%s is now %s, not the %s this run wrote — left alone',
+                        $row->subject_id,
+                        $row->column_name,
+                        $current === null ? 'NULL' : (string) $current,
+                        $row->after_value === null ? 'NULL' : (string) $row->after_value
+                    );
+
+                    continue;
+                }
+
+                DB::table('accounts')->where('id', $row->subject_id)->update([
+                    $row->column_name => $this->castBackTo($row->column_name, $row->before_value),
+                    'updated_at' => now(),
+                ]);
+
+                DB::table('coa_linkage_changes')->where('id', $row->id)->update([
+                    'rolled_back_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                $restored++;
+            }
+        });
+
+        $this->info("Rolled back run '{$runId}': {$restored} column value(s) restored.");
+
+        foreach ($skipped as $line) {
+            $this->warn('  skipped — '.$line);
+        }
+
+        return self::SUCCESS;
+    }
+
+    /** The stored before-image is a string; put it back at the column's own type (NULL stays NULL). */
+    private function castBackTo(string $column, ?string $value): int|string|null
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        return in_array($column, ['is_group', 'account_type_id'], true) ? (int) $value : $value;
     }
 
     /** @return array<int, int> */
@@ -281,6 +468,12 @@ class CoaLinkage extends Command
         $this->backfillIsGroup($companyId);
 
         $findings = [];
+
+        // 5b. CT-A3 R2-5 / MERGE FIX. AFTER ensure-system-leaves (so it sees whatever that mapped)
+        //     and BEFORE verifyPurposes (so the verification reports the repaired state, which is
+        //     the whole point of running it last). See REFUND_PAYOUT_PURPOSE's own docblock.
+        $this->mapRefundPayoutInstrument($companyId, $resolver, $findings);
+
         $this->verifyPurposes($companyId, $resolver, $findings);
         $this->collectStructuralFindings($companyId, $findings);
         $this->persistFindings($companyId, $findings);
@@ -571,6 +764,8 @@ class CoaLinkage extends Command
             $resolved[$row->id] = $typeId;
             $changed++;
 
+            $this->recordColumnChange($companyId, (int) $row->id, 'account_type_id', $row->account_type_id, (string) $typeId);
+
             if ($this->apply) {
                 DB::table('accounts')->where('id', $row->id)->update([
                     'account_type_id' => $typeId,
@@ -630,7 +825,7 @@ class CoaLinkage extends Command
     private function backfillReportType(int $companyId): void
     {
         $rows = $this->accounts($companyId)
-            ->select('accounts.id', 'accounts.name', 'accounts.root_id', 'accounts.report_type')
+            ->select('accounts.id', 'accounts.code', 'accounts.name', 'accounts.root_id', 'accounts.report_type')
             ->get();
 
         $rootNames = DB::table('accounts')
@@ -641,6 +836,8 @@ class CoaLinkage extends Command
 
         $changed = 0;
         $byRoot = [];
+        $intoProfitLoss = [];
+        $outOfProfitLoss = [];
 
         foreach ($rows as $row) {
             // A root classifies itself; everything else classifies by its root.
@@ -658,6 +855,32 @@ class CoaLinkage extends Command
 
             $changed++;
             $byRoot[$rootName] = ($byRoot[$rootName] ?? 0) + 1;
+
+            // CT-A3 R2-5 (verify-R1 D14): the before-image. This is the one applied repair with a
+            // visible REPORTING consequence and it was summarised as a bare count -- no ids, no
+            // before-values, nothing in coa_linkage_findings -- so it could not be undone from the
+            // command's own output. Recorded whether or not --apply is passed, so a dry run can
+            // print the same delta a real run would produce; only --apply persists it.
+            $this->recordColumnChange($companyId, (int) $row->id, 'report_type', $row->report_type, $want);
+
+            // The P&L COMPOSITION DELTA. ReportController selects the P&L by this column, so an
+            // account moving INTO profit_loss changes reported profit for every historical period
+            // on the next render -- by exactly its own balance.
+            $bucket = $want === Account::REPORT_TYPES['PROFIT_LOSS'] ? 'in' : 'out';
+            $entry = [
+                'id' => (int) $row->id,
+                'code' => (string) ($row->code ?? ''),
+                'name' => (string) $row->name,
+                'from' => $row->report_type === null ? 'NULL' : (string) $row->report_type,
+                'to' => $want,
+                'balance' => $this->accountNetBalance((int) $row->id),
+            ];
+
+            if ($bucket === 'in') {
+                $intoProfitLoss[] = $entry;
+            } else {
+                $outOfProfitLoss[] = $entry;
+            }
 
             if ($this->apply) {
                 DB::table('accounts')->where('id', $row->id)->update([
@@ -684,6 +907,78 @@ class CoaLinkage extends Command
         $this->warn("    → a P&L selecting on report_type will now include these {$changed} account(s). Review the P&L delta before deploying.");
 
         $this->recordChange($companyId, 'SET_REPORT_TYPE', "{$changed} account(s)", "derived from the root: {$detail}");
+
+        $this->renderProfitLossDelta($intoProfitLoss, $outOfProfitLoss);
+    }
+
+    /**
+     * CT-A3 R2-5 (verify-R1 D14) — WHICH accounts move into (or out of) the P&L, and what they
+     * carry.
+     *
+     * *"Do not run `accounting:coa-linkage --apply` on the dev chart without snapshotting
+     * `report_type` first, and do not read its exit code as a pass."* Both halves of that condition
+     * are now closed in the command itself: the before-image is written to `coa_linkage_changes`
+     * (and `--rollback` puts it back), and this is the half an operator has to READ BEFORE they
+     * decide to run it — the 87 accounts CT-A4 measured, by id and code, with the balance each one
+     * brings with it.
+     *
+     * Printed on BOTH dry-run and apply. A dry run that reported a count and an apply that reported
+     * the same count gave an operator nothing to compare; the figure that matters is the net change
+     * to reported profit, and it is stated here as a total.
+     *
+     * @param  array<int, array{id:int, code:string, name:string, from:string, to:string, balance:float}>  $into
+     * @param  array<int, array{id:int, code:string, name:string, from:string, to:string, balance:float}>  $out
+     */
+    private function renderProfitLossDelta(array $into, array $out): void
+    {
+        if ($into === [] && $out === []) {
+            return;
+        }
+
+        $this->newLine();
+        $this->line('  P&L COMPOSITION DELTA — what a profit-and-loss selecting on report_type will show differently:');
+
+        foreach ([['moving INTO the P&L', $into], ['moving OUT of the P&L', $out]] as [$label, $group]) {
+            if ($group === []) {
+                continue;
+            }
+
+            $net = round(array_sum(array_column($group, 'balance')), 3);
+
+            $this->line(sprintf('    %d account(s) %s — net Dr−Cr %s', count($group), $label, number_format($net, 3)));
+
+            // Capped: the point is the total and a representative list, not a 90-row wall. The
+            // count and the net are always exact, and every id is in coa_linkage_changes.
+            foreach (array_slice($group, 0, 25) as $row) {
+                $this->line(sprintf(
+                    '      #%-6d %-10s %-44s %s → %s   %s',
+                    $row['id'],
+                    $row['code'],
+                    mb_substr($row['name'], 0, 44),
+                    $row['from'],
+                    $row['to'],
+                    number_format($row['balance'], 3)
+                ));
+            }
+
+            if (count($group) > 25) {
+                $this->line(sprintf('      … and %d more (every id is in coa_linkage_changes for this run)', count($group) - 25));
+            }
+        }
+    }
+
+    /**
+     * Dr − Cr on one account, from the posted rows. Never `accounts.actual_balance` or
+     * `journal_entries.balance` — CT-A1 §4.1 measured Σ|drift| KWD 6,277,563.301 across 200 of the
+     * 207 posted accounts on those two columns.
+     */
+    private function accountNetBalance(int $accountId): float
+    {
+        return round((float) (DB::table('journal_entries')
+            ->where('account_id', $accountId)
+            ->whereNull('deleted_at')
+            ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as net')
+            ->value('net') ?? 0.0), 3);
     }
 
     // ─────────────────────────────────────────────────────────────────────────────────────────
@@ -731,6 +1026,18 @@ class CoaLinkage extends Command
         // nothing the engine does — only what the screens and reports that DO filter on it see.
         $this->recordChange($companyId, 'SET_IS_GROUP', "{$total} account(s)", 'is_group := EXISTS(child); the engine ignores this column, the UI does not');
 
+        // CT-A3 R2-5: before-images, so --rollback can put this back too. Recorded before the
+        // write and regardless of --apply, so a dry run records what it WOULD do and only --apply
+        // persists it (see flushColumnChanges()).
+        foreach ($flaggedGroupNoChildren as $id) {
+            $this->recordColumnChange($companyId, (int) $id, 'is_group', '1', '0');
+        }
+
+        foreach ($flaggedLeafWithChildren as $id) {
+            $current = DB::table('accounts')->where('id', $id)->value('is_group');
+            $this->recordColumnChange($companyId, (int) $id, 'is_group', $current === null ? null : (string) (int) $current, '1');
+        }
+
         if (! $this->apply) {
             return;
         }
@@ -769,13 +1076,17 @@ class CoaLinkage extends Command
                 $bad++;
 
                 $label = $serviceType === null ? $purposeCode : "{$purposeCode}/{$serviceType}";
-                $deliberate = self::NON_BLOCKING_PURPOSES[$purposeCode] ?? null;
+                [$deliberate, $severity] = $this->deliberateGapFor($purposeCode);
+
+                if ($severity === CoaLinkageFinding::SEVERITY_BLOCKING) {
+                    $this->blockingRemains = true;
+                }
 
                 $findings[] = [
                     'code' => 'UNRESOLVED_PURPOSE',
                     'subject_type' => 'purpose',
                     'subject_id' => null,
-                    'severity' => $deliberate !== null ? CoaLinkageFinding::SEVERITY_HYGIENE : CoaLinkageFinding::SEVERITY_BLOCKING,
+                    'severity' => $severity,
                     'summary' => "purpose {$label} does not resolve",
                     'details' => [
                         'purpose_code' => $purposeCode,
@@ -1094,6 +1405,280 @@ class CoaLinkage extends Command
         }
 
         return implode(' / ', $parts);
+    }
+
+    /**
+     * CT-A3 R2-5. Is an unresolved purpose a DELIBERATE gap, and at what severity?
+     *
+     * Exact codes first ({@see self::NON_BLOCKING_PURPOSES} — SUSPENSE, VAT_OUTPUT: hygiene, a
+     * mapping nobody should ever add), then FAMILIES by prefix
+     * ({@see self::NON_BLOCKING_PURPOSE_PREFIXES} — the gateway families: a `ruling`, a leaf an
+     * operator names when the company actually starts using that gateway). Anything else is
+     * BLOCKING, and now drives a non-zero exit code.
+     *
+     * @return array{0: string|null, 1: string}
+     */
+    private function deliberateGapFor(string $purposeCode): array
+    {
+        if (isset(self::NON_BLOCKING_PURPOSES[$purposeCode])) {
+            return [self::NON_BLOCKING_PURPOSES[$purposeCode], CoaLinkageFinding::SEVERITY_HYGIENE];
+        }
+
+        foreach (self::NON_BLOCKING_PURPOSE_PREFIXES as $prefix => $reason) {
+            if (str_starts_with($purposeCode, $prefix)) {
+                return [$reason, CoaLinkageFinding::SEVERITY_RULING];
+            }
+        }
+
+        return [null, CoaLinkageFinding::SEVERITY_BLOCKING];
+    }
+
+    /**
+     * CT-A3 R2-5 / MERGE FIX — map `REFUND_PAYOUT_CASH_BANK` onto the company's own default
+     * refund-payout instrument, so a merged stack does not ship a day-one operator task that
+     * refuses every `refund_out` refund. Full reasoning on {@see self::REFUND_PAYOUT_PURPOSE}.
+     *
+     * @param  array<int, array<string, mixed>>  $findings
+     */
+    private function mapRefundPayoutInstrument(int $companyId, AccountResolver $resolver, array &$findings): void
+    {
+        $alreadyMapped = null;
+
+        try {
+            $alreadyMapped = $resolver->resolve(self::REFUND_PAYOUT_PURPOSE, $companyId);
+        } catch (Throwable $e) {
+            // Unmapped. That is what this method is for.
+        }
+
+        [$account, $how, $inferred] = $this->resolveRefundPayoutInstrument($companyId);
+
+        if ($alreadyMapped !== null) {
+            $this->line('  refund payout: '.self::REFUND_PAYOUT_PURPOSE.' already resolves — untouched');
+
+            // The mapping stands, whoever made it. But if it is THIS command's own inference, the
+            // flag has to be re-emitted on every run: `coa_linkage_findings` is documented as the
+            // LATEST MEASUREMENT, and an inference nobody has confirmed is still true on the second
+            // run. (Emitting it only on the run that made it would also make a second --apply
+            // report one fewer finding than the first, which is exactly the "is a second run a
+            // no-op?" property CT-A4 pins.)
+            if ($inferred && $account !== null && (int) $account->id === (int) $alreadyMapped->id) {
+                $findings[] = $this->refundPayoutInferredFinding($account, $how);
+            }
+
+            return;
+        }
+
+        if ($account === null) {
+            // Nothing configured AND no fallback leaf: report it as the blocking gap it is and let
+            // verifyPurposes() below say so too. Inventing an account here would be exactly the
+            // guess wave 2 §4.7 refused to let the SEEDER make, and it would be wrong for the same
+            // reason.
+            $this->warn('  refund payout: no configured payment-method account and no cash/bank fallback leaf — '
+                .self::REFUND_PAYOUT_PURPOSE.' stays unmapped');
+
+            return;
+        }
+
+        $this->line(sprintf(
+            '  refund payout: %s → #%d %s %s (%s)',
+            self::REFUND_PAYOUT_PURPOSE,
+            $account->id,
+            (string) $account->code,
+            (string) $account->name,
+            $how
+        ));
+
+        if ($inferred) {
+            // Mapped, and FLAGGED. The company gets working refunds on day one; the operator gets a
+            // durable, queryable row telling them the account was inferred, not chosen.
+            $findings[] = $this->refundPayoutInferredFinding($account, $how);
+        }
+
+        $this->recordChange(
+            $companyId,
+            'MAP_REFUND_PAYOUT',
+            self::REFUND_PAYOUT_PURPOSE,
+            sprintf('→ #%d %s %s (%s)', $account->id, (string) $account->code, (string) $account->name, $how)
+        );
+
+        if (! $this->apply) {
+            return;
+        }
+
+        DB::table('system_accounts')->updateOrInsert(
+            [
+                'company_id' => $companyId,
+                'purpose_code' => self::REFUND_PAYOUT_PURPOSE,
+                'service_type' => null,
+            ],
+            [
+                'account_id' => (int) $account->id,
+                'updated_at' => now(),
+                'created_at' => now(),
+            ]
+        );
+    }
+
+    /**
+     * One `REFUND_PAYOUT_INFERRED` finding. Re-emitted on every run for as long as the mapping is
+     * this command's own inference rather than the operator's choice — see the call sites.
+     *
+     * @return array<string, mixed>
+     */
+    private function refundPayoutInferredFinding(object $account, string $how): array
+    {
+        return [
+            'code' => 'REFUND_PAYOUT_INFERRED',
+            'subject_type' => 'account',
+            'subject_id' => (int) $account->id,
+            'severity' => CoaLinkageFinding::SEVERITY_RULING,
+            'summary' => sprintf(
+                '%s is mapped to #%d %s %s (%s) — confirm this is the account client refunds leave from',
+                self::REFUND_PAYOUT_PURPOSE,
+                $account->id,
+                (string) $account->code,
+                (string) $account->name,
+                $how
+            ),
+            'details' => [
+                'purpose_code' => self::REFUND_PAYOUT_PURPOSE,
+                'account_id' => (int) $account->id,
+                'account_code' => (string) $account->code,
+                'account_name' => (string) $account->name,
+                'resolution' => $how,
+                'note' => 'CT-A3 wave 2 §4.7 deliberately does not let the SEEDER guess this leaf, because a '
+                    .'seeder knows nothing about the company. accounting:coa-linkage is an explicit, '
+                    ."dry-runnable, reversible repair that reads the company's own configured payment "
+                    .'methods (R-CT3) — but where no default is configured it can only infer, and an '
+                    .'inference an operator has not seen is a guess. Re-point it on the Purpose Mapping '
+                    .'screen if this is not where refunds actually leave from.',
+            ],
+        ];
+    }
+
+    /**
+     * The company's default refund-payout instrument, by the R-CT3 precedence
+     * {@see \App\Services\Accounting\ReceiptPostingRule::instrumentAccountFor()} uses for money
+     * coming IN — configured payment-method account (`charges.acc_bank_id`), asserted under the
+     * bank group, never a code constant and never a name.
+     *
+     * @return array{0: object|null, 1: string, 2: bool} [account, how it was chosen, was it inferred]
+     */
+    private function resolveRefundPayoutInstrument(int $companyId): array
+    {
+        // No `deleted_at` predicate: `charges` carries no soft-delete column (unlike `accounts`),
+        // and asking for one is an SQL error, not a stricter filter.
+        $charges = DB::table('charges')
+            ->where('company_id', $companyId)
+            ->whereNotNull('acc_bank_id')
+            ->where(fn ($q) => $q->where('is_active', 1)->orWhereNull('is_active'))
+            ->get(['id', 'name', 'acc_bank_id', 'is_system_default']);
+
+        // 1. The operator's own recorded default payment method.
+        $default = $charges->firstWhere('is_system_default', 1);
+
+        if ($default !== null && ($account = $this->bankLeaf($companyId, (int) $default->acc_bank_id)) !== null) {
+            return [$account, "the company's default payment method '{$default->name}'", false];
+        }
+
+        // 2. One unambiguous bank account across every configured payment method.
+        $distinct = array_values(array_unique($charges->pluck('acc_bank_id')->map(static fn ($id) => (int) $id)->all()));
+
+        if (count($distinct) === 1 && ($account = $this->bankLeaf($companyId, $distinct[0])) !== null) {
+            return [$account, 'the only bank account any configured payment method points at', true];
+        }
+
+        // 3. The configured cash/bank control leaf the receipt path already falls back to.
+        $fallbackPurpose = (string) config('accounting.receipt.instrument.fallback_purpose', 'CASH_IN_HAND');
+
+        try {
+            $resolved = app(AccountResolver::class)->resolve($fallbackPurpose, $companyId);
+
+            $row = DB::table('accounts')->where('id', $resolved->id)->first(['id', 'code', 'name']);
+
+            if ($row !== null) {
+                return [$row, "the configured receipt fallback purpose {$fallbackPurpose}", true];
+            }
+        } catch (Throwable $e) {
+            // No fallback leaf either — the caller reports the gap.
+        }
+
+        return [null, 'unresolved', false];
+    }
+
+    /** One account id, confirmed to belong to this company and to sit under its bank group. */
+    private function bankLeaf(int $companyId, int $accountId): ?object
+    {
+        try {
+            app(AccountResolver::class)->assertUnderBankGroup($accountId, $companyId);
+        } catch (Throwable $e) {
+            Log::warning('accounting.coa_linkage.refund_payout_account_rejected', [
+                'company_id' => $companyId,
+                'account_id' => $accountId,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
+
+        return DB::table('accounts')->where('id', $accountId)->first(['id', 'code', 'name']);
+    }
+
+    /**
+     * CT-A3 R2-5 (verify-R1 D14) — remember what a column held BEFORE this run changed it.
+     *
+     * Collected in memory and flushed once at the end of the whole invocation
+     * ({@see self::flushColumnChanges()}) rather than written per account, because a run over three
+     * companies is ONE run to the operator who has to undo it, and because a dry run must be able
+     * to compute exactly what it WOULD record without writing a row.
+     */
+    private function recordColumnChange(int $companyId, int $accountId, string $column, mixed $before, mixed $after): void
+    {
+        $this->columnChanges[] = [
+            'company_id' => $companyId,
+            'subject_id' => $accountId,
+            'column_name' => $column,
+            'before' => $before === null ? null : mb_substr((string) $before, 0, 64),
+            'after' => $after === null ? null : mb_substr((string) $after, 0, 64),
+        ];
+    }
+
+    /**
+     * Persist this run's before-images and tell the operator the id they undo it with. `--apply`
+     * only: a dry run has changed nothing, so recording a way to undo nothing would be a lie in a
+     * table whose whole value is that it is not one.
+     */
+    private function flushColumnChanges(): void
+    {
+        if (! $this->apply || $this->columnChanges === []) {
+            return;
+        }
+
+        foreach (array_chunk($this->columnChanges, 200) as $chunk) {
+            DB::table('coa_linkage_changes')->insert(array_map(function (array $c): array {
+                return [
+                    'run_id' => $this->runId,
+                    'company_id' => $c['company_id'],
+                    'subject_table' => 'accounts',
+                    'subject_id' => $c['subject_id'],
+                    'column_name' => $c['column_name'],
+                    'before_value' => $c['before'],
+                    'after_value' => $c['after'],
+                    'rolled_back_at' => null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }, $chunk));
+        }
+
+        $this->newLine();
+        $this->info(sprintf(
+            'RUN ID %s — %d column change(s) recorded with their before-values.',
+            $this->runId,
+            count($this->columnChanges)
+        ));
+        $this->line("  Undo this run in full:  php artisan accounting:coa-linkage --rollback={$this->runId}");
     }
 
     private function recordChange(int $companyId, string $action, string $subject, string $detail): void

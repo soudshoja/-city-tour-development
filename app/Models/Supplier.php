@@ -1,6 +1,5 @@
 <?php
 
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -37,6 +36,12 @@ class Supplier extends Model
         'country_id',
         'website',
         'payment_terms',
+        // CT-A3 wave 1 (owner ruling R-CT3, 2026-09-09) — when this supplier's cost becomes a
+        // guaranteed payable, and whether accrual is suspended entirely. Read by
+        // App\Services\Accounting\SupplierPayableRule; see migration
+        // 2026_09_09_000001_add_payable_trigger_to_suppliers_table.php for the full rationale.
+        'payable_trigger',
+        'payable_hold',
         'is_online',
         'agency_commission',
     ];
@@ -44,6 +49,7 @@ class Supplier extends Model
     protected $casts = [
         'is_online' => 'bool',
         'is_manual' => 'bool',
+        'payable_hold' => 'bool',
         'agency_commission' => 'decimal:2',
     ];
 
@@ -51,7 +57,10 @@ class Supplier extends Model
     {
         $retail = (float) $retail;
         $pct = (float) ($this->agency_commission ?? 0);
-        if ($pct <= 0) { return round($retail, 3); }
+        if ($pct <= 0) {
+            return round($retail, 3);
+        }
+
         return round($retail * (1 - $pct / 100), 3);
     }
 
@@ -59,6 +68,7 @@ class Supplier extends Model
     {
         return $this->hasOne(Account::class, 'supplier_id');
     }
+
     public function country()
     {
         return $this->belongsTo(Country::class);
@@ -85,6 +95,7 @@ class Supplier extends Model
     {
         return $this->belongsTo(Account::class);
     }
+
     public function exchangeRates()
     {
         return $this->hasMany(SupplierExchangeRate::class);

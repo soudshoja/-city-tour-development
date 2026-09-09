@@ -1187,4 +1187,61 @@ return [
         'date_window_days' => 3,
     ],
 
+    /*
+    |--------------------------------------------------------------------------------------------
+    | Supplier payable accrual — OWNER RULING R-CT3, 2026-09-09 (CT-A3 wave 1)
+    |--------------------------------------------------------------------------------------------
+    | Owner, verbatim: "need to pay are the one guaranteed to be paid not hold or some supplier
+    | confirmed so this needs to be done based on the status of supplier which we set on supplier
+    | aspect ... from there decide add or not add? need to be paid or not paid ... we need to do
+    | the same as we go through the system."
+    |
+    | THE PATTERN, which every future automatic posting follows: the TRIGGER and the ACCOUNT come
+    | from configured master data (the supplier record, the task's status, the payment's status),
+    | never from a constant compiled into a feeder. This block is the vocabulary half — which task
+    | statuses each configured `suppliers.payable_trigger` treats as "the money is now guaranteed".
+    | The per-supplier CHOICE lives on the supplier row (migration
+    | 2026_09_09_000001_add_payable_trigger_to_suppliers_table.php); the resolver that joins the two
+    | is App\Services\Accounting\SupplierPayableRule. There is no supplier name, id or list
+    | anywhere in either.
+    |
+    | Statuses are `tasks.status` values (the enum widened by migration
+    | 2026_08_29_140002_w6s_widen_status_enum_in_tasks_table.php), which is itself the OUTPUT of
+    | `TaskStatusService::mapStatus()` resolving the supplier's own raw status through
+    | `supplier_status_maps`. So a supplier who calls its confirmed state "OK" or "RQ" is already
+    | normalised before this table is consulted — this block never sees a raw supplier string.
+    |
+    | Every status NOT listed under a trigger is, by construction, not committed for that trigger:
+    | 'on hold', 'needs_review', 'expired', 'cancelled', 'void', 'refund' and 'refunded' appear in
+    | no list, so no trigger ever accrues on them. That is the "not hold" half of the ruling.
+    |
+    | 'on_voucher' carries the same statuses as 'on_issue' plus one extra condition the resolver
+    | applies (a voucher must actually exist on the task) — see SupplierPayableRule::isCommitted().
+    */
+    'supplier_payable' => [
+
+        // The per-supplier default applied when `suppliers.payable_trigger` is null/unrecognised
+        // (a row written before the migration, or a hand-edited value). Matches the migration's
+        // own column default and the legacy ledger's measured behaviour — CT-A1 §1.7's only
+        // supplier-payable writer, TaskController.php:2315, fired at `issued`.
+        'default_trigger' => 'on_issue',
+
+        'triggers' => [
+            'on_supplier_confirm' => ['confirmed', 'issued', 'reissued', 'ticketed', 'emd'],
+            'on_issue' => ['issued', 'reissued', 'ticketed', 'emd'],
+            'on_voucher' => ['issued', 'reissued', 'ticketed', 'emd'],
+            'manual' => [],
+        ],
+
+        // `tasks.voucher_status` values that mean "no voucher was actually raised". Compared
+        // case-insensitively after trimming; an empty/null column is always treated as no voucher.
+        // Only consulted by the 'on_voucher' trigger.
+        'voucher_negative_statuses' => ['cancelled', 'canceled', 'void', 'voided', 'failed', 'none', 'pending'],
+
+        // Task statuses that REVERSE an already-posted accrual (the mirror of the trigger lists
+        // above). A task that was committed and later lands on one of these has its issuance
+        // document reversed by PostingService::reverse() -- never deleted, never UPDATEd.
+        'reversing_statuses' => ['void', 'cancelled', 'refund', 'refunded', 'expired'],
+    ],
+
 ];

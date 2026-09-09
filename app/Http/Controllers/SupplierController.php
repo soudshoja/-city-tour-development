@@ -361,6 +361,11 @@ class SupplierController extends Controller
             'is_manual' => 'nullable|boolean',
             'whatsapp_group' => 'nullable|string|max:190',
             'agency_commission' => 'nullable|numeric|min:0|max:100',
+            // CT-A3 wave 1 (owner ruling R-CT3, 2026-09-09) — when this supplier's cost becomes a
+            // guaranteed payable. See migration
+            // 2026_09_09_000001_add_payable_trigger_to_suppliers_table.php.
+            'payable_trigger' => ['nullable', Rule::in(['on_supplier_confirm', 'on_issue', 'on_voucher', 'manual'])],
+            'payable_hold' => 'nullable|boolean',
         ]);
 
         $hasHotel = $request->has('has_hotel');
@@ -386,6 +391,9 @@ class SupplierController extends Controller
             'is_manual' => $request->boolean('is_manual'),
             'whatsapp_group' => trim((string) $request->input('whatsapp_group')) ?: null,
             'agency_commission' => $request->input('agency_commission'),
+            'payable_trigger' => $request->input('payable_trigger')
+                ?: config('accounting.supplier_payable.default_trigger', 'on_issue'),
+            'payable_hold' => $request->boolean('payable_hold'),
         ]);
 
         if (!$supplier) {
@@ -430,6 +438,9 @@ class SupplierController extends Controller
             'reference.*.*' => 'nullable|string|max:100',
             'charge_behavior.*.*' => ['nullable', Rule::in(['single', 'repetitive'])],
             'agency_commission' => 'nullable|numeric|min:0|max:100',
+            // CT-A3 wave 1 (owner ruling R-CT3, 2026-09-09).
+            'payable_trigger' => ['nullable', Rule::in(['on_supplier_confirm', 'on_issue', 'on_voucher', 'manual'])],
+            'payable_hold' => 'nullable|boolean',
         ]);
 
         $supplier = Supplier::findOrFail($id);
@@ -457,7 +468,23 @@ class SupplierController extends Controller
                 'is_manual' => $request->boolean('is_manual'),
                 'whatsapp_group' => trim((string) $request->input('whatsapp_group')) ?: null,
                 'agency_commission' => $request->input('agency_commission'),
+                // CT-A3 wave 1 (R-CT3). A CHANGE here deliberately does NOT retro-post or
+                // retro-reverse anything: tasks already past the new trigger keep whatever they
+                // accrued under the old rule. Sweeping them is a data migration with real money
+                // attached and belongs to CT-A5 — logged, not silently applied.
+                'payable_trigger' => $request->input('payable_trigger')
+                    ?: ($supplier->payable_trigger ?: config('accounting.supplier_payable.default_trigger', 'on_issue')),
+                'payable_hold' => $request->boolean('payable_hold'),
             ]);
+
+            if ($supplier->wasChanged(['payable_trigger', 'payable_hold'])) {
+                Log::info('accounting.supplier_payable.rule_changed_not_backfilled', [
+                    'supplier_id' => $supplier->id,
+                    'payable_trigger' => $supplier->payable_trigger,
+                    'payable_hold' => (bool) $supplier->payable_hold,
+                    'note' => 'Existing tasks are not retro-posted or retro-reversed — CT-A5.',
+                ]);
+            }
 
             if (strcasecmp(trim($oldName), trim($newName)) !== 0) {
                 Account::where('name', 'LIKE', "%{$oldName}%")->update(['name' => $newName]);

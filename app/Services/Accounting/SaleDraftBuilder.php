@@ -29,7 +29,8 @@ use App\Models\Setting;
  * ── SERVICE_REVENUE vs MARKUP_INCOME (4132) — the semantics this lane locks down ──────────────────
  * `MARKUP_INCOME` was W1's name for the sign-aware margin leg on a NET sale. w3d-brief.md decision
  * 3 redefines the vocabulary: `SERVICE_REVENUE/{type}` is the earned margin on an AGENT-basis
- * service sale (this class's own `buildAgentBasisLines()`); `MARKUP_INCOME` (4132, a single
+ * service sale (R-CT1 2026-09-09 makes that the FULL sell, not the margin — see below);
+ * `MARKUP_INCOME` (4132, a single
  * non-per-service leaf) is reserved for a genuinely DISTINCT economic event — an explicit markup
  * line added ON TOP OF a fare the invoice already separates from cost (e.g. a ticket priced at
  * IATA fare + an agency-added markup field) — which neither existing feeder currently models (both
@@ -38,29 +39,22 @@ use App\Models\Setting;
  * does carry a fare/markup split posts that third figure to `MARKUP_INCOME` itself, independently
  * of this builder. The two purpose codes must never carry the same money on the same document.
  *
- * ── Agent (NET) basis — `SaleDraftInput::BASIS_AGENT` ─────────────────────────────────────────────
- * Blueprint 03 §3 / `ChatController`'s own pre-existing shape, generalized to any service type:
- *   - Dr `RECEIVABLE_CONTROL` = sell (client's open item)
- *   - Cr `SERVICE_PAYABLE`/{type} = cost (supplier's open item) — OMITTED when
- *     cost <= tolerance (CT-A3 E1 / CT-F34: a pure-fee sale with no supplier cost is legitimate;
- *     the unguarded leg used to emit amount 0.000 and make PostingService REFUSE the whole
- *     document, so invoice creation failed rather than degraded — 31 live documents on the
- *     City Travelers dev data). Same rule the principal branch already applied to its own cost
- *     pair. With the leg gone the margin below is sell − 0 = sell, so the document still
- *     balances on two lines.
- *   - Cr `SERVICE_REVENUE`/{type} = margin (sell − cost), sign-aware:
- *     - margin > tolerance: Cr `SERVICE_REVENUE`/{type} = margin (ordinary case).
- *     - |margin| <= tolerance (sold at cost): the leg is OMITTED — the first two legs already
- *       balance on their own (W1.1 fix C2's own reasoning, generalized).
- *     - margin < -tolerance (sold below cost): Dr `SERVICE_REVENUE`/{type} = abs(margin) — a
- *       contra-income debit, same account, opposite side (sign carried by side, never by a
- *       different purpose code or a different `ledgerType`) — so the document still balances
- *       instead of the whole sale being refused. This is w3d-brief.md's own "W4.A rule: company-
- *       borne negative margin posts nothing extra" — the ONLY posting for a negative margin is
- *       this one sign-flipped leg; no separate loss JV belongs in this document.
+ * ── SUPERSEDED 2026-09-09 by OWNER RULING R-CT1 (CT-A3 wave 1): GROSS FOR BOTH BASES ────────────
+ * The net/margin agent shape described below — Dr AR sell / Cr SERVICE_PAYABLE cost /
+ * Cr-or-Dr SERVICE_REVENUE margin, sign-aware — is REMOVED. CT-A2 measured it against the legacy
+ * ledger on 3,530 identical sale units and found engine revenue KWD 51,597.329 (margin) versus
+ * the legacy ledger's KWD 549,949.042 (gross), with KWD 0.000 of engine supplier cost of sales
+ * versus KWD 463,083.015. The owner has ruled for the gross presentation, so
+ * `SaleDraftInput::BASIS_AGENT` and `SaleDraftInput::BASIS_PRINCIPAL` now build the SAME four-line
+ * document via {@see self::buildGrossBasisLines()}. `MARKUP_INCOME` is still never posted here.
+ * The paragraph below is kept only to describe what the shape used to be, for anyone reading a
+ * pre-2026-09-09 journal row:
+ *   - Dr `RECEIVABLE_CONTROL` = sell / Cr `SERVICE_PAYABLE`/{type} = cost /
+ *     Cr-or-Dr `SERVICE_REVENUE`/{type} = sell − cost, sign-aware, margin leg omitted at |margin|
+ *     <= tolerance.
  *
- * ── Principal (GROSS) basis — `SaleDraftInput::BASIS_PRINCIPAL` ───────────────────────────────────
- * Blueprint's "the agency IS the obligor" case (package tours, own-inventory hotel blocks):
+ * ── Gross basis — BOTH `BASIS_AGENT` and `BASIS_PRINCIPAL` ───────────────────────────────────────
+ * The blueprint's "the agency IS the obligor" shape, now the only shape this builder emits:
  *   - Dr `RECEIVABLE_CONTROL` = sell
  *   - Cr `SERVICE_REVENUE`/{type} = sell (the FULL sell value — this is the one basis where
  *     SERVICE_REVENUE still means gross revenue, exactly W1's original, now-superseded comment)
@@ -76,14 +70,12 @@ use App\Models\Setting;
  *
  * ── What this class deliberately does NOT do ──────────────────────────────────────────────────────
  *   - It does not touch `createSupplierLossEntries()` / `createFeeLossEntries()`
- *     ({@see \App\Http\Controllers\InvoiceController}) — deleting those (once every agent-basis
- *     sale posts real cost at sale time, they lose their reason to exist for the negative-margin
- *     case this class already handles sign-aware) is W4.A's own scope per the sale-shape audit, not
- *     this lane's. Until W4.A ships, a negative-margin sale routed through `addJournalEntry()` still
- *     also gets a separate supplier-loss JV from that method's own, untouched `$isSupplierLoss`
- *     branch — a real double-booking of the same economic loss, called out in this lane's own
- *     report rather than silently fixed here (that fix would mean editing `addJournalEntries()`'s
- *     loss-branching logic, out of this lane's scope).
+ *     ({@see \App\Http\Controllers\InvoiceController}) — deleting those is W4.A's own scope per
+ *     the sale-shape audit, not this lane's. Under R-CT1's gross shape a below-cost sale simply
+ *     shows revenue < cost on this document (no contra-income leg exists any more), so the
+ *     separate supplier-loss JV those methods still raise remains a double-booking of the same
+ *     economic loss — called out here and in CT-A3's report rather than silently fixed, since
+ *     that fix means editing `addJournalEntries()`'s loss branching, still out of scope.
  *   - It does not resolve `$companyId` from `Auth::user()` — {@see self::resolvePostingBasis()}
  *     takes it as a plain argument, same queue/webhook-safety convention as every other engine-layer
  *     class in this codebase.
@@ -96,17 +88,12 @@ use App\Models\Setting;
  * lines — the LINE COUNT and every amount/side computed above is byte-for-byte unchanged;
  * ONLY the purpose code (and, since these two are GLOBAL leaves, `serviceType: null` on that one
  * line) differs:
- *   - Agent basis: the sign-aware margin leg (`SERVICE_REVENUE`/{type}) becomes `DEFERRED_REVENUE`
- *     (global). `SERVICE_PAYABLE`/{type} is UNCHANGED — agent basis never posts a cost EXPENSE
- *     leg to defer in the first place (the "cost" already sits on the balance sheet as a real
- *     payable from day one, not a P&L line), so there is nothing for a `PREPAID_SUPPLIER_COST`
- *     substitution to apply to on this basis.
- *   - Principal basis: `SERVICE_REVENUE`/{type} (the full-sell credit) becomes `DEFERRED_REVENUE`
- *     (global); `SERVICE_COST`/{type} (the cost-of-sales debit, when the cost pair is posted at
- *     all — see the existing cost<=tolerance omission rule above, unchanged) becomes
- *     `PREPAID_SUPPLIER_COST` (global). `SERVICE_PAYABLE`/{type} is UNCHANGED — the agency's
- *     liability to the actual supplier is real and due regardless of when the AGENCY recognises
- *     its own revenue/cost.
+ *   - BOTH bases (R-CT1 2026-09-09 collapsed them onto the same shape):
+ *     `SERVICE_REVENUE`/{type} (the full-sell credit) becomes `DEFERRED_REVENUE` (global);
+ *     `SERVICE_COST`/{type} (the cost-of-sales debit, when the cost pair is posted at all — see
+ *     the cost<=tolerance omission rule above, unchanged) becomes `PREPAID_SUPPLIER_COST`
+ *     (global). `SERVICE_PAYABLE`/{type} is UNCHANGED — the agency's liability to the actual
+ *     supplier is real and due regardless of when the AGENCY recognises its own revenue/cost.
  * Released on the travel/check-in date by `accounting:recognize-revenue`
  * (App\Services\Accounting\RevenueRecognitionService), which derives the release amounts directly
  * from these same two leaves' posted `journal_entries` rows (grouped by `task_id`) rather than
@@ -120,131 +107,59 @@ use App\Models\Setting;
 final class SaleDraftBuilder
 {
     /**
-     * @return LineDraft[] 2 or 3 lines (agent basis) / 2 or 4 lines (principal basis) — see class
-     *                     docblock for exactly which lines are omitted and when. CT-A3 E1 adds one
-     *                     more agent-basis 2-line shape: costAmount <= tolerance omits the
-     *                     SERVICE_PAYABLE leg and the margin leg carries the full sell.
+     * OWNER RULING R-CT1, 2026-09-09: both bases build the SAME gross document — 4 lines, or 2
+     * when `costAmount <= tolerance` (CT-A3 E1 / CT-F34). `$input->postingBasis` is retained on
+     * the input (it is still read by config, reports and `resolvePostingBasis()`, and a future
+     * ruling could re-diverge the two) but it no longer changes what this builder emits.
+     *
+     * @return LineDraft[] 2 or 4 lines — see {@see self::buildGrossBasisLines()}'s docblock.
      */
     public function buildLines(SaleDraftInput $input): array
     {
         $timing = $input->recognitionTiming ?? $this->resolveRecognitionDefault($input->serviceType);
 
-        return $input->postingBasis === SaleDraftInput::BASIS_PRINCIPAL
-            ? $this->buildPrincipalBasisLines($input, $timing)
-            : $this->buildAgentBasisLines($input, $timing);
+        return $this->buildGrossBasisLines($input, $timing);
     }
 
-    private function buildAgentBasisLines(SaleDraftInput $input, string $timing): array
+    /**
+     * OWNER RULING R-CT1, 2026-09-09 (CT-A3 wave 1) — GROSS is the revenue basis for BOTH
+     * `SaleDraftInput::BASIS_AGENT` and `SaleDraftInput::BASIS_PRINCIPAL`.
+     *
+     * Verbatim: "REVENUE BASIS = GROSS. Agent-basis sales post the full sell price as revenue
+     * (Dr AR / Cr Revenue = sell) and the supplier cost as cost of sales (Dr COGS or 1430 / Cr
+     * supplier payable = cost)."
+     *
+     * This supersedes W3d's net/margin agent shape, which CT-A2 measured against the legacy
+     * ledger on 3,530 identical sale units: engine revenue KWD 51,597.329 (margin) against the
+     * legacy ledger's KWD 549,949.042 (gross), with KWD 0.000 of engine supplier cost of sales
+     * against the legacy KWD 463,083.015. The owner has ruled for the gross presentation, so the
+     * two bases now build the SAME four-line document and the net (sign-aware margin) shape is
+     * removed rather than left as an unreachable branch:
+     *
+     *   - Dr `RECEIVABLE_CONTROL`      = sell (client's open item)
+     *   - Cr `SERVICE_REVENUE`/{type}  = sell (the FULL sell value — gross revenue)
+     *   - Dr `SERVICE_COST`/{type}     = cost (cost of sales)
+     *   - Cr `SERVICE_PAYABLE`/{type}  = cost (supplier's open item)
+     *
+     * The cost PAIR is omitted together when `costAmount <= tolerance` — CT-A3 E1 / CT-F34's
+     * rule, now applying to both bases from one place: a pure-fee sale posts the two-line gross
+     * document instead of being refused for a 0.000-amount line PostingService rejects.
+     *
+     * Sign-awareness is no longer needed and no longer exists. A sale below cost posts revenue
+     * and cost independently and simply shows a negative gross margin, exactly as gross
+     * accounting requires; there is no contra-income debit and no separate loss JV in this
+     * document (`InvoiceController::createSupplierLossEntries()` remains untouched, as before).
+     *
+     * P2.5.D recognition timing is UNCHANGED in mechanism: `at_travel` substitutes purpose codes
+     * on the revenue and cost legs (`DEFERRED_REVENUE` / `PREPAID_SUPPLIER_COST`) without
+     * changing the line count or any amount. `SERVICE_PAYABLE` is never deferred — the agency's
+     * liability to the supplier is real and due regardless of when the agency recognises revenue.
+     */
+    private function buildGrossBasisLines(SaleDraftInput $input, string $timing): array
     {
         $currency = $this->resolveCurrency($input);
         $tolerance = $this->resolveTolerance();
 
-        // P2.5.D: agent basis never posts a SERVICE_COST expense leg (see class docblock), so
-        // only the margin leg's purpose code is affected by recognition timing.
-        $deferRevenue = $timing === SaleDraftInput::RECOGNITION_AT_TRAVEL;
-        $marginPurposeCode = $deferRevenue ? 'DEFERRED_REVENUE' : 'SERVICE_REVENUE';
-        $marginServiceType = $deferRevenue ? null : $input->serviceType;
-
-        $lines = [
-            new LineDraft(
-                purposeCode: 'RECEIVABLE_CONTROL',
-                accountId: null,
-                side: 'debit',
-                amount: $input->sellAmount,
-                currency: $currency,
-                originalAmount: $input->sellAmount,
-                exchangeRate: $input->exchangeRate,
-                transactionType: 'CUSTOMERDEBITED',
-                partyAccountRef: $input->clientId,
-                description: $input->receivableDescription,
-                invoiceId: $input->invoiceId,
-                invoiceDetailId: $input->invoiceDetailId,
-                taskId: $input->taskId,
-                ledgerType: 'receivable',
-                partyName: $input->clientName,
-            ),
-        ];
-
-        // CT-A3 E1 (CT-F34, CT-A2 §3.2): the supplier-payable leg is OMITTED when there is no
-        // supplier cost, exactly as buildPrincipalBasisLines() already omits its own cost pair at
-        // :266. Before this guard the leg was emitted unconditionally with amount 0.000, and
-        // PostingService's step-3c non-positive-amount rule (PostingService.php:708/:750) threw
-        // NonNegativeAmountException out of InvoiceController::postSaleJournalEntries()
-        // UNCAUGHT — so a pure-fee sale did not degrade, it made invoice creation FAIL. CT-A2's
-        // replay measured 31 live documents refused on exactly this (21 flight + 10 visa,
-        // KWD 206.000 of sell, every one a task with `tasks.total = 0`), and SaleDraftInput's own
-        // docblock already states costAmount "may legitimately be 0.0 (a service with no supplier
-        // cost, e.g. a pure fee)".
-        //
-        // Balance is preserved by construction, not by luck: with the payable leg gone,
-        // margin = sell - 0 = sell, so the margin leg below carries the full sell as a credit
-        // against the AR debit. A zero-sell AND zero-cost draft still posts nothing but the AR
-        // line, which PostingService's own step-3c rejects — correctly, since that is not a sale.
-        if ($input->costAmount > $tolerance) {
-            $lines[] = new LineDraft(
-                purposeCode: 'SERVICE_PAYABLE',
-                accountId: null,
-                side: 'credit',
-                amount: $input->costAmount,
-                currency: $currency,
-                originalAmount: $input->costAmount,
-                exchangeRate: $input->exchangeRate,
-                transactionType: 'SUPPLIERCREDITED',
-                partyAccountRef: $input->supplierId,
-                description: $input->payableDescription,
-                serviceType: $input->serviceType,
-                invoiceId: $input->invoiceId,
-                invoiceDetailId: $input->invoiceDetailId,
-                taskId: $input->taskId,
-                ledgerType: 'payable',
-                partyName: $input->supplierName,
-            );
-        }
-
-        $margin = $input->sellAmount - $input->costAmount;
-
-        if (abs($margin) > $tolerance) {
-            $isPositiveMargin = $margin > 0;
-
-            $lines[] = new LineDraft(
-                purposeCode: $marginPurposeCode,
-                accountId: null,
-                side: $isPositiveMargin ? 'credit' : 'debit',
-                amount: abs($margin),
-                currency: $currency,
-                originalAmount: abs($margin),
-                exchangeRate: $input->exchangeRate,
-                transactionType: $isPositiveMargin ? 'INCOME' : 'CONTRA_INCOME',
-                partyAccountRef: $input->agentId,
-                description: $isPositiveMargin
-                    ? $input->marginPositiveDescription
-                    : $input->marginNegativeDescription,
-                serviceType: $marginServiceType,
-                invoiceId: $input->invoiceId,
-                invoiceDetailId: $input->invoiceDetailId,
-                taskId: $input->taskId,
-                // Both directions are 'income' (a contra-income debit is not a real expense leg) —
-                // matches ChatController's own pre-existing convention for this same sign-aware
-                // leg, carried over verbatim (see class docblock). Left 'income' even when
-                // $deferRevenue swaps the purpose code to DEFERRED_REVENUE (a liability) — this is
-                // the LEGACY report-vocabulary category (see LineDraft's own docblock on
-                // $ledgerType vs $transactionType), and no existing legacy screen filters on this
-                // brand new leaf either way.
-                ledgerType: 'income',
-                partyName: $input->agentName,
-            );
-        }
-
-        return $lines;
-    }
-
-    private function buildPrincipalBasisLines(SaleDraftInput $input, string $timing): array
-    {
-        $currency = $this->resolveCurrency($input);
-        $tolerance = $this->resolveTolerance();
-
-        // P2.5.D: principal basis defers BOTH the revenue leg and (when a cost pair is posted at
-        // all — see the cost<=tolerance omission below, unchanged) the cost leg.
         $deferRevenue = $timing === SaleDraftInput::RECOGNITION_AT_TRAVEL;
         $revenuePurposeCode = $deferRevenue ? 'DEFERRED_REVENUE' : 'SERVICE_REVENUE';
         $revenueServiceType = $deferRevenue ? null : $input->serviceType;
@@ -278,18 +193,25 @@ final class SaleDraftBuilder
                 originalAmount: $input->sellAmount,
                 exchangeRate: $input->exchangeRate,
                 transactionType: 'INCOME',
+                // R-CT1: the agent dimension the removed net-margin leg carried is preserved
+                // here rather than dropped — it is the same economic party, on the same
+                // document, and every agent-basis report keyed on it keeps working. Null for a
+                // genuine principal-basis input, which never carries an agentId.
+                partyAccountRef: $input->agentId,
                 description: $input->revenueDescription,
                 serviceType: $revenueServiceType,
                 invoiceId: $input->invoiceId,
                 invoiceDetailId: $input->invoiceDetailId,
                 taskId: $input->taskId,
                 ledgerType: 'income',
+                partyName: $input->agentName,
             ),
         ];
 
-        // Cost-of-sales pair — OMITTED when cost isn't known/incurred yet (<=0), matching
-        // PostingService's own amount > 0 rule rather than rejecting a sale with no cost figure
-        // yet. See class docblock.
+        // Cost-of-sales pair — OMITTED TOGETHER when cost isn't known/incurred yet (<= tolerance),
+        // matching PostingService's own amount > 0 rule rather than rejecting a sale that has no
+        // supplier cost figure. CT-A3 E1 / CT-F34: this is the guard whose absence on the old
+        // agent branch refused 31 live documents outright.
         if ($input->costAmount > $tolerance) {
             $lines[] = new LineDraft(
                 purposeCode: $costPurposeCode,

@@ -74,6 +74,10 @@ class E1ZeroCostSalePostsTest extends AccountingTestCase
             'SERVICE_PAYABLE',
             array_map(fn ($l) => $l->purposeCode, $lines)
         );
+        $this->assertNotContains(
+            'SERVICE_COST',
+            array_map(fn ($l) => $l->purposeCode, $lines)
+        );
 
         $this->assertSame('debit', $lines[0]->side);
         $this->assertEqualsWithDelta(30.0, $lines[0]->amount, 0.0005);
@@ -82,22 +86,23 @@ class E1ZeroCostSalePostsTest extends AccountingTestCase
             30.0,
             $lines[1]->amount,
             0.0005,
-            'With no cost leg, margin = sell − 0 = sell, so the revenue leg carries the full sell '
-            .'and the two-line document balances by construction.'
+            'With no cost pair, the gross revenue leg carries the full sell and the two-line '
+            .'document balances by construction.'
         );
     }
 
-    public function test_agent_basis_still_posts_the_payable_leg_when_a_real_cost_exists(): void
+    public function test_agent_basis_still_posts_the_cost_pair_when_a_real_cost_exists(): void
     {
         $lines = (new SaleDraftBuilder)->buildLines($this->agentInput(130.0, 100.0));
 
-        $this->assertCount(3, $lines, 'The ordinary agent-basis shape is UNCHANGED by E1.');
+        $this->assertCount(4, $lines, 'Owner ruling R-CT1: gross — 4 lines whenever a real cost exists.');
         $this->assertSame(
-            ['RECEIVABLE_CONTROL', 'SERVICE_PAYABLE', 'SERVICE_REVENUE'],
+            ['RECEIVABLE_CONTROL', 'SERVICE_REVENUE', 'SERVICE_COST', 'SERVICE_PAYABLE'],
             array_map(fn ($l) => $l->purposeCode, $lines)
         );
-        $this->assertEqualsWithDelta(100.0, $lines[1]->amount, 0.0005);
-        $this->assertEqualsWithDelta(30.0, $lines[2]->amount, 0.0005);
+        $this->assertEqualsWithDelta(130.0, $lines[1]->amount, 0.0005);
+        $this->assertEqualsWithDelta(100.0, $lines[2]->amount, 0.0005);
+        $this->assertEqualsWithDelta(100.0, $lines[3]->amount, 0.0005);
     }
 
     public function test_a_cost_below_tolerance_is_treated_as_no_cost(): void

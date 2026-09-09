@@ -176,7 +176,10 @@ class ChatControllerPostingTest extends AccountingTestCase
     }
 
     /**
-     * (2) ON: one balanced 3-line INV document — the R2.2a case now nets to zero.
+     * OWNER RULING R-CT1, 2026-09-09 — gross basis. Was: asserted a balanced 3-line NET document
+     * (Dr receivable 130 / Cr payable 100 / Cr margin 30). Now: the same economics post the
+     * 4-line GROSS document (Dr receivable 130 / Cr revenue 130 / Dr cost 100 / Cr payable 100),
+     * which also nets to zero — the R2.2a case is still fixed, just via the gross shape.
      */
     public function test_whatsapp_invoice_is_balanced(): void
     {
@@ -184,7 +187,7 @@ class ChatControllerPostingTest extends AccountingTestCase
 
         $company = Company::factory()->create();
         CoaSeeder::run($company->id);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         $this->trackCompanyForInvariants($company->id);
         Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
 
@@ -230,76 +233,75 @@ class ChatControllerPostingTest extends AccountingTestCase
 
         $this->assertSame(1, DB::table('transactions')->where('company_id', $company->id)->count());
         $this->assertSame(
-            3,
+            4,
             DB::table('journal_entries')->where('company_id', $company->id)->count(),
-            'W3d: with the real seeders now mapping SERVICE_REVENUE(flight) (the margin leg\'s '.
-            'purpose code as of w3d-brief.md decision 3 — was MARKUP_INCOME before this lane), a '.
-            'positive markup posts all 3 lines — receivable, payable, and margin.'
+            'R-CT1: gross basis posts receivable / revenue(full sell) / cost-of-sales / payable — '.
+            '4 lines, not the superseded 3-line net-margin shape.'
         );
 
         $lines = DB::table('journal_entries')->where('company_id', $company->id)->get();
-        $this->assertEqualsWithDelta(130.000, (float) $lines->sum('debit'), 0.0005);
-        $this->assertEqualsWithDelta(130.000, (float) $lines->sum('credit'), 0.0005);
+        $this->assertEqualsWithDelta(230.000, (float) $lines->sum('debit'), 0.0005, 'receivable(130) + cost(100).');
+        $this->assertEqualsWithDelta(230.000, (float) $lines->sum('credit'), 0.0005, 'revenue(130) + payable(100).');
 
         $receivableLine = $lines->firstWhere('type', 'receivable');
         $payableLine = $lines->firstWhere('type', 'payable');
-        $marginLine = $lines->firstWhere('type', 'income');
+        $revenueLine = $lines->firstWhere('type', 'income');
+        $costLine = $lines->firstWhere('type', 'expense');
 
         $this->assertNotNull($receivableLine);
         $this->assertNotNull($payableLine);
-        $this->assertNotNull($marginLine);
+        $this->assertNotNull($revenueLine);
+        $this->assertNotNull($costLine);
         $this->assertEqualsWithDelta(130.000, (float) $receivableLine->debit, 0.0005);
         $this->assertEqualsWithDelta(100.000, (float) $payableLine->credit, 0.0005);
-        $this->assertEqualsWithDelta(30.000, (float) $marginLine->credit, 0.0005);
+        $this->assertEqualsWithDelta(130.000, (float) $revenueLine->credit, 0.0005, 'R-CT1: SERVICE_REVENUE holds the FULL sell price, never the margin.');
+        $this->assertEqualsWithDelta(100.000, (float) $costLine->debit, 0.0005, 'R-CT1: SERVICE_COST holds the full supplier cost as a debit.');
 
-        // W3d proof: the margin line resolves to the dedicated per-service 'Flight Booking
+        // W3d proof: the revenue line resolves to the dedicated per-service 'Flight Booking
         // Revenue' (4110) leaf via SERVICE_REVENUE(flight) — NOT 'Markup Income' (4132), which
         // w3d-brief.md decision 3 reserves for a distinct, not-yet-modeled event (an explicit
         // markup on top of a fare the invoice already separates from cost).
-        $marginAccount = Account::withoutGlobalScopes()->find($marginLine->account_id);
-        $this->assertSame('4110', $marginAccount->code);
-        $this->assertSame('Flight Booking Revenue', $marginAccount->name);
+        $revenueAccount = Account::withoutGlobalScopes()->find($revenueLine->account_id);
+        $this->assertSame('4110', $revenueAccount->code);
+        $this->assertSame('Flight Booking Revenue', $revenueAccount->name);
 
         $markupIncomeId = DB::table('system_accounts')
             ->where('company_id', $company->id)
             ->where('purpose_code', 'MARKUP_INCOME')
             ->value('account_id');
-        $this->assertNotEquals($markupIncomeId, $marginAccount->id, 'The margin must never resolve to the MARKUP_INCOME (4132) leaf.');
+        $this->assertNotEquals($markupIncomeId, $revenueAccount->id, 'The revenue leg must never resolve to the MARKUP_INCOME (4132) leaf.');
 
         $this->assertSame(
             'income',
-            $marginLine->type,
-            "Positive markup must persist type='income' — matches AccountingController's ".
+            $revenueLine->type,
+            "The gross revenue leg must persist type='income' — matches AccountingController's ".
             "whereIn('type', ['receivable','income']) screen filter."
         );
     }
 
     /**
-     * Task B (W1.2): a NEGATIVE markup (sold below cost) still uses the margin account — the sign
-     * is carried by the DEBIT side, not by switching to a different ledger `type` label. Before
-     * this fix the debit leg persisted `type='expense'`, which matches neither of
-     * AccountingController's screen filters (`whereIn('type', ['payable','expenses'])` — plural
-     * "expenses", line 535/906 — nor `whereIn('type', ['receivable','income'])`, line 721), so
-     * every below-cost sale was invisible on both accounting screens even though it posted a
-     * perfectly balanced document. W3d: the margin leg's purpose code moved from MARKUP_INCOME to
-     * SERVICE_REVENUE(flight) (w3d-brief.md decision 3) — this test now resolves to the dedicated
-     * per-service 'Flight Booking Revenue' (4110) leaf, not 'Markup Income' (4132) — and still
-     * proves the 3-line balanced document, not just the persisted `type` column.
+     * OWNER RULING R-CT1, 2026-09-09 — gross basis. Was: a below-cost sale flipped the single
+     * margin leg to the DEBIT side for abs(margin), while still persisting `type='income'`
+     * (never `'expense'`), on a 3-line document. Now: there is no sign-aware margin leg at all —
+     * revenue posts as a CREDIT of the full sell price (still `type='income'`) and cost posts
+     * independently as a DEBIT of the full cost (`type='expense'`), on a 4-line document. A sale
+     * below cost simply shows revenue < cost; neither leg ever changes side or label based on the
+     * sign of the difference.
      */
-    public function test_on_path_negative_markup_persists_income_type_not_expense(): void
+    public function test_on_path_below_cost_sale_keeps_revenue_income_and_cost_expense_types(): void
     {
         config(['accounting.engine.enabled' => true]);
 
         $company = Company::factory()->create();
         CoaSeeder::run($company->id);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         $this->trackCompanyForInvariants($company->id);
         Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
 
         [, $branch, $agent, $client, $supplier, $invoice] = $this->makeChatFixtures($company);
 
         $task = $this->makeTask($company, $agent, $client, $supplier, total: 100.000, type: 'flight');
-        $invprice = 70.000; // negative markup: sold below cost
+        $invprice = 70.000; // sold below cost: sell 70 < cost 100
         $invoiceDetail = $this->makeInvoiceDetail($invoice, $task, $invprice, 100.000);
         $taskPayload = $this->taskPayload($task, $invprice);
 
@@ -329,26 +331,40 @@ class ChatControllerPostingTest extends AccountingTestCase
             0.0,
             (float) $result->transaction->total_debit - (float) $result->transaction->total_credit,
             0.0005,
-            'Below-cost sale must still balance: Dr receivable + Dr markup(abs) = Cr payable.'
+            'Below-cost sale must still balance: Dr receivable(70) + Dr cost(100) = Cr revenue(70) + Cr payable(100).'
         );
 
-        $this->assertSame(3, DB::table('journal_entries')->where('company_id', $company->id)->count());
+        $this->assertSame(
+            4,
+            DB::table('journal_entries')->where('company_id', $company->id)->count(),
+            'R-CT1: gross basis posts all 4 lines even below cost — revenue and cost are independent, not a single sign-aware leg.'
+        );
 
         $lines = DB::table('journal_entries')->where('company_id', $company->id)->get();
-        $markupLine = $lines->firstWhere('type', 'income');
+        $revenueLine = $lines->firstWhere('type', 'income');
+        $costLine = $lines->firstWhere('type', 'expense');
 
-        $this->assertNotNull($markupLine);
-        $this->assertEqualsWithDelta(30.000, (float) $markupLine->debit, 0.0005);
+        $this->assertNotNull($revenueLine);
+        $this->assertNotNull($costLine);
+        $this->assertEqualsWithDelta(70.000, (float) $revenueLine->credit, 0.0005, 'Revenue is always a CREDIT of the full sell price, even below cost.');
+        $this->assertEqualsWithDelta(0.0, (float) $revenueLine->debit, 0.0005);
+        $this->assertEqualsWithDelta(100.000, (float) $costLine->debit, 0.0005, 'Cost is always a DEBIT of the full supplier cost.');
+        $this->assertEqualsWithDelta(0.0, (float) $costLine->credit, 0.0005);
 
-        $markupAccount = Account::withoutGlobalScopes()->find($markupLine->account_id);
-        $this->assertSame('4110', $markupAccount->code, 'W3d: the margin leg resolves to SERVICE_REVENUE(flight) — "Flight Booking Revenue" (4110) — not MARKUP_INCOME (4132).');
+        $revenueAccount = Account::withoutGlobalScopes()->find($revenueLine->account_id);
+        $this->assertSame('4110', $revenueAccount->code, 'The revenue leg resolves to SERVICE_REVENUE(flight) — "Flight Booking Revenue" (4110) — not MARKUP_INCOME (4132).');
 
         $this->assertSame(
             'income',
-            $markupLine->type,
-            "Negative markup must ALSO persist type='income' (a contra-income debit, sign carried ".
-            "by 'debit' vs 'credit', not by the type label) — 'expense' matched neither ".
-            "AccountingController screen filter and made every below-cost sale invisible."
+            $revenueLine->type,
+            "The revenue leg must persist type='income' even below cost — it never flips to a debit ".
+            "or to 'expense'; the loss surfaces through the independent SERVICE_COST debit instead."
+        );
+        $this->assertSame(
+            'expense',
+            $costLine->type,
+            "The cost leg persists type='expense' — matches AccountingController's ".
+            "whereIn('type', ['payable','expenses']) screen filter family."
         );
     }
 
@@ -357,6 +373,9 @@ class ChatControllerPostingTest extends AccountingTestCase
      * this exact posting step after a transient failure): the idempotency key is derived solely
      * from invoiceDetail->id, so the second call must return the SAME PostedDocument and must not
      * write a second transaction/journal-entry set.
+     *
+     * OWNER RULING R-CT1, 2026-09-09 — gross basis. Was: asserted 3 journal_entries rows (the net
+     * shape). Now: 4 rows (receivable / revenue / cost / payable) since cost(100) > tolerance.
      */
     public function test_on_path_posted_twice_for_the_same_invoice_detail_does_not_double_post(): void
     {
@@ -364,7 +383,7 @@ class ChatControllerPostingTest extends AccountingTestCase
 
         $company = Company::factory()->create();
         CoaSeeder::run($company->id);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         $this->trackCompanyForInvariants($company->id);
         Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
 
@@ -402,7 +421,7 @@ class ChatControllerPostingTest extends AccountingTestCase
 
         $this->assertSame($result1->transaction->id, $result2->transaction->id, 'A retry with the same invoiceDetail must return the SAME posted transaction.');
         $this->assertSame(1, DB::table('transactions')->where('company_id', $company->id)->count());
-        $this->assertSame(3, DB::table('journal_entries')->where('company_id', $company->id)->count());
+        $this->assertSame(4, DB::table('journal_entries')->where('company_id', $company->id)->count(), 'R-CT1: gross basis (receivable/revenue/cost/payable), not the superseded 3-line net shape.');
     }
 
     /**
@@ -821,31 +840,28 @@ class ChatControllerPostingTest extends AccountingTestCase
     }
 
     /**
-     * (7) W1.1 fix, C2 — REAL seeders (CoaSeeder + SystemAccountsSeeder, per this build's
-     * SEEDERS-IN-TESTS rule — never a hand-inserted system_accounts row), ZERO markup: the
-     * receivable/payable legs already balance on their own when the agent sells exactly at cost,
-     * so the MARKUP_INCOME leg must be OMITTED entirely rather than rejected by PostingService's
-     * own `amount > 0` rule. Proven WITHOUT MARKUP_INCOME needing to resolve to anything: a
-     * zero-markup line never reaches PostingService's account resolver at all (the `amount > 0`
-     * guard in the feeder omits the whole line before that), independent of whether MARKUP_INCOME
-     * is mapped on this company's chart (it is, as of W1.3 — see
-     * test_whatsapp_invoice_is_balanced() and test_on_path_negative_markup_persists_income_type_
-     * not_expense() above for the nonzero positive/negative cases that DO exercise that mapping).
+     * OWNER RULING R-CT1, 2026-09-09 — gross basis. Was: "ZERO markup: the receivable/payable legs
+     * already balance on their own when the agent sells exactly at cost, so the margin leg must be
+     * OMITTED entirely" — asserted a 2-line document (receivable + payable only). Now: there is no
+     * markup/margin line to omit any more. Revenue and cost post independently of each other and
+     * of the sell/cost comparison — the ONLY omission rule left is `costAmount <= tolerance`
+     * (cost not yet known), which does not apply here (cost = 100.000). A sale at exactly cost
+     * still posts all 4 lines, with revenue == cost == sell.
      */
-    public function test_on_path_zero_markup_with_real_seeders_omits_markup_line(): void
+    public function test_on_path_sale_at_cost_still_posts_all_four_gross_lines(): void
     {
         config(['accounting.engine.enabled' => true]);
 
         $company = Company::factory()->create();
         CoaSeeder::run($company->id);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         $this->trackCompanyForInvariants($company->id);
         Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
 
         [, $branch, $agent, $client, $supplier, $invoice] = $this->makeChatFixtures($company);
 
         $task = $this->makeTask($company, $agent, $client, $supplier, total: 100.000, type: 'flight');
-        $invprice = 100.000; // exactly at cost: markup == 0
+        $invprice = 100.000; // sold exactly at cost: sell == cost
         $invoiceDetail = $this->makeInvoiceDetail($invoice, $task, $invprice, 100.000);
         $taskPayload = $this->taskPayload($task, $invprice);
 
@@ -872,9 +888,17 @@ class ChatControllerPostingTest extends AccountingTestCase
         $this->assertInstanceOf(\App\Services\Accounting\PostedDocument::class, $result);
 
         $lines = DB::table('journal_entries')->where('company_id', $company->id)->get();
-        $this->assertCount(2, $lines, 'Zero markup: only receivable + payable — the MARKUP_INCOME leg is omitted before account resolution ever runs.');
-        $this->assertEqualsWithDelta(100.000, (float) $lines->sum('debit'), 0.0005);
-        $this->assertEqualsWithDelta(100.000, (float) $lines->sum('credit'), 0.0005);
+        $this->assertCount(4, $lines, 'R-CT1: sell == cost still posts the full gross shape (receivable/revenue/cost/payable) — there is no margin line left to omit.');
+
+        $revenueLine = $lines->firstWhere('type', 'income');
+        $costLine = $lines->firstWhere('type', 'expense');
+        $this->assertNotNull($revenueLine);
+        $this->assertNotNull($costLine);
+        $this->assertEqualsWithDelta(100.000, (float) $revenueLine->credit, 0.0005, 'Revenue equals the full sell (100), not a zero margin.');
+        $this->assertEqualsWithDelta(100.000, (float) $costLine->debit, 0.0005, 'Cost equals the full supplier cost (100).');
+
+        $this->assertEqualsWithDelta(200.000, (float) $lines->sum('debit'), 0.0005, 'receivable(100) + cost(100).');
+        $this->assertEqualsWithDelta(200.000, (float) $lines->sum('credit'), 0.0005, 'revenue(100) + payable(100).');
     }
 
     /**
@@ -883,8 +907,13 @@ class ChatControllerPostingTest extends AccountingTestCase
      * its own 'invoiceDetail_id' array key is a dead-lettered typo against JournalEntry's real
      * `invoice_detail_id` fillable name (silently dropped by mass assignment — always NULL), and
      * legacy never writes task_id at all. The ON path (LineDraft's W1.1 attribution fields) closes
-     * both gaps. Uses the REAL seeders and a zero-markup task (C2's OMIT branch) purely to keep
-     * this test's own point (line attribution) independent of the markup amount.
+     * both gaps. Uses the REAL seeders and a sale at exactly cost purely to keep this test's own
+     * point (line attribution) independent of the sell/cost amounts.
+     *
+     * OWNER RULING R-CT1, 2026-09-09 — gross basis. Was: at-cost sale posted only 2 ON-path lines
+     * (receivable + payable), the margin leg omitted. Now: at-cost still posts all 4 gross lines
+     * (revenue == cost == sell) — this test's own attribution assertions are on the receivable/
+     * payable legs, unaffected by the extra 2 lines, so only the total ON-path line count changes.
      */
     public function test_on_path_line_attribution_closes_the_off_path_gaps(): void
     {
@@ -930,14 +959,14 @@ class ChatControllerPostingTest extends AccountingTestCase
 
         $company = Company::factory()->create();
         CoaSeeder::run($company->id);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         $this->trackCompanyForInvariants($company->id);
         Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
 
         [, $branch, $agent, $client, $supplier, $invoice] = $this->makeChatFixtures($company);
 
         $task = $this->makeTask($company, $agent, $client, $supplier, total: 100.000, type: 'flight');
-        $invprice = 100.000; // zero markup — keeps this test's own point (line attribution) independent of the markup amount
+        $invprice = 100.000; // sold exactly at cost — keeps this test's own point (line attribution) independent of the sell/cost amounts
         $invoiceDetail = $this->makeInvoiceDetail($invoice, $task, $invprice, 100.000);
         $taskPayload = $this->taskPayload($task, $invprice);
 
@@ -964,7 +993,7 @@ class ChatControllerPostingTest extends AccountingTestCase
         $this->assertInstanceOf(\App\Services\Accounting\PostedDocument::class, $result);
 
         $onLines = DB::table('journal_entries')->where('company_id', $company->id)->get();
-        $this->assertCount(2, $onLines);
+        $this->assertCount(4, $onLines, 'R-CT1: gross basis posts all 4 lines even at cost (receivable/revenue/cost/payable).');
 
         // Paired by 'type' (not type_reference_id): client and supplier ids are independent
         // auto-increment counters and can coincidentally collide across their own tables.

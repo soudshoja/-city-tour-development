@@ -469,9 +469,27 @@ class EnsureSystemLeaves extends Command
         ],
         // CT-A3 E5 (CT-F37) — the ONE cost-of-sales control leaf an unmapped per-service
         // SERVICE_COST/{type} falls back to. CORE: 'Direct Expenses (Cost of Sales)' is on every
-        // CoaSeeder chart, old or new, same reasoning as 'Cash Over/Short' (5127) above. The
-        // PAYABLE side of the same fallback needs no entry here: PAYABLE_CONTROL is already a
-        // seeded, mapped purpose on every chart.
+        // CoaSeeder chart, old or new, same reasoning as 'Cash Over/Short' (5127) above.
+        //
+        // CORRECTION, CT-A4 (2026-09-09): this comment used to end "The PAYABLE side of the same
+        // fallback needs no entry here: PAYABLE_CONTROL is already a seeded, mapped purpose on
+        // every chart." That is true of a CoaSeeder-FRESH chart and false of every chart that has
+        // been used. SystemAccountsSeeder maps PAYABLE_CONTROL by name-and-chain onto 'Creditors'
+        // (2110), and mapByChain() skips an account that has children — so the moment anything
+        // mints a child under 2110 (on the City Travelers dev chart: six company payment
+        // instruments, the accounts `tasks.payment_method_account_id` points at) the purpose goes
+        // permanently unmapped, taking every SERVICE_PAYABLE/{type} fallback with it. Measured in
+        // `.planning/phases/citytravelers-accounting-audit/CT-A4-COA-GAP-2026-09-09.md` §2.3/§6
+        // G1: 0 of 12 per-service payable purposes resolved on that chart.
+        //
+        // It still gets no entry in this table, for a different and deliberate reason: the fix is
+        // a leaf that must exist ONLY when the pool has grown children, and every entry here is
+        // minted unconditionally — adding it would turn 'Creditors' into a group on every fresh
+        // chart and move the purpose off an account that may already carry history. So it lives
+        // in `accounting:coa-linkage` ({@see \App\Console\Commands\CoaLinkage::repairControlPools()}),
+        // which mints 'Creditors Control' only in that case, and in
+        // {@see \Database\Seeders\SystemAccountsSeeder::mapControlPoolLeaf()}, which maps the
+        // purpose onto it when present and reports a gap naming the command when not.
         [
             'leafName' => 'Cost of Sales Control',
             'code' => '5129',
@@ -487,6 +505,37 @@ class EnsureSystemLeaves extends Command
             'code' => '5131',
             'parentChain' => ['Direct Expenses (Cost of Sales)', 'Expenses'],
             'purposeCode' => 'SUPPLIER_REFUND_LOSS',
+            'core' => true,
+        ],
+        // CT-A4 — the three W4.R refund leaves. CoaSeeder seeds all three for a FRESH company
+        // (codes 4136 / 5124 / 5125, with their own comments there), and SystemAccountsSeeder
+        // already maps all three by name — but nothing ever backfilled them for an EXISTING
+        // company, so on the City Travelers dev chart all three purposes were simply absent.
+        // Measured by the first `accounting:coa-linkage --apply` run against a faithful copy of
+        // that chart: after every other repair, 94 of 98 purposes resolved and the residual
+        // BLOCKING three were exactly these — enough to refuse every refund document wave 2's
+        // RefundPostingService produces. CORE for the same reason as 'Cash Over/Short' (5127) and
+        // 'Cost of Sales Control' (5129) above: both parent chains are on every CoaSeeder chart,
+        // old or new.
+        [
+            'leafName' => 'Penalty Pass-Through Recovery',
+            'code' => '4136',
+            'parentChain' => ['Commission & Service Fee Income', 'Direct Income', 'Income'],
+            'purposeCode' => 'PENALTY_PASSTHROUGH_RECOVERY',
+            'core' => true,
+        ],
+        [
+            'leafName' => 'Refund Penalty Cost',
+            'code' => '5124',
+            'parentChain' => ['Direct Expenses (Cost of Sales)', 'Expenses'],
+            'purposeCode' => 'PENALTY_COST_EXPENSE',
+            'core' => true,
+        ],
+        [
+            'leafName' => 'Airline Refund Clawback',
+            'code' => '5125',
+            'parentChain' => ['Direct Expenses (Cost of Sales)', 'Expenses'],
+            'purposeCode' => 'AIRLINE_CLAWBACK_EXPENSE',
             'core' => true,
         ],
     ];

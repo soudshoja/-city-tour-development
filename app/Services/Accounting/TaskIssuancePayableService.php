@@ -161,6 +161,34 @@ final class TaskIssuancePayableService
 
         $isForeign = $taskCurrency !== '' && $taskCurrency !== $base && $originalTotal > 0 && $taskRate > 0;
 
+        // The FX columns must actually agree before they are trusted. PostingService step 3f
+        // asserts `amount (base) ~= originalAmount (FC) x exchangeRate` and REFUSES the document
+        // otherwise. On the City Travelers data that assertion is not safe to assume: the first
+        // server replay of this feeder refused 25 tasks with FcConsistencyException because their
+        // `original_total` is a copy of `total` (already base) while `exchange_rate` carries a real
+        // rate — e.g. amount 368.000, originalAmount 368.000, rate 0.340000, which implies 125.120.
+        // That is CT-F9's corruption (4,553 legacy non-KWD rows stamped at rate 1) seen from the
+        // other side, and it must not cost the agency a payable it genuinely owes. When the triple
+        // does not reconcile within PostingService's OWN tolerance, the line stays honestly
+        // base-currency at rate 1.0 and the inconsistency is logged for CT-A5 rather than silently
+        // "corrected" by inventing a converted figure.
+        if ($isForeign) {
+            $expected = round($originalTotal * $taskRate, 3);
+            $fcTolerance = max(0.01, abs($amount) * 0.01);
+
+            if (abs($amount - $expected) > $fcTolerance) {
+                Log::warning('accounting.supplier_payable.fx_inconsistent', $context + [
+                    'amount' => $amount,
+                    'original_total' => $originalTotal,
+                    'original_currency' => $taskCurrency,
+                    'exchange_rate' => $taskRate,
+                    'implied_base' => $expected,
+                ]);
+
+                $isForeign = false;
+            }
+        }
+
         $currency = $isForeign ? $taskCurrency : $base;
         $originalAmount = $isForeign ? $originalTotal : $amount;
         $exchangeRate = $isForeign ? $taskRate : 1.0;

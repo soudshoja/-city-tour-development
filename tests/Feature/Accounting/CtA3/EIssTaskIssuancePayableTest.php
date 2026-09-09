@@ -228,6 +228,44 @@ class EIssTaskIssuancePayableTest extends AccountingTestCase
         }
     }
 
+    /**
+     * The 25 refusals the first server replay of this feeder produced. Their `original_total` is a
+     * COPY of `total` (already base) while `exchange_rate` carries a real rate — e.g. amount
+     * 368.000, originalAmount 368.000, rate 0.340000, which implies 125.120 — so
+     * PostingService step 3f's `amount ~= originalAmount x rate` assertion refused the whole
+     * document with FcConsistencyException. That is CT-F9's corruption seen from the other side,
+     * and it must not cost the agency a payable it genuinely owes.
+     */
+    public function test_internally_inconsistent_fx_columns_still_post_in_base_currency(): void
+    {
+        $task = $this->task($this->supplier(), 'issued', total: 368.000);
+        $task->original_currency = 'USD';
+        $task->original_total = 368.000;   // a copy of `total`, NOT a foreign amount
+        $task->exchange_rate = 0.340000;   // ... yet a real rate: 368 x 0.34 = 125.120
+        $task->save();
+
+        $posted = app(TaskIssuancePayableService::class)->postIfDue($task);
+
+        $this->assertInstanceOf(
+            PostedDocument::class,
+            $posted,
+            'A task whose own FX columns disagree must still accrue its payable, not be refused.'
+        );
+
+        $base = strtoupper((string) config('accounting.engine.base_currency'));
+
+        foreach (DB::table('journal_entries')->where('transaction_id', $posted->transaction->id)->get() as $line) {
+            $this->assertSame(
+                $base,
+                strtoupper((string) $line->currency),
+                'An unreconcilable triple is not "corrected" by inventing a converted figure — the '
+                .'line stays honestly base-currency and the inconsistency is logged for CT-A5.'
+            );
+            $this->assertEqualsWithDelta(1.0, (float) $line->exchange_rate, 0.000001);
+            $this->assertEqualsWithDelta(368.0, (float) $line->original_amount, 0.0005);
+        }
+    }
+
     public function test_a_task_with_no_usable_fx_pair_posts_cleanly_in_base_currency(): void
     {
         $task = $this->task($this->supplier(), 'issued', total: 100.000);

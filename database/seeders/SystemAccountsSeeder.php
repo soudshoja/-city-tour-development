@@ -405,6 +405,12 @@ class SystemAccountsSeeder extends Seeder
         // 5124) is unique in the seed COA, same bare-name resolution as SALARY_EXPENSE above.
         $this->mapByName($companyId, $companyLabel, 'PENALTY_COST_EXPENSE', null, 'Refund Penalty Cost');
 
+        // CT-A3 wave 2 (W2-3, CT-F11): the cost of a refunded booking the supplier is NOT giving
+        // back. Mapped by NAME, like its sibling 'Refund Penalty Cost' just above - both are
+        // unique leaves under Direct Expenses (Cost of Sales) with no name collision anywhere on
+        // the chart.
+        $this->mapByName($companyId, $companyLabel, 'SUPPLIER_REFUND_LOSS', null, 'Supplier Refund Loss');
+
         // W4.R (w4-brief.md §4e, target-spec.md §B three-event clawback model, step (a)):
         // RefundPostingService's unconditional clawback feeder. 'Airline Refund Clawback'
         // (CoaSeeder code 5125) is unique in the seed COA, same bare-name resolution as

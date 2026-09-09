@@ -121,7 +121,15 @@ final class TaskIssuancePayableService
         ]);
 
         if ($decision->shouldReverse) {
-            $this->reverseForTask($task);
+            // CT-A3 wave 2 (W2-3). A VOID / CANCELLED / EXPIRED task never happened, so its
+            // accrual comes straight off. A REFUNDED task did happen, and whether the supplier
+            // gives the money back is R-CT3's question, not an assumption -- see
+            // {@see self::settleAccrualOnRefund()}.
+            if ($this->isRefundStatus($decision->status)) {
+                $this->settleAccrualOnRefund($task, $context);
+            } else {
+                $this->reverseForTask($task);
+            }
 
             return null;
         }
@@ -257,6 +265,144 @@ final class TaskIssuancePayableService
         ]);
 
         return $posted;
+    }
+
+    /**
+     * CT-A3 wave 2 (W2-3) -- the refund half of a reversing status, under owner ruling R-CT3.
+     *
+     * An uninvoiced task's supplier cost sits in `1430 Unbilled Supplier Cost` against a
+     * `SERVICE_PAYABLE` credit ({@see self::postIfDue()}). When that task is refunded there are
+     * two genuinely different outcomes, and before wave 2 the feeder assumed the first one always:
+     *
+     *   - **The supplier refunds.** The agency no longer owes it and no longer holds the asset:
+     *     the accrual is REVERSED, Dr payable / Cr 1430, as a dated REV document.
+     *   - **The supplier does not refund** (its configured `refund_trigger` says so, it is on
+     *     `refund_hold`, or the task has only been *asked* for a refund and not confirmed one).
+     *     The agency still owes the supplier -- so the payable STAYS -- but the 1430 balance is no
+     *     longer an asset, because there is no longer a sale it will ever be billed against. It is
+     *     a loss. Reclassified onto `5126 Supplier Refund Loss` by its own document, keyed
+     *     `task:{id}:refund-loss`, so a later confirmation can still reverse the accrual normally
+     *     and the loss line is visible instead of the cost quietly staying an asset forever.
+     *
+     * This is the uninvoiced mirror of what {@see RefundPostingService::postSupplierCreditForDetail()}
+     * does for an invoiced one -- {@see RefundPostingService} refuses a detail with no
+     * `invoice_detail` at all, so without this an uninvoiced refunded task had no path.
+     */
+    private function settleAccrualOnRefund(Task $task, array $context): void
+    {
+        $companyId = (int) $task->company_id;
+        $supplier = $task->supplier_id ? Supplier::find($task->supplier_id) : null;
+        $detail = \App\Models\RefundDetail::where('task_id', $task->id)->orderByDesc('id')->first();
+
+        $decision = app(SupplierRefundRule::class)->decide($task, $supplier, $detail);
+
+        Log::info('accounting.supplier_refund.decided', array_merge($decision->toLogContext(), [
+            'task_id' => $task->id,
+            'company_id' => $companyId,
+            'supplier_id' => $supplier?->id,
+            'source' => 'task_issuance_accrual',
+        ]));
+
+        if ($decision->shouldRecover) {
+            $this->reverseForTask($task);
+
+            return;
+        }
+
+        $existing = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where('idempotency_key', self::idempotencyKeyFor((int) $task->id))
+            ->where('posting_status', 'posted')
+            ->first();
+
+        if ($existing === null) {
+            // Nothing was ever accrued for this task, so there is no asset to reclassify.
+            Log::debug('accounting.supplier_refund.no_accrual_to_settle', $context);
+
+            return;
+        }
+
+        $amount = round($decision->nonRecoverableAmount, 3);
+
+        if ($amount <= (float) config('accounting.engine.balance_tolerance', 0.0005)) {
+            return;
+        }
+
+        $narration = 'Unrecovered supplier cost on refunded task: '.$task->reference;
+
+        $draft = new DocumentDraft(
+            companyId: $companyId,
+            branchId: (int) ($task->agent?->branch_id ?? 0),
+            docType: 'JV',
+            subType: 'REFUND_LOSS',
+            docDate: Carbon::now(),
+            narration: $narration,
+            lines: [
+                new LineDraft(
+                    purposeCode: 'SUPPLIER_REFUND_LOSS',
+                    accountId: null,
+                    side: 'debit',
+                    amount: $amount,
+                    currency: (string) config('accounting.engine.base_currency'),
+                    originalAmount: $amount,
+                    exchangeRate: 1.0,
+                    transactionType: 'REFUND_SUPPLIER_UNRECOVERED',
+                    partyAccountRef: $supplier?->id,
+                    description: $narration.' ('.$decision->reason.')',
+                    taskId: $task->id,
+                    ledgerType: 'expense',
+                    partyName: $supplier?->name,
+                ),
+                new LineDraft(
+                    purposeCode: 'UNBILLED_SUPPLIER_COST',
+                    accountId: null,
+                    side: 'credit',
+                    amount: $amount,
+                    currency: (string) config('accounting.engine.base_currency'),
+                    originalAmount: $amount,
+                    exchangeRate: 1.0,
+                    transactionType: 'UNBILLED_SUPPLIER_COST',
+                    partyAccountRef: $supplier?->id,
+                    description: $narration,
+                    taskId: $task->id,
+                    ledgerType: 'asset',
+                    partyName: $supplier?->name,
+                ),
+            ],
+            idempotencyKey: 'task:'.$task->id.':refund-loss',
+            sourceType: 'Refund',
+            sourceId: $task->id,
+            userId: Auth::id(),
+        );
+
+        $posted = $this->posting->post($draft);
+
+        Log::info('accounting.supplier_refund.loss_posted', array_merge($decision->toLogContext(), [
+            'task_id' => $task->id,
+            'company_id' => $companyId,
+            'transaction_id' => $posted->transaction->id,
+            'amount' => $amount,
+        ]));
+    }
+
+    /**
+     * Is this reversing status a REFUND (the supplier may or may not give the money back), as
+     * opposed to a void/cancellation (nothing happened, the accrual simply comes off)? Read from
+     * `config('accounting.supplier_refund.triggers')` -- the union of every status any trigger
+     * treats as a refund state -- so the two blocks cannot drift apart.
+     */
+    private function isRefundStatus(string $status): bool
+    {
+        $all = [];
+
+        foreach ((array) config('accounting.supplier_refund.triggers', []) as $statuses) {
+            foreach ((array) $statuses as $s) {
+                $all[] = strtolower(trim((string) $s));
+            }
+        }
+
+        return in_array(strtolower(trim($status)), $all, true);
     }
 
     /**

@@ -362,6 +362,13 @@ class CoaSeeder extends Seeder
             // PostingService's own resolved-gap #9 and InvoiceController::
             // postAgentLossRecoveryHook()'s docblock). See SystemAccountsSeeder's
             // mapByCode('CASH_OVER_SHORT', ..., '5127', ...) mapping.
+            // CT-A3 wave 2 (W2-3, CT-F11) - the SUPPLIER_REFUND_LOSS purpose code's target leaf.
+            // When a booking is refunded to the client but the supplier does NOT give the cost
+            // back, that cost is no longer the cost OF A SALE (the sale has been reversed) - it is
+            // a loss on a refunded booking, and it belongs on its own line where the owner can see
+            // it, not buried in COGS and not silently erased as the pre-wave-2 refund feeder did.
+            // CODE 5126: the one free code left in the 5122-5129 run under this parent.
+            ['code' => '5126', 'name' => 'Supplier Refund Loss', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5127', 'name' => 'Cash Over/Short', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             // W6.C (w6-brief.md "W6.C — Supplier-side charges"; supplier-charges-design.md Table
             // 4): the agent-basis cost leg of a supplier-charge-rule fee (SUPPLIER_CHARGE_EXPENSE

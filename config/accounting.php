@@ -582,6 +582,11 @@ return [
             // UnmappedPurposeException on an unmapped service type, exactly as before this fix,
             // until an operator maps it via the Purpose Mapping screen.
             'COST_OF_SALES_CONTROL',
+            // CT-A3 wave 2 (W2-3, CT-F11): the cost of a refunded booking that the supplier is
+            // NOT giving back. Resolves to leaf 5126 'Supplier Refund Loss' under Direct Expenses
+            // (Cost of Sales). Global, not per_service: a refund the agency ate is one number the
+            // owner wants to see whole, not thirteen scattered across service types.
+            'SUPPLIER_REFUND_LOSS',
         ],
 
         'gateways' => [
@@ -1318,6 +1323,48 @@ return [
             // Each use is logged as accounting.receipt.instrument.fallback_used so the payment
             // methods still missing an account are findable rather than invisible.
             'fallback_purpose' => 'CASH_IN_HAND',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Supplier refunds (CT-A3 wave 2, W2-3) - R-CT3, the recovery direction
+    |--------------------------------------------------------------------------
+    |
+    | Wave 1's `supplier_payable` block answers "is this cost a guaranteed liability yet?".
+    | This one answers the mirror question: "is the supplier actually giving the money back?".
+    | Read by App\Services\Accounting\SupplierRefundRule and by nothing else.
+    |
+    | CT-A1 CT-F11 is the finding these defaults exist to close: 319 legacy refund lines
+    | (KWD 57,891.068) credited a COGS leaf while the cost sat in asset 1430, and 367 refunded
+    | tasks never had their revenue reversed at all. The engine's own RefundPostingService
+    | carried the same assumption from the other side - it credited the FULL original cost back
+    | on every refund, so "nobody recorded what the supplier did" read as "the supplier refunded
+    | in full", erasing a cost the agency had genuinely borne.
+    |
+    | Note these defaults deliberately do NOT reproduce the legacy behaviour, unlike wave 1's
+    | `on_issue`. CT-F11 says the legacy behaviour was wrong; reproducing it would preserve the
+    | defect.
+    */
+    'supplier_refund' => [
+
+        // Applied when `suppliers.refund_trigger` is null or unrecognised. The conservative
+        // choice on purpose: a cost leaves the books only once the supplier has actually
+        // confirmed, or an operator has explicitly typed the amount.
+        'default_trigger' => 'on_supplier_refund_confirmed',
+
+        // Each trigger -> the `tasks.status` values at which this supplier's money counts as
+        // recoverable. `tasks.status` is already the normalised output of `supplier_status_maps`
+        // (W6.S), so a supplier's own raw spelling never reaches here.
+        //   refunded - the supplier has confirmed and the money is coming back.
+        //   refund   - we have ASKED; only a supplier with a standing agreement counts that.
+        'triggers' => [
+            'on_supplier_refund_confirmed' => ['refunded'],
+            'on_refund_request' => ['refund', 'refunded'],
+            // Recovery only ever from an explicitly typed refund_details.supplier_refund_amount.
+            'manual' => [],
+            // This supplier does not refund. The cost stays with us, always.
+            'never' => [],
         ],
     ],
 

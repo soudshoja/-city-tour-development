@@ -587,6 +587,23 @@ return [
             // (Cost of Sales). Global, not per_service: a refund the agency ate is one number the
             // owner wants to see whole, not thirteen scattered across service types.
             'SUPPLIER_REFUND_LOSS',
+
+            // CT-A4 finding, fixed in CT-A3 wave 2: the payout leaf a `refund_out` disposition
+            // credits (RefundPostingService::postDisposition(), TaskStatusService::void()/
+            // ::reissue(), ClientController's credit refund-out) has ALWAYS been resolved through
+            // AccountResolver as a bare purpose code -- and was never listed here. Being absent
+            // from this array does not stop AccountResolver finding a hand-inserted
+            // `system_accounts` row (which is why every existing test passes: they insert one),
+            // but it DOES hide the code from the one surface an operator can map it on:
+            // App\Http\Livewire\Accounting\PurposeMappingIndex enumerates exactly this array.
+            // So on any company nobody had hand-mapped, `refund_out` threw UnmappedPurposeException
+            // and there was no way to fix it from the UI.
+            //
+            // Listing it here makes it MAPPABLE; it deliberately does NOT auto-map it. No seeder
+            // mints a leaf for it, by design: which bank or cash account a refund is paid out of is
+            // a company's own choice (RefundPostingService::postDisposition()'s docblock states
+            // exactly that), and guessing one would put real money in an account nobody chose.
+            'REFUND_PAYOUT_CASH_BANK',
         ],
 
         'gateways' => [

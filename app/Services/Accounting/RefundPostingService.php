@@ -215,9 +215,16 @@ final class RefundPostingService
         $invoiceDetail = $task?->invoiceDetail;
 
         if ($invoiceDetail === null) {
-            throw new \RuntimeException(
-                "RefundPostingService::postCrnForDetail(): refund_detail #{$detail->id} (task #{$detail->task_id}) "
-                .'has no invoice_detail — cannot locate the original sale to reverse.'
+            // CT-A3 wave 2 (W2-3): a NAMED refusal, not a bare RuntimeException.
+            // `accounting:replay` groups refusals by exception class, and on the City Travelers
+            // data 26 of the 33 refunds land here -- a refund of a task that was never invoiced is
+            // the ORDINARY shape on that population (CT-A1 §0: 63% of issued tasks are
+            // uninvoiced), not an error. Collapsing them into a bucket labelled `RuntimeException`
+            // told an operator nothing. See the exception's own docblock for which path DOES carry
+            // an uninvoiced task's refund.
+            throw new \App\Exceptions\Accounting\RefundWithoutInvoiceDetailException(
+                (int) $detail->id,
+                $detail->task_id !== null ? (int) $detail->task_id : null
             );
         }
 

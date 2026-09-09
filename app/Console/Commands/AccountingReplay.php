@@ -81,9 +81,17 @@ class AccountingReplay extends Command
      * Travelers scratch database: issuance-first posts 9,033 accruals worth KWD 1,378,062.288,
      * sale-first posts 5,676 worth 897,356.597 -- the same figure CT-A3 wave 1 recorded.
      *
-     * `refund` LAST: it reverses the sale and the commission, so both must exist first.
+     * `refund` before `reassign`, and both after `sale`. A refund reverses the sale and the
+     * commission, so both must exist first — but a refund can also LEAVE a retained supplier
+     * payable behind (W2-3: the part the supplier is not giving back), and reassignment's whole job
+     * is to move a payable onto the task's nominated payee account. With `reassign` first, those
+     * retained payables were only picked up on the NEXT run: the second full replay on the City
+     * Travelers scratch database posted 5 reassignments worth KWD 1,007.250 that the first had
+     * nothing to move yet, and only the third run settled at zero. Correct, but it made the
+     * command's own "a second run posts zero" property false — so `reassign` goes last and sees
+     * the final position in one pass.
      */
-    private const CLASS_ORDER = ['sale', 'commission', 'issuance', 'receipt', 'reassign', 'refund'];
+    private const CLASS_ORDER = ['sale', 'commission', 'issuance', 'receipt', 'refund', 'reassign'];
 
     public function handle(): int
     {

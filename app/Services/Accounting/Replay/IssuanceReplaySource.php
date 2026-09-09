@@ -67,6 +67,17 @@ final class IssuanceReplaySource implements ReplaySource
         /** @var Task $row */
         $amount = round((float) ($row->total ?? 0), 3);
 
+        // `postIfDue()` returns a PostedDocument in TWO cases that look identical from here: it
+        // really posted, or PostingService's step-1 idempotency short-circuit handed back the
+        // document that was already there. Without this check a second run reported all 5,676
+        // accruals as freshly POSTED and the "a re-run posts 0" line was a lie about work the
+        // engine had correctly refused to redo.
+        $existing = $this->existingDocument((int) $row->company_id, $this->idempotencyKeyFor($row));
+
+        if ($existing !== null) {
+            return ReplayOutcome::posted($row->id, (int) $existing->id, null, true);
+        }
+
         try {
             $reason = $this->issuance->reasonFor($row);
             $posted = $this->issuance->postIfDue($row);

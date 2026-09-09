@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Accounting\Replay;
 
 use App\Models\Refund;
+use App\Models\Transaction;
 use App\Services\Accounting\RefundPostingService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
@@ -85,10 +86,20 @@ final class RefundReplaySource implements ReplaySource
             return ReplayOutcome::skipped($row->id, 'no_refund_details', $amount);
         }
 
-        $key = $this->idempotencyKeyFor($row);
+        // "Has this refund already been posted?" cannot be asked of ONE key: a refund emits up to
+        // seven documents and not every refund emits every one (a disposition of zero mints
+        // nothing at all). Keying only on `:disposition` reported such a refund as freshly POSTED
+        // on every re-run -- harmless to the ledger, because each sub-document is individually
+        // idempotent, but it made the run report claim work that did not happen. Any document
+        // under this refund's own key prefix means it has been through the composer already.
+        $existing = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where('idempotency_key', 'like', 'refund:'.$row->id.':%')
+            ->first();
 
-        if ($this->alreadyPosted($companyId, $key)) {
-            return ReplayOutcome::posted($row->id, (int) $this->existingDocument($companyId, $key)?->id, null, true);
+        if ($existing !== null) {
+            return ReplayOutcome::posted($row->id, (int) $existing->id, null, true);
         }
 
         try {

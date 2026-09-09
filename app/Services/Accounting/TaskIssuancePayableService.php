@@ -500,17 +500,33 @@ final class TaskIssuancePayableService
      * True once ANY `invoice-detail:{id}:sale` document exists for this task — i.e. the sale
      * document already carries the supplier cost, so no accrual belongs on top of it.
      *
-     * Keyed on `journal_entries.task_id` + a posted engine document rather than on
+     * Keyed on `journal_entries.task_id` + an engine sale document rather than on
      * `invoice_details` alone, because an invoice_details row can exist before its sale document
      * posts (`autoGenerateInvoice()` writes the detail first). Asking the ledger, not the source
      * table, is the only question that cannot answer "yes" before the money is actually there.
+     *
+     * ── Deliberately NOT filtered to `posting_status = 'posted'` (CT-A3 wave 2) ─────────────────
+     * A refund or a void REVERSES the sale document, which flips its `posting_status` to
+     * `reversed`. With the filter, such a task looked UNINVOICED again — and if its
+     * `tasks.status` was not itself a reversing status (a refund is very often recorded against a
+     * task still sitting at `issued`), the next dispatch or replay accrued a brand-new supplier
+     * payable for a booking that had just been refunded. The second `accounting:replay` run on the
+     * City Travelers scratch database did exactly that: 5 fresh accruals on tasks 13561, 13691,
+     * 13692, 13949 and 14056, and 5 cascading reassignments behind them, breaking the "a re-run
+     * posts zero" property this command is built on.
+     *
+     * The question this method asks is "was this task ever invoiced", not "is its sale currently
+     * live" — a reversed sale still means the cost went to COGS once, and whatever undid it
+     * (`RefundPostingService`, `TaskStatusService::void()`) also undid the cost. This is the same
+     * reasoning, for the same reason, that {@see RefundPostingService::postCrnForDetail()} already
+     * documents at its own sale lookup: *"Deliberately NOT filtered to posting_status='posted': on
+     * a retry the sale's own status is by then 'reversed'."*
      */
     private function hasPostedSaleDocument(Task $task, int $companyId): bool
     {
         return Transaction::withoutGlobalScopes()
             ->whereNull('deleted_at')
             ->where('company_id', $companyId)
-            ->where('posting_status', 'posted')
             ->where('doc_type', 'INV')
             ->where('sub_type', 'SALE')
             ->whereExists(function ($q) use ($task) {

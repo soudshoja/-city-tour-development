@@ -189,6 +189,23 @@ class W21AccountingReplayCommandTest extends AccountingTestCase
         [$company, $branch, $agent, $client] = $this->makeFixture();
         $this->makeSoldTask($company, $branch, $agent, $client);
 
+        // An UNINVOICED, issued, costed task, so the issuance class really posts an accrual and
+        // the re-run has something to report as ALREADY. Without one, the fixture's only task was
+        // already invoiced, the issuance class skipped it, and the re-run's headline claim was
+        // never exercised for that class -- which is how a source that reported all 5,676 real
+        // accruals as freshly POSTED on every re-run got past this test (this wave's report §5).
+        $accrualSupplier = Supplier::factory()->create(['payable_trigger' => 'on_issue']);
+        Task::factory()->create([
+            'company_id' => $company->id,
+            'agent_id' => $agent->id,
+            'client_id' => $client->id,
+            'supplier_id' => $accrualSupplier->id,
+            'type' => 'flight',
+            'status' => 'issued',
+            'total' => 65.000,
+            'issued_date' => now()->subDays(2),
+        ]);
+
         // An APPROVED receipt, so `--class=all` really drives the receipt source too. The first
         // server dry run of this command refused all 109 real receipts on a TypeError that a
         // fixture without one could not have caught (this wave's report §5).
@@ -237,11 +254,26 @@ class W21AccountingReplayCommandTest extends AccountingTestCase
             'The receipt class must actually post -- not refuse.'
         );
 
+        $this->assertSame(
+            1,
+            Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('sub_type', 'SUPPLIER_ACCRUAL')->count(),
+            'Fixture check: the issuance class really posted, so the re-run has something to report as ALREADY.'
+        );
+
         $this->artisan('accounting:replay', ['--company' => $company->id, '--class' => 'all'])
             ->assertExitCode(0)
             ->expectsOutputToContain('Posted 0 document(s)');
 
         $this->assertSame($afterFirst, $this->engineDocuments($company->id), 'A second run must post nothing at all.');
+
+        // And a THIRD run, because the second one changes the ledger state the third reads: this
+        // is the shape the real backfill failed on (a refund reversed a sale between runs, the
+        // task looked uninvoiced again, and it re-accrued).
+        $this->artisan('accounting:replay', ['--company' => $company->id, '--class' => 'all'])
+            ->assertExitCode(0)
+            ->expectsOutputToContain('Posted 0 document(s)');
+
+        $this->assertSame($afterFirst, $this->engineDocuments($company->id));
     }
 
     /**

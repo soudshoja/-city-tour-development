@@ -493,6 +493,47 @@ class W23SupplierRefundRecoveryTest extends AccountingTestCase
     }
 
     /**
+     * Case 9b — the re-accrual defect the second server replay run found.
+     *
+     * A refund REVERSES the sale document, which flips its `posting_status` to `reversed`. The
+     * issuance feeder used to ask "is there a POSTED sale for this task", so after a refund the
+     * task looked UNINVOICED again — and because a refund is very often recorded against a task
+     * still sitting at `issued` (both tasks of refund 25 on the City Travelers data are exactly
+     * that), the next dispatch accrued a brand-new supplier payable for a booking that had just
+     * been refunded. On the second full replay that was 5 fresh accruals plus 5 cascading
+     * reassignments, and it broke the command's "a re-run posts zero" property.
+     *
+     * The question is "was this task ever invoiced", not "is its sale currently live".
+     */
+    public function test_a_task_whose_sale_was_reversed_does_not_re_accrue(): void
+    {
+        [$company, $agent, $client, $supplier, $task, $invoice, $detail] = $this->makeFixture([], 'issued');
+
+        $sale = $this->postRealSale($company, $agent, $client, $supplier, $task, $invoice, $detail, 120.000, 100.000);
+
+        // Nothing accrues while the sale is live: the cost is already on the sale document.
+        $this->assertNull(app(TaskIssuancePayableService::class)->postIfDue($task->fresh()));
+
+        // The refund reverses the sale. The task's own status stays `issued`, which is the shape
+        // that made this dangerous.
+        app(PostingService::class)->reverse($sale, now(), null);
+        $this->assertSame('reversed', $sale->fresh()->posting_status);
+        $this->assertSame('issued', $task->fresh()->status);
+
+        $this->assertNull(
+            app(TaskIssuancePayableService::class)->postIfDue($task->fresh()),
+            'A task whose sale was reversed must NOT accrue a fresh supplier payable.'
+        );
+
+        $this->assertSame(
+            0,
+            Transaction::withoutGlobalScopes()->where('company_id', $company->id)->where('sub_type', 'SUPPLIER_ACCRUAL')->count()
+        );
+
+        $this->assertSame('already_invoiced', app(TaskIssuancePayableService::class)->reasonFor($task->fresh()));
+    }
+
+    /**
      * Case 10: a VOID is not a refund. It keeps the plain reversal — nothing happened, so the
      * accrual comes straight off and no loss is booked. This is the case the refund branch must
      * not have swallowed.

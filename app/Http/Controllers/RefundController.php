@@ -560,9 +560,12 @@ class RefundController extends Controller
             'tasks.*.original_task_profit' => ['required', 'numeric'],
             'tasks.*.refund_fee_to_client' => ['required', 'numeric'],
             'tasks.*.supplier_charge' => ['required', 'numeric'],
-            // W4.U §b — editable "supplier net" override (w4-brief.md §4 process decisions);
-            // nullable so RefundPostingService::supplierRefundAmount()'s own default (cost -
-            // penalty) applies when the operator leaves it blank.
+            // W4.U §b — editable "supplier net" override (w4-brief.md §4 process decisions).
+            // CT-A3 wave 2 (W2-3): still nullable, but null no longer means "assume cost -
+            // penalty". Null means "nobody has recorded what the supplier did", and
+            // App\Services\Accounting\SupplierRefundRule then decides from the supplier's own
+            // configured refund_trigger and the task's status. An explicit figure typed here
+            // always wins over that rule.
             'tasks.*.supplier_refund_amount' => ['nullable', 'numeric'],
             'tasks.*.new_task_profit' => ['required', 'numeric'],
             'tasks.*.total_refund_to_client' => ['required', 'numeric'],

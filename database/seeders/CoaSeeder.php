@@ -326,6 +326,21 @@ class CoaSeeder extends Seeder
             ['code' => '5119', 'name' => 'Lounge Cost', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5121', 'name' => 'Ferry Cost', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5130', 'name' => 'Commissions Expense (Agents)', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            // CT-A3 wave 2 (W2-3, CT-F11) - the SUPPLIER_REFUND_LOSS purpose code's target leaf.
+            // When a booking is refunded to the client but the supplier does NOT give the cost
+            // back, that cost is no longer the cost OF A SALE (the sale has been reversed) - it is
+            // a loss on a refunded booking, and it belongs on its own line where the owner can see
+            // it, not buried in COGS and not silently erased as the pre-wave-2 refund feeder did.
+            //
+            // CODE 5131, NOT 5126. The 5122-5129 run under this parent is full, and 5126 in
+            // particular is RESERVED for P5.13's not-yet-built 'Loss Recovery (Agents)' leaf --
+            // reserved in PostingService's resolved-gap #9 note, in
+            // InvoiceController::postAgentLossRecoveryHook()'s docblock, in this seeder's own
+            // 5125/5127 comments, and guarded by SystemAccountsSeederVoucherAnchorsTest's
+            // "5126 is reserved for P5.13 and must remain unused by this wave". The first cut of
+            // this wave took 5126 and that test caught it. 5131 is the next free code after
+            // Commissions Expense (Agents) 5130 and before Payment Gateway Charges 5140.
+            ['code' => '5131', 'name' => 'Supplier Refund Loss', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5140', 'name' => 'Payment Gateway Charges', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5141', 'name' => 'TAP Charges', 'level' => 4, 'parent' => 'Payment Gateway Charges', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5142', 'name' => 'MyFatoorah Charges', 'level' => 4, 'parent' => 'Payment Gateway Charges', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],

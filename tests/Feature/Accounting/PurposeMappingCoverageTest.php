@@ -33,6 +33,17 @@ use Tests\Support\AccountingTestCase;
  *     purpose_codes')'s own docblock on the 'anchors' sub-key says these are "deliberately NOT
  *     seeded/mapped by this build ... an explicitly out-of-scope lane per this build's own brief".
  *     SystemAccountsSeeder's global-purpose loop never iterates this sub-key at all.
+ *   - REFUND_PAYOUT_CASH_BANK (added to the catalog by CT-A3 wave 2, from a CT-A4 finding): the
+ *     bank or cash leaf a `refund_out` disposition pays a client out of. It has been used as a
+ *     bare `purposeCode:` since W4.R in five places, but was never listed in
+ *     config('accounting.purpose_codes.global') -- which meant
+ *     App\Http\Livewire\Accounting\PurposeMappingIndex, the ONE surface an operator can map a
+ *     purpose on, could not list it: on any company nobody had hand-inserted a system_accounts row
+ *     for, `refund_out` threw UnmappedPurposeException with no way to fix it from the UI. Listing
+ *     it makes it MAPPABLE. It is deliberately NOT auto-mapped, and this exclusion says so out
+ *     loud: which account a refund is paid out of is a company's own choice
+ *     (RefundPostingService::postDisposition()'s docblock states exactly that), and seeding a
+ *     guess would put real money in an account nobody chose.
  *
  * Every OTHER purpose code -- all remaining 'global' entries (31 as of accounting-builds T0a,
  * which added FX_GAIN_REALISED/FX_LOSS_REALISED/DIVIDENDS_PAID/DEPRECIATION_EXPENSE/
@@ -52,6 +63,8 @@ class PurposeMappingCoverageTest extends AccountingTestCase
     private const EXCLUDED_GLOBAL_PURPOSE_CODES = [
         // Documented, permanent gap -- see class docblock above.
         'VAT_OUTPUT',
+        // Catalogued so it can be MAPPED, deliberately not auto-mapped -- see class docblock.
+        'REFUND_PAYOUT_CASH_BANK',
     ];
 
     /**
@@ -128,7 +141,23 @@ class PurposeMappingCoverageTest extends AccountingTestCase
         // real leaf now exists), but this test's job is only to assert it is not SILENTLY broken
         // by being missing from the loop above; the anchors are asserted via resolveAnchor()'s own
         // distinct, expected-to-throw contract per config's own docblock.
-        $this->expectExceptionCaughtFor($resolver, 'VAT_OUTPUT', $company->id);
+        $this->expectExceptionCaughtFor(
+            $resolver,
+            'VAT_OUTPUT',
+            $company->id,
+            'documented permanent gap — Kuwait v1 has no VAT'
+        );
+
+        // The same assertion for the other exclusion, so "catalogued but deliberately unmapped"
+        // stays a claim this suite checks rather than a comment: if a future change starts seeding
+        // a payout leaf, that is a real decision about where client money leaves from and it must
+        // not slip in silently.
+        $this->expectExceptionCaughtFor(
+            $resolver,
+            'REFUND_PAYOUT_CASH_BANK',
+            $company->id,
+            'catalogued so it can be mapped, but which bank/cash leaf a refund is paid out of is the company\'s own choice'
+        );
 
         foreach ($purposeCodes['anchors'] as $anchorCode) {
             $this->expectAnchorUnmapped($resolver, $anchorCode, $company->id);
@@ -153,11 +182,11 @@ class PurposeMappingCoverageTest extends AccountingTestCase
         $this->assertSame($companyId, (int) $account->company_id, "'{$purposeCode}' resolved to an account belonging to a different company.");
     }
 
-    private function expectExceptionCaughtFor(AccountResolver $resolver, string $purposeCode, int $companyId): void
+    private function expectExceptionCaughtFor(AccountResolver $resolver, string $purposeCode, int $companyId, string $why): void
     {
         try {
             $resolver->resolve($purposeCode, $companyId, null);
-            $this->fail("Expected '{$purposeCode}' to remain unmapped (documented permanent gap — Kuwait v1 has no VAT) but it resolved.");
+            $this->fail("Expected '{$purposeCode}' to remain unmapped ({$why}) but it resolved.");
         } catch (UnmappedPurposeException) {
             $this->addToAssertionCount(1);
         }

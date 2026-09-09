@@ -9,6 +9,7 @@ use App\Models\Credit;
 use App\Models\Refund;
 use App\Models\RefundDetail;
 use App\Models\Setting;
+use App\Models\Task;
 use App\Models\Transaction;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -214,9 +215,16 @@ final class RefundPostingService
         $invoiceDetail = $task?->invoiceDetail;
 
         if ($invoiceDetail === null) {
-            throw new \RuntimeException(
-                "RefundPostingService::postCrnForDetail(): refund_detail #{$detail->id} (task #{$detail->task_id}) "
-                .'has no invoice_detail — cannot locate the original sale to reverse.'
+            // CT-A3 wave 2 (W2-3): a NAMED refusal, not a bare RuntimeException.
+            // `accounting:replay` groups refusals by exception class, and on the City Travelers
+            // data 26 of the 33 refunds land here -- a refund of a task that was never invoiced is
+            // the ORDINARY shape on that population (CT-A1 §0: 63% of issued tasks are
+            // uninvoiced), not an error. Collapsing them into a bucket labelled `RuntimeException`
+            // told an operator nothing. See the exception's own docblock for which path DOES carry
+            // an uninvoiced task's refund.
+            throw new \App\Exceptions\Accounting\RefundWithoutInvoiceDetailException(
+                (int) $detail->id,
+                $detail->task_id !== null ? (int) $detail->task_id : null
             );
         }
 
@@ -443,20 +451,62 @@ final class RefundPostingService
     }
 
     /**
-     * (c) Supplier credit item. w4-brief.md §4c: "Dr payable net / Cr COGS full / Dr penalty
-     * cost", `transactions.bsptype = REFUND`.
+     * (c) Supplier credit item, ONE per refund detail (a refund can span several tasks, each with
+     * its own supplier).
      *
-     * Balances by construction: supplier_refund_amount (net) + penalty cost = original_task_cost
-     * (full) — see RefundDetail's own docblock. `supplier_refund_amount` is honoured as the
-     * SOURCE OF TRUTH when the operator has overridden it (w4-brief.md §4 process decisions:
-     * "editable when the airline's actual refund differs"); the penalty-cost debit is then
-     * DERIVED as `original_task_cost - supplier_refund_amount` so the document always balances,
-     * even when that derived figure differs from the client-facing `supplier_charge` penalty
-     * recharged in (b) above — a deliberate, documented divergence (w4-brief.md "Decisions":
-     * "where the agency ends up short ... that's a loss with a bearer", independent of the client
-     * recharge amount).
+     * ── CT-A3 wave 2, item W2-3 — owner ruling R-CT3, the recovery direction ────────────────────
+     * BEFORE this wave this method posted, on EVERY refund:
      *
-     * A no-op (returns null) when this detail's task has no supplier (nothing to credit).
+     *     Dr SERVICE_PAYABLE       = supplierRefundAmount()   (defaulting to cost - penalty)
+     *     Dr PENALTY_COST_EXPENSE  = the rest
+     *         Cr SERVICE_COST      = the FULL original cost, unconditionally
+     *
+     * Three defects in that, all of which this rewrite closes:
+     *
+     *  1. **It assumed the supplier refunds.** `supplierRefundAmount()` defaulted to
+     *     `original_task_cost - supplier_charge`, so "nobody recorded what the supplier did" was
+     *     booked as a full recovery: a cost the agency had genuinely borne was erased and a
+     *     payable it still owed was cleared. Whether the supplier refunds is now master data —
+     *     {@see SupplierRefundRule} over `suppliers.refund_trigger`/`refund_hold` and
+     *     `config('accounting.supplier_refund.triggers')` — never an assumption here, never a
+     *     supplier name, never a constant. (CT-A1 CT-F11.)
+     *
+     *  2. **It credited `SERVICE_COST` even when the cost was not there.** CT-F11: *"319 refund
+     *     lines (57,891.068) credit a COGS leaf, but post-P1a the original cost sits in asset
+     *     1430."* Where the cost sits is a ledger question, so it is asked of the ledger —
+     *     {@see self::costCarrierPurposeFor()}.
+     *
+     *  3. **It double-relieved a gross sale.** Found by this wave's own test suite, and a direct
+     *     consequence of wave 1's R-CT1: under GROSS, the sale document carries its own
+     *     `SERVICE_COST`/`SERVICE_PAYABLE` pair, so {@see self::postCrnForDetail()}'s
+     *     `PostingService::reverse()` of that sale ALREADY reverses the cost and the payable in
+     *     full. Posting the old fixed shape on top of it debited the payable twice — leaving a
+     *     supplier we owed nothing to sitting at a 100-debit balance and cost of sales 100 in
+     *     credit. Under the pre-R-CT1 net model the sale carried no cost leg for the reversal to
+     *     touch, so the duplication did not exist and no wave-1 test could have caught it.
+     *
+     * ── The shape now: post the DIFFERENCE, not a fixed template ────────────────────────────────
+     * This method runs AFTER the CRN in {@see self::post()}, so the ledger already reflects
+     * whatever the CRN did — a true reversal for an engine sale, revenue and receivable only for a
+     * legacy one, nothing at all for a task whose cost is still an unbilled accrual. Rather than
+     * guessing which of those happened, it reads the task's CURRENT position and posts only what
+     * is needed to reach the correct end state:
+     *
+     *     cost carrier for this task  ->  0.000        (the sale is undone either way)
+     *     supplier payable for this task -> the NON-RECOVERABLE part
+     *                                       (0.000 when the supplier refunds in full;
+     *                                        the penalty it kept; or the whole cost when it
+     *                                        refunds nothing — because we still owe that money)
+     *
+     * and the balancing leg is `PENALTY_COST_EXPENSE` when the supplier IS refunding and merely
+     * kept a charge, or `SUPPLIER_REFUND_LOSS` (5131) when it is not refunding — the owner's "the
+     * cost stays and a refund-loss expense line carries the non-recoverable part". Nothing is
+     * posted at all when the ledger is already in the correct state (an engine sale, fully
+     * refunded, no penalty): a balanced no-op document would be noise.
+     *
+     * An operator's explicit `refund_details.supplier_refund_amount` always wins over the rule —
+     * see {@see SupplierRefundRule::decide()}. A supplier refunding MORE than the original cost
+     * still lands credit-side on `PENALTY_COST_EXPENSE` as a genuine gain, never clamped away.
      */
     private function postSupplierCreditForDetail(
         Refund $refund,
@@ -477,35 +527,70 @@ final class RefundPostingService
             return null;
         }
 
-        $netRefund = $this->supplierRefundAmount($detail);
-        $penaltyCost = round($fullCost - $netRefund, 3);
-
-        if ($penaltyCost < 0) {
-            // supplier_refund_amount was overridden ABOVE the original cost (a genuine gain, not
-            // a penalty) — post the "penalty" leg as a credit-side gain instead of a debit-side
-            // cost rather than silently clamping it to zero and losing the difference.
-            $penaltyCost = round(abs($penaltyCost), 3);
-            $penaltyIsGain = true;
-        } else {
-            $penaltyIsGain = false;
-        }
-
         $serviceType = (string) ($task->type ?? '');
+        $tolerance = (float) config('accounting.engine.balance_tolerance', 0.0005);
+        $currency = config('accounting.engine.base_currency');
+
+        $decision = app(SupplierRefundRule::class)->decide($task, $task->supplier, $detail);
+
+        Log::info('accounting.supplier_refund.decided', array_merge($decision->toLogContext(), [
+            'refund_id' => $refund->id,
+            'refund_detail_id' => $detail->id,
+            'task_id' => $task->id,
+            'company_id' => $companyId,
+            'supplier_id' => $task->supplier_id,
+            'original_task_cost' => $fullCost,
+        ]));
+
+        // Where the cost sits, and how much of it is still there AFTER the CRN.
+        $costCarrier = $this->costCarrierPurposeFor($task, $companyId);
+        $costServiceType = $costCarrier === 'UNBILLED_SUPPLIER_COST' ? null : $serviceType;
+
+        $costOutstanding = round($this->taskNetOnPurpose($task, $companyId, $costCarrier, $costServiceType), 3);
+        $payableOutstanding = round(-1 * $this->taskNetOnPurpose($task, $companyId, 'SERVICE_PAYABLE', $serviceType), 3);
+
+        // The target payable: what the agency still owes this supplier for this task once the
+        // refund is settled. Zero on a full recovery; the penalty it kept; the whole cost when it
+        // is refunding nothing.
+        $payableTarget = round($decision->nonRecoverableAmount, 3);
+        $payableDelta = round($payableOutstanding - $payableTarget, 3);
 
         $lines = [];
 
-        if ($netRefund > 0) {
+        if ($costOutstanding > $tolerance) {
+            $lines[] = new LineDraft(
+                purposeCode: $costCarrier,
+                accountId: null,
+                side: 'credit',
+                amount: $costOutstanding,
+                currency: $currency,
+                originalAmount: $costOutstanding,
+                exchangeRate: 1.0,
+                transactionType: $costCarrier === 'UNBILLED_SUPPLIER_COST'
+                    ? 'REFUND_SUPPLIER_CREDIT_ACCRUAL'
+                    : 'REFUND_SUPPLIER_CREDIT_COGS',
+                description: 'Supplier credit for refund: '.$refund->refund_number,
+                invoiceId: $task->invoiceDetail?->invoice_id,
+                taskId: $task->id,
+                ledgerType: $costCarrier === 'UNBILLED_SUPPLIER_COST' ? 'asset' : 'expense',
+                serviceType: $costServiceType,
+            );
+        }
+
+        if (abs($payableDelta) > $tolerance) {
             $lines[] = new LineDraft(
                 purposeCode: 'SERVICE_PAYABLE',
                 accountId: null,
-                side: 'debit',
-                amount: $netRefund,
-                currency: config('accounting.engine.base_currency'),
-                originalAmount: $netRefund,
+                side: $payableDelta > 0 ? 'debit' : 'credit',
+                amount: round(abs($payableDelta), 3),
+                currency: $currency,
+                originalAmount: round(abs($payableDelta), 3),
                 exchangeRate: 1.0,
-                transactionType: 'REFUND_SUPPLIER_CREDIT_PAYABLE',
+                transactionType: $payableDelta > 0 ? 'REFUND_SUPPLIER_CREDIT_PAYABLE' : 'SUPPLIERCREDITED',
                 partyAccountRef: $task->supplier_id,
-                description: 'Supplier credit for refund: '.$refund->refund_number,
+                description: $payableDelta > 0
+                    ? 'Supplier credit for refund: '.$refund->refund_number
+                    : 'Supplier cost retained on refund: '.$refund->refund_number,
                 invoiceId: $task->invoiceDetail?->invoice_id,
                 taskId: $task->id,
                 ledgerType: 'payable',
@@ -514,37 +599,57 @@ final class RefundPostingService
             );
         }
 
-        $lines[] = new LineDraft(
-            purposeCode: 'SERVICE_COST',
-            accountId: null,
-            side: 'credit',
-            amount: $fullCost,
-            currency: config('accounting.engine.base_currency'),
-            originalAmount: $fullCost,
-            exchangeRate: 1.0,
-            transactionType: 'REFUND_SUPPLIER_CREDIT_COGS',
-            description: 'Supplier credit for refund: '.$refund->refund_number,
-            invoiceId: $task->invoiceDetail?->invoice_id,
-            taskId: $task->id,
-            ledgerType: 'expense',
-            serviceType: $serviceType,
-        );
+        // The balancing leg: whatever the two legs above do not already offset is the amount the
+        // agency is bearing (or, on a negative, gaining).
+        $residual = 0.0;
 
-        if ($penaltyCost > 0) {
+        foreach ($lines as $line) {
+            $residual += $line->side === 'debit' ? $line->amount : -$line->amount;
+        }
+
+        $residual = round($residual, 3);
+
+        if (abs($residual) > $tolerance) {
+            // Recovering with a charge kept -> a real penalty cost (5124). Not recovering -> the
+            // agency's own loss on a refunded booking (5131). The two must stay distinguishable:
+            // a penalty is the price of a refund that happened, a loss is a refund that did not.
+            $isPenalty = $decision->shouldRecover;
+
             $lines[] = new LineDraft(
-                purposeCode: 'PENALTY_COST_EXPENSE',
+                purposeCode: $isPenalty ? 'PENALTY_COST_EXPENSE' : 'SUPPLIER_REFUND_LOSS',
                 accountId: null,
-                side: $penaltyIsGain ? 'credit' : 'debit',
-                amount: $penaltyCost,
-                currency: config('accounting.engine.base_currency'),
-                originalAmount: $penaltyCost,
+                side: $residual < 0 ? 'debit' : 'credit',
+                amount: round(abs($residual), 3),
+                currency: $currency,
+                originalAmount: round(abs($residual), 3),
                 exchangeRate: 1.0,
-                transactionType: $penaltyIsGain ? 'REFUND_SUPPLIER_CREDIT_GAIN' : 'REFUND_SUPPLIER_CREDIT_PENALTY',
-                description: 'Supplier refund penalty for: '.$refund->refund_number,
+                transactionType: match (true) {
+                    ! $isPenalty => 'REFUND_SUPPLIER_UNRECOVERED',
+                    $residual < 0 => 'REFUND_SUPPLIER_CREDIT_PENALTY',
+                    default => 'REFUND_SUPPLIER_CREDIT_GAIN',
+                },
+                partyAccountRef: $isPenalty ? null : $task->supplier_id,
+                description: $isPenalty
+                    ? 'Supplier refund penalty for: '.$refund->refund_number
+                    : 'Unrecovered supplier cost on refund '.$refund->refund_number.' ('.$decision->reason.')',
                 invoiceId: $task->invoiceDetail?->invoice_id,
                 taskId: $task->id,
                 ledgerType: 'expense',
+                partyName: $isPenalty ? null : $task->supplier?->name,
             );
+        }
+
+        if ($lines === []) {
+            // The CRN's reversal of an engine gross sale already left the ledger exactly right:
+            // no cost outstanding, nothing owed, nothing borne. Posting a balanced no-op document
+            // would be noise on the supplier statement.
+            Log::debug('accounting.supplier_refund.nothing_to_post', array_merge($decision->toLogContext(), [
+                'refund_id' => $refund->id,
+                'refund_detail_id' => $detail->id,
+                'task_id' => $task->id,
+            ]));
+
+            return null;
         }
 
         $draft = new DocumentDraft(
@@ -571,20 +676,74 @@ final class RefundPostingService
     }
 
     /**
-     * w4-brief.md §4 process decisions: "supplier net = supplier_refund_amount". Defaults to
-     * cost - penalty (original_task_cost - supplier_charge) when the operator has not explicitly
-     * overridden it — see RefundDetail's own docblock.
+     * CT-A3 wave 2 (W2-3). Dr - Cr for ONE task on the leaf a purpose code resolves to, computed
+     * from posted journal rows — never from `accounts.actual_balance` or `journal_entries.balance`,
+     * both of which CT-A1 §4.1 proved unusable (Σ|drift| KWD 6,277,563.301 across 200 of 207
+     * posted accounts). Legacy rows carry `task_id` too, so a task whose original sale predates
+     * the engine still reports its real position here rather than a zero.
+     *
+     * Returns 0.0 when the purpose does not resolve for this company: nothing is on an account
+     * that does not exist, and a refund must not fail because a chart is missing a mapping.
      */
-    private function supplierRefundAmount(RefundDetail $detail): float
+    private function taskNetOnPurpose(Task $task, int $companyId, string $purposeCode, ?string $serviceType): float
     {
-        if ($detail->supplier_refund_amount !== null) {
-            return round((float) $detail->supplier_refund_amount, 3);
+        try {
+            $account = app(AccountResolver::class)->resolve($purposeCode, $companyId, $serviceType);
+        } catch (\Throwable $e) {
+            return 0.0;
         }
 
-        $fullCost = (float) ($detail->original_task_cost ?? 0.0);
-        $penalty = (float) ($detail->supplier_charge ?? 0.0);
+        return (float) (DB::table('journal_entries')
+            ->where('company_id', $companyId)
+            ->where('account_id', $account->id)
+            ->where('task_id', $task->id)
+            ->whereNull('deleted_at')
+            ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as net')
+            ->value('net') ?? 0.0);
+    }
 
-        return round(max(0.0, $fullCost - $penalty), 3);
+    /**
+     * CT-A3 wave 2 (W2-3) — WHICH account currently carries this task's supplier cost, so a refund
+     * credits the cost back where it actually is.
+     *
+     * This is the direct fix for CT-A1 CT-F11's supplier half: *"319 refund lines (57,891.068)
+     * credit a COGS leaf, but post-P1a the original cost sits in asset 1430 — only 35 lines
+     * (4,565.270) credit 1430 correctly. Net effect: COGS understated and Unbilled Supplier Cost
+     * overstated by the same amount."*
+     *
+     * Answered by asking the LEDGER, not by assuming, and not from configuration: if this task
+     * still has a net DEBIT balance on the company's `UNBILLED_SUPPLIER_COST` (1430) leaf, the
+     * cost is sitting in the asset and that is what a refund must relieve. Otherwise the sale
+     * document has already taken it to cost of sales and `SERVICE_COST` is right.
+     *
+     * Computed from posted journal rows — never from `accounts.actual_balance` or
+     * `journal_entries.balance`, both of which CT-A1 §4.1 proved unusable (Σ|drift| KWD
+     * 6,277,563.301 across 200 of 207 posted accounts). Same technique
+     * {@see SupplierReassignDraftBuilder::openPayablePositions()} uses for the payable side.
+     *
+     * A company with no `UNBILLED_SUPPLIER_COST` mapping at all resolves to `SERVICE_COST`, which
+     * is the pre-wave-2 behaviour and the correct answer for a chart that never used the deferral
+     * model.
+     */
+    private function costCarrierPurposeFor(Task $task, int $companyId): string
+    {
+        try {
+            $accrualAccount = app(AccountResolver::class)->resolve('UNBILLED_SUPPLIER_COST', $companyId);
+        } catch (\Throwable $e) {
+            return 'SERVICE_COST';
+        }
+
+        $net = (float) (DB::table('journal_entries')
+            ->where('company_id', $companyId)
+            ->where('account_id', $accrualAccount->id)
+            ->where('task_id', $task->id)
+            ->whereNull('deleted_at')
+            ->selectRaw('COALESCE(SUM(debit) - SUM(credit), 0) as net')
+            ->value('net') ?? 0.0);
+
+        $tolerance = (float) config('accounting.engine.balance_tolerance', 0.0005);
+
+        return $net > $tolerance ? 'UNBILLED_SUPPLIER_COST' : 'SERVICE_COST';
     }
 
     /**

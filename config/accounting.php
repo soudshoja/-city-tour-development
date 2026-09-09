@@ -582,6 +582,28 @@ return [
             // UnmappedPurposeException on an unmapped service type, exactly as before this fix,
             // until an operator maps it via the Purpose Mapping screen.
             'COST_OF_SALES_CONTROL',
+            // CT-A3 wave 2 (W2-3, CT-F11): the cost of a refunded booking that the supplier is
+            // NOT giving back. Resolves to leaf 5131 'Supplier Refund Loss' under Direct Expenses
+            // (Cost of Sales). Global, not per_service: a refund the agency ate is one number the
+            // owner wants to see whole, not thirteen scattered across service types.
+            'SUPPLIER_REFUND_LOSS',
+
+            // CT-A4 finding, fixed in CT-A3 wave 2: the payout leaf a `refund_out` disposition
+            // credits (RefundPostingService::postDisposition(), TaskStatusService::void()/
+            // ::reissue(), ClientController's credit refund-out) has ALWAYS been resolved through
+            // AccountResolver as a bare purpose code -- and was never listed here. Being absent
+            // from this array does not stop AccountResolver finding a hand-inserted
+            // `system_accounts` row (which is why every existing test passes: they insert one),
+            // but it DOES hide the code from the one surface an operator can map it on:
+            // App\Http\Livewire\Accounting\PurposeMappingIndex enumerates exactly this array.
+            // So on any company nobody had hand-mapped, `refund_out` threw UnmappedPurposeException
+            // and there was no way to fix it from the UI.
+            //
+            // Listing it here makes it MAPPABLE; it deliberately does NOT auto-map it. No seeder
+            // mints a leaf for it, by design: which bank or cash account a refund is paid out of is
+            // a company's own choice (RefundPostingService::postDisposition()'s docblock states
+            // exactly that), and guessing one would put real money in an account nobody chose.
+            'REFUND_PAYOUT_CASH_BANK',
         ],
 
         'gateways' => [
@@ -1277,6 +1299,90 @@ return [
         // above). A task that was committed and later lands on one of these has its issuance
         // document reversed by PostingService::reverse() -- never deleted, never UPDATEd.
         'reversing_statuses' => ['void', 'cancelled', 'refund', 'refunded', 'expired'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Receipts (CT-A3 wave 2, W2-2) - OWNER RULING R-CT3 applied to money IN
+    |--------------------------------------------------------------------------
+    |
+    | Wave 1 set the pattern on the supplier payable: the TRIGGER and the ACCOUNT come from
+    | configured master-data status, never from a code constant. These two blocks are the same
+    | thing for receipts, read by App\Services\Accounting\ReceiptPostingRule and by nothing
+    | else.
+    |
+    | The defaults reproduce the behaviour that was hard-coded in ReceiptVoucherController before
+    | wave 2, so turning this on changes no existing number - EXCEPT for `bounced`, which was
+    | previously in no list at all: bounce() reversed the cheque-CLEARANCE journal but left the
+    | receipt document itself (Dr cheque-in-hand / Cr AR) standing and the invoice marked paid, so
+    | a bounced cheque quietly collected a receivable that was never collected. Listing it here as
+    | a reversing status is the fix.
+    */
+    'receipt' => [
+
+        // Statuses at which a receipt document MUST be on the ledger.
+        'posting_statuses' => ['approved'],
+
+        // Statuses that take an already-posted receipt back OFF the ledger, through
+        // PostingService::reverse() - a dated REV document, never an UPDATE or a delete.
+        //   bounced  - the cheque did not clear; the money never arrived.
+        //   reversed - an operator reversed the voucher (destroy()).
+        //   rejected - the voucher was refused at approval.
+        'reversing_statuses' => ['bounced', 'reversed', 'rejected'],
+
+        // Statuses that carry no ledger footprint at all: drafted, not yet actioned.
+        'draft_statuses' => ['pending'],
+
+        'instrument' => [
+            // The purpose code used ONLY when a receipt names no settlement channel and carries no
+            // explicit bank account - a genuine over-the-counter cash receipt. Every other receipt
+            // resolves its account from the payment method's own configured `charges.acc_bank_id`.
+            // Each use is logged as accounting.receipt.instrument.fallback_used so the payment
+            // methods still missing an account are findable rather than invisible.
+            'fallback_purpose' => 'CASH_IN_HAND',
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Supplier refunds (CT-A3 wave 2, W2-3) - R-CT3, the recovery direction
+    |--------------------------------------------------------------------------
+    |
+    | Wave 1's `supplier_payable` block answers "is this cost a guaranteed liability yet?".
+    | This one answers the mirror question: "is the supplier actually giving the money back?".
+    | Read by App\Services\Accounting\SupplierRefundRule and by nothing else.
+    |
+    | CT-A1 CT-F11 is the finding these defaults exist to close: 319 legacy refund lines
+    | (KWD 57,891.068) credited a COGS leaf while the cost sat in asset 1430, and 367 refunded
+    | tasks never had their revenue reversed at all. The engine's own RefundPostingService
+    | carried the same assumption from the other side - it credited the FULL original cost back
+    | on every refund, so "nobody recorded what the supplier did" read as "the supplier refunded
+    | in full", erasing a cost the agency had genuinely borne.
+    |
+    | Note these defaults deliberately do NOT reproduce the legacy behaviour, unlike wave 1's
+    | `on_issue`. CT-F11 says the legacy behaviour was wrong; reproducing it would preserve the
+    | defect.
+    */
+    'supplier_refund' => [
+
+        // Applied when `suppliers.refund_trigger` is null or unrecognised. The conservative
+        // choice on purpose: a cost leaves the books only once the supplier has actually
+        // confirmed, or an operator has explicitly typed the amount.
+        'default_trigger' => 'on_supplier_refund_confirmed',
+
+        // Each trigger -> the `tasks.status` values at which this supplier's money counts as
+        // recoverable. `tasks.status` is already the normalised output of `supplier_status_maps`
+        // (W6.S), so a supplier's own raw spelling never reaches here.
+        //   refunded - the supplier has confirmed and the money is coming back.
+        //   refund   - we have ASKED; only a supplier with a standing agreement counts that.
+        'triggers' => [
+            'on_supplier_refund_confirmed' => ['refunded'],
+            'on_refund_request' => ['refund', 'refunded'],
+            // Recovery only ever from an explicitly typed refund_details.supplier_refund_amount.
+            'manual' => [],
+            // This supplier does not refund. The cost stays with us, always.
+            'never' => [],
+        ],
     ],
 
 ];

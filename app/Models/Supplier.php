@@ -42,6 +42,10 @@ class Supplier extends Model
         // 2026_09_09_000001_add_payable_trigger_to_suppliers_table.php for the full rationale.
         'payable_trigger',
         'payable_hold',
+        // CT-A3 wave 2 (W2-3) - R-CT3's recovery direction. See migration
+        // 2026_09_09_000003_add_refund_trigger_to_suppliers_table.php.
+        'refund_trigger',
+        'refund_hold',
         'is_online',
         'agency_commission',
     ];
@@ -50,6 +54,7 @@ class Supplier extends Model
         'is_online' => 'bool',
         'is_manual' => 'bool',
         'payable_hold' => 'bool',
+        'refund_hold' => 'bool',
         'agency_commission' => 'decimal:2',
     ];
 

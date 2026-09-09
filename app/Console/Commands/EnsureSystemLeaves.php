@@ -479,6 +479,16 @@ class EnsureSystemLeaves extends Command
             'purposeCode' => 'COST_OF_SALES_CONTROL',
             'core' => true,
         ],
+        // CT-A3 wave 2 (W2-3, CT-F11) - where a refunded booking's unrecovered supplier cost
+        // lands. CORE for the same reason as 5127/5129: 'Direct Expenses (Cost of Sales)' is on
+        // every CoaSeeder chart, old or new, so this leaf can always be backfilled.
+        [
+            'leafName' => 'Supplier Refund Loss',
+            'code' => '5131',
+            'parentChain' => ['Direct Expenses (Cost of Sales)', 'Expenses'],
+            'purposeCode' => 'SUPPLIER_REFUND_LOSS',
+            'core' => true,
+        ],
     ];
 
     /**

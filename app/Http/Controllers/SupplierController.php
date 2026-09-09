@@ -366,6 +366,8 @@ class SupplierController extends Controller
             // 2026_09_09_000001_add_payable_trigger_to_suppliers_table.php.
             'payable_trigger' => ['nullable', Rule::in(['on_supplier_confirm', 'on_issue', 'on_voucher', 'manual'])],
             'payable_hold' => 'nullable|boolean',
+            'refund_trigger' => ['nullable', Rule::in(['on_supplier_refund_confirmed', 'on_refund_request', 'manual', 'never'])],
+            'refund_hold' => 'nullable|boolean',
         ]);
 
         $hasHotel = $request->has('has_hotel');
@@ -394,6 +396,11 @@ class SupplierController extends Controller
             'payable_trigger' => $request->input('payable_trigger')
                 ?: config('accounting.supplier_payable.default_trigger', 'on_issue'),
             'payable_hold' => $request->boolean('payable_hold'),
+            // CT-A3 wave 2 (W2-3) - R-CT3's recovery direction; see
+            // App\Services\Accounting\SupplierRefundRule.
+            'refund_trigger' => $request->input('refund_trigger')
+                ?: config('accounting.supplier_refund.default_trigger', 'on_supplier_refund_confirmed'),
+            'refund_hold' => $request->boolean('refund_hold'),
         ]);
 
         if (!$supplier) {
@@ -441,6 +448,8 @@ class SupplierController extends Controller
             // CT-A3 wave 1 (owner ruling R-CT3, 2026-09-09).
             'payable_trigger' => ['nullable', Rule::in(['on_supplier_confirm', 'on_issue', 'on_voucher', 'manual'])],
             'payable_hold' => 'nullable|boolean',
+            'refund_trigger' => ['nullable', Rule::in(['on_supplier_refund_confirmed', 'on_refund_request', 'manual', 'never'])],
+            'refund_hold' => 'nullable|boolean',
         ]);
 
         $supplier = Supplier::findOrFail($id);
@@ -475,13 +484,19 @@ class SupplierController extends Controller
                 'payable_trigger' => $request->input('payable_trigger')
                     ?: ($supplier->payable_trigger ?: config('accounting.supplier_payable.default_trigger', 'on_issue')),
                 'payable_hold' => $request->boolean('payable_hold'),
+                // CT-A3 wave 2 (W2-3) - R-CT3's recovery direction.
+                'refund_trigger' => $request->input('refund_trigger')
+                    ?: ($supplier->refund_trigger ?: config('accounting.supplier_refund.default_trigger', 'on_supplier_refund_confirmed')),
+                'refund_hold' => $request->boolean('refund_hold'),
             ]);
 
-            if ($supplier->wasChanged(['payable_trigger', 'payable_hold'])) {
+            if ($supplier->wasChanged(['payable_trigger', 'payable_hold', 'refund_trigger', 'refund_hold'])) {
                 Log::info('accounting.supplier_payable.rule_changed_not_backfilled', [
                     'supplier_id' => $supplier->id,
                     'payable_trigger' => $supplier->payable_trigger,
                     'payable_hold' => (bool) $supplier->payable_hold,
+                    'refund_trigger' => $supplier->refund_trigger,
+                    'refund_hold' => (bool) $supplier->refund_hold,
                     'note' => 'Existing tasks are not retro-posted or retro-reversed — CT-A5.',
                 ]);
             }

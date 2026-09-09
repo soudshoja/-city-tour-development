@@ -158,6 +158,22 @@ final class TaskIssuancePayableService
             return null;
         }
 
+        // CT-A3 verify R1. Falling through to post() here would hand back the REVERSED header that
+        // still occupies this key (step 1 does not filter `posting_status`), and the success line
+        // below would then log `accounting.supplier_payable.posted` naming a document worth zero —
+        // the feeder claiming a payable it did not create. {@see self::restoreForTask()} is the
+        // only thing that can put this accrual back; say so instead.
+        [$existingAccrual, $accrualIsLive] = $this->accrualChainTip($companyId, (int) $task->id);
+
+        if ($existingAccrual !== null && ! $accrualIsLive) {
+            Log::warning('accounting.supplier_payable.accrual_reversed', array_merge($context, [
+                'reason' => 'accrual_reversed',
+                'transaction_id' => $existingAccrual->id,
+            ]));
+
+            return null;
+        }
+
         // FX. `tasks.total` is already the BASE-currency figure; `tasks.original_total` /
         // `original_currency` (falling back to `exchange_currency`) carry what the supplier
         // actually billed. PostingService step 3f's convention is
@@ -304,19 +320,33 @@ final class TaskIssuancePayableService
         ]));
 
         if ($decision->shouldRecover) {
+            // CT-A3 verify R1, defect 1 of 2 in this branch. An earlier dispatch at an
+            // UNCONFIRMED refund status may already have posted `task:{id}:refund-loss`, which
+            // credited 1430 to zero and debited 5131. Reversing the accrual on top of that credits
+            // 1430 a SECOND time: the asset goes to MINUS the cost and a loss that never happened
+            // is left standing on 5131. This is precisely the sequence
+            // {@see self::settleAccrualOnRefund()}'s own docblock advertises as supported ("so a
+            // later confirmation can still reverse the accrual normally"), and it was the one
+            // sequence no wave-2 case drove. The loss comes off first, restoring 1430 to the
+            // accrued cost, and the accrual reversal below then takes it cleanly to zero.
+            $this->reverseRefundLossIfPosted($task);
+
             $this->reverseForTask($task);
+
+            // CT-A3 verify R1, defect 2 of 2. `shouldRecover` is `recoverable > 0`, so a supplier
+            // that refunds 60 of a 100 cost and KEEPS a 40 penalty landed here — and the blanket
+            // reversal above took the payable to ZERO. The agency still owes that 40. The invoiced
+            // mirror gets this right ({@see RefundPostingService::postSupplierCreditForDetail()}:
+            // "the supplier payable goes to the NON-RECOVERABLE part … the penalty kept"); the
+            // uninvoiced mirror did not. Same end state, same account choice.
+            $this->postRetainedSupplierPenalty($task, $decision, $supplier);
 
             return;
         }
 
-        $existing = Transaction::withoutGlobalScopes()
-            ->whereNull('deleted_at')
-            ->where('company_id', $companyId)
-            ->where('idempotency_key', self::idempotencyKeyFor((int) $task->id))
-            ->where('posting_status', 'posted')
-            ->first();
+        [$existing, $accrualIsLive] = $this->accrualChainTip($companyId, (int) $task->id);
 
-        if ($existing === null) {
+        if ($existing === null || ! $accrualIsLive) {
             // Nothing was ever accrued for this task, so there is no asset to reclassify.
             Log::debug('accounting.supplier_refund.no_accrual_to_settle', $context);
 
@@ -387,6 +417,107 @@ final class TaskIssuancePayableService
     }
 
     /**
+     * CT-A3 verify R1. Takes a previously posted `task:{id}:refund-loss` back off the ledger, so a
+     * supplier confirmation arriving after an unconfirmed refund does not relieve 1430 twice. A
+     * no-op when no loss was ever posted, or when it has already been reversed.
+     */
+    private function reverseRefundLossIfPosted(Task $task): void
+    {
+        $loss = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', (int) $task->company_id)
+            ->where('idempotency_key', 'task:'.$task->id.':refund-loss')
+            ->where('posting_status', 'posted')
+            ->first();
+
+        if ($loss === null) {
+            return;
+        }
+
+        $this->posting->reverse($loss, Carbon::now(), Auth::id());
+
+        Log::info('accounting.supplier_refund.loss_reversed', [
+            'task_id' => $task->id,
+            'company_id' => (int) $task->company_id,
+            'transaction_id' => $loss->id,
+        ]);
+    }
+
+    /**
+     * CT-A3 verify R1. The part of the cost the supplier KEPT out of a refund it did make. The
+     * accrual reversal that precedes this call took the payable to zero, but the agency still owes
+     * the retained penalty — so it is put back, against the same `PENALTY_COST_EXPENSE` (5124) the
+     * invoiced mirror uses for exactly this amount:
+     *
+     *   Dr PENALTY_COST_EXPENSE = nonRecoverable   — the price of a refund that happened
+     *       Cr SERVICE_PAYABLE/{type} = nonRecoverable   — party = the supplier
+     *
+     * A no-op on a full recovery (nothing retained), which is why every wave-2 case is unaffected.
+     */
+    private function postRetainedSupplierPenalty(Task $task, SupplierRefundDecision $decision, ?Supplier $supplier): void
+    {
+        $amount = round($decision->nonRecoverableAmount, 3);
+
+        if ($amount <= (float) config('accounting.engine.balance_tolerance', 0.0005)) {
+            return;
+        }
+
+        $currency = (string) config('accounting.engine.base_currency');
+        $narration = 'Supplier charge retained on refunded task: '.$task->reference;
+
+        $posted = $this->posting->post(new DocumentDraft(
+            companyId: (int) $task->company_id,
+            branchId: (int) ($task->agent?->branch_id ?? 0),
+            docType: 'JV',
+            subType: 'REFUND_PENALTY',
+            docDate: Carbon::now(),
+            narration: $narration,
+            lines: [
+                new LineDraft(
+                    purposeCode: 'PENALTY_COST_EXPENSE',
+                    accountId: null,
+                    side: 'debit',
+                    amount: $amount,
+                    currency: $currency,
+                    originalAmount: $amount,
+                    exchangeRate: 1.0,
+                    transactionType: 'REFUND_SUPPLIER_CREDIT_PENALTY',
+                    description: $narration.' ('.$decision->reason.')',
+                    taskId: $task->id,
+                    ledgerType: 'expense',
+                ),
+                new LineDraft(
+                    purposeCode: 'SERVICE_PAYABLE',
+                    accountId: null,
+                    side: 'credit',
+                    amount: $amount,
+                    currency: $currency,
+                    originalAmount: $amount,
+                    exchangeRate: 1.0,
+                    transactionType: 'SUPPLIERCREDITED',
+                    partyAccountRef: $supplier?->id,
+                    description: $narration,
+                    serviceType: (string) $task->type,
+                    taskId: $task->id,
+                    ledgerType: 'payable',
+                    partyName: $supplier?->name,
+                ),
+            ],
+            idempotencyKey: 'task:'.$task->id.':refund-penalty',
+            sourceType: 'Refund',
+            sourceId: $task->id,
+            userId: Auth::id(),
+        ));
+
+        Log::info('accounting.supplier_refund.penalty_retained', array_merge($decision->toLogContext(), [
+            'task_id' => $task->id,
+            'company_id' => (int) $task->company_id,
+            'transaction_id' => $posted->transaction->id,
+            'amount' => $amount,
+        ]));
+    }
+
+    /**
      * Is this reversing status a REFUND (the supplier may or may not give the money back), as
      * opposed to a void/cancellation (nothing happened, the accrual simply comes off)? Read from
      * `config('accounting.supplier_refund.triggers')` -- the union of every status any trigger
@@ -441,7 +572,24 @@ final class TaskIssuancePayableService
 
         $amount = round((float) ($task->total ?? 0), 3);
 
-        return $this->amountSkipReason($task, $companyId, $amount) ?? 'due';
+        $amountReason = $this->amountSkipReason($task, $companyId, $amount);
+
+        if ($amountReason !== null) {
+            return $amountReason;
+        }
+
+        // CT-A3 verify R1. `due` used to be returned here for a task whose accrual EXISTS but is
+        // reversed — and `postIfDue()` then posts nothing at all, because the idempotency key is
+        // still occupied by that reversed header. An operator asking this method's own documented
+        // question ("why is this task not in my AP?") was told the payable was due when nothing
+        // could ever post it. {@see self::restoreForTask()} is the path that puts it back.
+        [$existing, $accrualIsLive] = $this->accrualChainTip($companyId, (int) $task->id);
+
+        if ($existing !== null && ! $accrualIsLive) {
+            return 'accrual_reversed';
+        }
+
+        return 'due';
     }
 
     /**
@@ -475,25 +623,125 @@ final class TaskIssuancePayableService
             return;
         }
 
-        $existing = Transaction::withoutGlobalScopes()
-            ->whereNull('deleted_at')
-            ->where('company_id', $companyId)
-            ->where('idempotency_key', self::idempotencyKeyFor((int) $task->id))
-            ->where('posting_status', 'posted')
-            ->first();
+        // CT-A3 verify R1. Was: a single lookup for the accrual header at
+        // `posting_status = 'posted'`. That is correct only at chain depth 0. Once
+        // {@see self::restoreForTask()} has put a reversed accrual back — which it does by
+        // reversing the REVERSAL, the only mechanism available, because the idempotency key stays
+        // occupied forever — the accrual header itself is permanently stamped `reversed` while its
+        // BALANCE is live again. The old lookup then found nothing and a second void left the
+        // supplier payable standing on a voided booking. Both directions now read the same chain.
+        [$tip, $accrualIsLive] = $this->accrualChainTip($companyId, (int) $task->id);
 
-        if ($existing === null) {
+        if ($tip === null || ! $accrualIsLive) {
             return;
         }
 
-        $this->posting->reverse($existing, Carbon::now(), Auth::id());
+        $this->posting->reverse($tip, Carbon::now(), Auth::id());
 
         Log::info('accounting.supplier_payable.reversed', [
             'task_id' => $task->id,
             'company_id' => $companyId,
-            'transaction_id' => $existing->id,
+            'transaction_id' => $tip->id,
             'task_status' => strtolower(trim((string) $task->status)),
         ]);
+    }
+
+    /**
+     * CT-A3 verify R1 — the mirror of {@see self::reverseForTask()}, and the fix for a payable
+     * that could never come back.
+     *
+     * A reversed accrual can NOT be re-posted under its own key: {@see PostingService::post()}
+     * step 1 returns the existing header on a duplicate `(company_id, idempotency_key)` and
+     * `findByIdempotencyKey()` deliberately does not filter `posting_status`, so
+     * `task:{id}:issuance-payable` stays occupied by the reversed document for the life of the
+     * task. `postIfDue()` therefore silently hands back the REVERSED document and posts nothing,
+     * while `reasonFor()` still answers `due`.
+     *
+     * That matters because two live paths reverse an accrual on an event that can be UNDONE:
+     *
+     *   1. {@see \App\Services\TaskStatusService::void()} reverses it on a void — and
+     *      {@see \App\Http\Controllers\TaskController::revertFinancialsForVoid()} un-voids by
+     *      restoring the sale and the commission, but named no key for the accrual, so an
+     *      un-voided uninvoiced booking owed its supplier nothing for ever after.
+     *   2. {@see \App\Http\Controllers\InvoiceController::postSaleJournalEntries()} reverses it
+     *      when the sale finally bills the task — and deleting that invoice reverses the sale
+     *      without putting the accrual back, leaving an issued, now-uninvoiced task with no
+     *      supplier payable anywhere. (`hasPostedSaleDocument()` is deliberately not filtered to
+     *      `posted`, so the task also reports `already_invoiced` for ever — the two halves of
+     *      wave 2 §5.8's fix meeting from opposite sides.)
+     *
+     * The restore is the same REV-of-REV the un-void path already uses for the sale: reverse the
+     * REVERSAL, which is itself a live posted document. A no-op when the task was never accrued,
+     * or when its accrual is already live.
+     */
+    public function restoreForTask(Task $task): void
+    {
+        $companyId = (int) $task->company_id;
+
+        if ($companyId <= 0) {
+            return;
+        }
+
+        [$tip, $accrualIsLive] = $this->accrualChainTip($companyId, (int) $task->id);
+
+        if ($tip === null || $accrualIsLive) {
+            return;
+        }
+
+        $this->posting->reverse($tip, Carbon::now(), Auth::id());
+
+        Log::info('accounting.supplier_payable.restored', [
+            'task_id' => $task->id,
+            'company_id' => $companyId,
+            'transaction_id' => $tip->id,
+            'task_status' => strtolower(trim((string) $task->status)),
+        ]);
+    }
+
+    /**
+     * The newest live document in this task's accrual reversal chain, and whether the ACCRUAL's
+     * balance is currently on the ledger.
+     *
+     * The chain is `A` (the accrual) -> `R1 = rev(A)` -> `R2 = rev(R1)` -> …, each link recorded
+     * by `transactions.reversal_of_transaction_id` and each predecessor stamped
+     * `posting_status = 'reversed'` by {@see PostingService::reverse()}. The net ledger effect
+     * alternates, so an even depth means the accrual is live and an odd depth means it is off.
+     *
+     * @return array{0: Transaction|null, 1: bool} the tip (null when nothing was ever accrued) and
+     *                                             whether the accrual is currently live
+     */
+    private function accrualChainTip(int $companyId, int $taskId): array
+    {
+        $doc = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where('idempotency_key', self::idempotencyKeyFor($taskId))
+            ->first();
+
+        if ($doc === null) {
+            return [null, false];
+        }
+
+        $accrualIsLive = true;
+
+        // Bounded: a chain this long is a bug elsewhere, and an unbounded walk over a cycle in
+        // `reversal_of_transaction_id` would hang a status change.
+        for ($depth = 0; $depth < 64 && $doc->posting_status === 'reversed'; $depth++) {
+            $next = Transaction::withoutGlobalScopes()
+                ->whereNull('deleted_at')
+                ->where('reversal_of_transaction_id', $doc->id)
+                ->orderByDesc('id')
+                ->first();
+
+            if ($next === null) {
+                break;
+            }
+
+            $doc = $next;
+            $accrualIsLive = ! $accrualIsLive;
+        }
+
+        return [$doc, $accrualIsLive];
     }
 
     /**

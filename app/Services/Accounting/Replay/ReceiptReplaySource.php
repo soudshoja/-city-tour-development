@@ -142,15 +142,13 @@ final class ReceiptReplaySource implements ReplaySource
      */
     private function companyIdFor(InvoiceReceipt $row): ?int
     {
-        $own = (int) ($row->company_id ?? 0);
+        // CT-A3 R2-3 SERVER FINDING: this precedence now lives in ONE place —
+        // ReceiptVoucherController::companyIdFor() — because the controller's own bounce/delete/
+        // edit paths need exactly the same answer, and the two drifting is how a legacy row ends up
+        // resolving to company 0 on one path and to its real company on the other.
+        $resolved = ReceiptVoucherController::companyIdFor($row);
 
-        if ($own > 0) {
-            return $own;
-        }
-
-        $resolved = ReceiptVoucherController::resolveReceiptCompanyId($row);
-
-        return $resolved !== null && $resolved > 0 ? $resolved : null;
+        return $resolved > 0 ? $resolved : null;
     }
 
     public function replay(Model $row): ReplayOutcome

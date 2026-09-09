@@ -475,7 +475,11 @@ class ReceiptVoucherController extends Controller
             return redirect()->back()->with('error', 'This receipt voucher has a reconciled line and cannot be edited. Un-reconcile it first.');
         }
 
-        $companyId = (int) $invoiceReceipt->company_id;
+        // CT-A3 R2-3 SERVER FINDING: resolved, never the raw column — see companyIdFor().
+        // `$this->seam->isEnabledFor(0)` is false for every legacy row, which silently routed
+        // the whole edit/delete/bounce path down the LEGACY branch (delete the journal rows and
+        // stamp the header) instead of posting a dated reversal.
+        $companyId = self::companyIdFor($invoiceReceipt);
         $oldTransaction = $this->resolvePostedDocumentFor($invoiceReceipt);
 
         if ($oldTransaction === null) {
@@ -626,7 +630,11 @@ class ReceiptVoucherController extends Controller
             return redirect()->back()->with('error', 'This receipt voucher has a reconciled line and cannot be deleted. Un-reconcile it first.');
         }
 
-        $companyId = (int) $invoiceReceipt->company_id;
+        // CT-A3 R2-3 SERVER FINDING: resolved, never the raw column — see companyIdFor().
+        // `$this->seam->isEnabledFor(0)` is false for every legacy row, which silently routed
+        // the whole edit/delete/bounce path down the LEGACY branch (delete the journal rows and
+        // stamp the header) instead of posting a dated reversal.
+        $companyId = self::companyIdFor($invoiceReceipt);
         $oldTransaction = $this->resolvePostedDocumentFor($invoiceReceipt);
 
         if ($oldTransaction === null) {
@@ -696,7 +704,11 @@ class ReceiptVoucherController extends Controller
             return back()->with('error', 'This receipt voucher has no outstanding cheque to clear.');
         }
 
-        $companyId = (int) $invoiceReceipt->company_id;
+        // CT-A3 R2-3 SERVER FINDING: resolved, never the raw column — see companyIdFor().
+        // `$this->seam->isEnabledFor(0)` is false for every legacy row, which silently routed
+        // the whole edit/delete/bounce path down the LEGACY branch (delete the journal rows and
+        // stamp the header) instead of posting a dated reversal.
+        $companyId = self::companyIdFor($invoiceReceipt);
         $branchId = (int) $invoiceReceipt->branch_id;
         $clearanceDate = isset($data['clearance_date']) ? Carbon::parse($data['clearance_date']) : Carbon::now();
         $amount = round((float) $invoiceReceipt->amount, 3);
@@ -822,7 +834,11 @@ class ReceiptVoucherController extends Controller
             return back()->with('error', 'This receipt voucher has no cleared cheque to bounce.');
         }
 
-        $companyId = (int) $invoiceReceipt->company_id;
+        // CT-A3 R2-3 SERVER FINDING: resolved, never the raw column — see companyIdFor().
+        // `$this->seam->isEnabledFor(0)` is false for every legacy row, which silently routed
+        // the whole edit/delete/bounce path down the LEGACY branch (delete the journal rows and
+        // stamp the header) instead of posting a dated reversal.
+        $companyId = self::companyIdFor($invoiceReceipt);
         $branchId = (int) $invoiceReceipt->branch_id;
 
         $clearanceTransaction = Transaction::withoutGlobalScopes()
@@ -1705,6 +1721,32 @@ class ReceiptVoucherController extends Controller
      * than the old `findOrFail($r->transaction_id)`; it is not weaker. "No document" still means
      * "reverse nothing".
      */
+    /**
+     * CT-A3 R2-3 — which company a receipt belongs to, by the ONE chain this codebase has.
+     *
+     * Mirrors {@see self::buildVoucherDraft()}'s own precedence exactly: the row's own `company_id`
+     * when it is positive, otherwise the public static resolution chain (invoice -> client/agent ->
+     * task -> account -> branch). `invoice_receipts.company_id` is NULL on every legacy row on the
+     * City Travelers data, so a bare `(int) $r->company_id` resolves to the sentinel 0 and every
+     * company-scoped lookup built on it silently matches nothing.
+     *
+     * Returns 0 when nothing resolves — the same sentinel `buildVoucherDraft()` refuses on, so a
+     * caller that uses this value in a `where()` finds nothing rather than finding somebody else's
+     * document.
+     */
+    public static function companyIdFor(InvoiceReceipt $r): int
+    {
+        $own = (int) ($r->company_id ?? 0);
+
+        if ($own > 0) {
+            return $own;
+        }
+
+        $resolved = self::resolveReceiptCompanyId($r);
+
+        return $resolved !== null && $resolved > 0 ? $resolved : 0;
+    }
+
     private function resolvePostedDocumentFor(InvoiceReceipt $invoiceReceipt): ?Transaction
     {
         if ($invoiceReceipt->transaction_id !== null) {
@@ -1722,7 +1764,13 @@ class ReceiptVoucherController extends Controller
 
         $byKey = Transaction::withoutGlobalScopes()
             ->whereNull('deleted_at')
-            ->where('company_id', (int) $invoiceReceipt->company_id)
+            // CT-A3 R2-3 SERVER FINDING. This was `(int) $invoiceReceipt->company_id`, and on the
+            // City Travelers data that is NULL on every legacy row (CT-F35, 109 of 109) -- the cast
+            // turns it into the sentinel 0, the key lookup matches nothing, and the whole fix
+            // silently did nothing for exactly the population it exists for. Found by exercising
+            // the bounce lifecycle against real data on the scratch copy, not by a test: every unit
+            // fixture carries a company_id, because a fixture that did not could not be built.
+            ->where('company_id', self::companyIdFor($invoiceReceipt))
             ->where('posting_status', 'posted')
             ->where(function ($q) use ($baseKey, $prefix) {
                 $q->where('idempotency_key', $baseKey)

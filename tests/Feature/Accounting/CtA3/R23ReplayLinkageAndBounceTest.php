@@ -302,6 +302,69 @@ class R23ReplayLinkageAndBounceTest extends AccountingTestCase
     }
 
     /**
+     * THE SHAPE THE SERVER RUN FOUND, and the reason this file gained a case after it was written.
+     *
+     * `invoice_receipts.company_id` is NULL on every legacy row on the City Travelers data (CT-F35,
+     * 109 of 109). The first cut of this fix resolved the document with
+     * `where('company_id', (int) $invoiceReceipt->company_id)` — which casts that NULL to the
+     * sentinel 0, matches nothing, and made the whole fix silently do nothing for exactly the
+     * population it exists for. `bounce()` then also gated the engine on `isEnabledFor(0)`, which
+     * is false, so even a found document would have been DELETED rather than reversed.
+     *
+     * Not caught by the cases above, and could not have been: every one of them builds a receipt
+     * through a fixture, and a fixture that omitted `company_id` could not be built. It was caught
+     * by running the bounce lifecycle against the real dataset on the scratch copy — which is what
+     * that exercise is for.
+     */
+    public function test_a_legacy_receipt_with_no_company_id_still_bounces(): void
+    {
+        [$company, $branch, $agent, $client, $admin] = $this->makeFixture();
+
+        $invoice = Invoice::factory()->create([
+            'client_id' => $client->id,
+            'agent_id' => $agent->id,
+            'amount' => 100.000,
+            'status' => 'unpaid',
+            'invoice_date' => now()->subDays(2),
+        ]);
+
+        $receipt = $this->makeUnpostedApprovedReceipt($company, $branch, $client, $invoice);
+
+        Artisan::call('accounting:replay', ['--company' => (string) $company->id, '--class' => 'receipt']);
+
+        $document = Transaction::withoutGlobalScopes()
+            ->where('company_id', $company->id)
+            ->where('idempotency_key', 'rv:'.$receipt->id)
+            ->firstOrFail();
+
+        $bank = $this->accountByCode($company->id, '1201');
+        $this->assertSame(100.0, $this->netDebit($bank->id), 'precondition: the replay posted the receipt');
+
+        // THE LEGACY SHAPE: no linkage AND no company_id of its own. The company is recoverable
+        // only through invoice -> agent -> branch.
+        InvoiceReceipt::withoutGlobalScopes()->whereKey($receipt->id)->update([
+            'transaction_id' => null,
+            'company_id' => null,
+        ]);
+
+        $this->actingAs($admin)->post(route('receipt-voucher.bounce', $receipt->id), [
+            'bounce_fee_amount' => 0,
+        ])->assertRedirect();
+
+        $this->assertSame(
+            'reversed',
+            (string) $document->fresh()->posting_status,
+            'A NULL company_id must be RESOLVED, not cast to the sentinel 0 — otherwise the whole '
+                .'fix silently no-ops for the entire legacy population.'
+        );
+        $this->assertSame(0.0, $this->netDebit($bank->id));
+        $this->assertSame(InvoiceReceipt::STATUS_BOUNCED, (string) $receipt->fresh()->status);
+
+        // And it was REVERSED, not deleted: the original lines survive as a dated REV pair.
+        $this->assertGreaterThan(0, JournalEntry::where('transaction_id', $document->id)->count());
+    }
+
+    /**
      * A receipt with NO posted document at all (a genuine `pending` draft that somehow reached a
      * bounce) must still not invent one to reverse. The resolution is by key, so "no document"
      * stays "no document" — the fix widens the lookup, it does not weaken the guard.

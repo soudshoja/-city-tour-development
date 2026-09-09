@@ -5837,6 +5837,23 @@ class TaskController extends Controller
         $branchId,
         int $companyId
     ): JsonResponse {
+        // ── CT-A3 wave 2, item W2-4: this feeder re-checked against owner ruling R-CT3 ──────
+        // Reassignment MOVES a payable between parties. It must never CREATE one -- reassigning
+        // the supplier on a task whose payable was gated off (supplier on hold, trigger not
+        // reached, `manual`) must post nothing at all. That is guaranteed twice over, and the
+        // belt-and-braces is deliberate:
+        //
+        //   1. Structurally. SupplierReassignDraftBuilder derives its debits from the ledger's
+        //      CURRENT net credit per AP leaf for this task, so a task that was never accrued has
+        //      no position to move and the builder returns an empty array. This is the guarantee
+        //      that actually holds the line, and it cannot be bypassed by a mis-read rule.
+        //   2. Observably. The rule is consulted here so the log and the response DISTINGUISH
+        //      "the payable was deliberately gated off" from "already reassigned". Without it both
+        //      look like an indistinguishable "nothing to move", and an operator cannot tell a
+        //      working gate from a broken feeder -- which is exactly how CT-F39's one-sided writes
+        //      went unnoticed for 1,511 documents.
+        $payableDecision = app(\App\Services\Accounting\SupplierPayableRule::class)->decide($task, $supplier);
+
         $lines = app(SupplierReassignDraftBuilder::class)->buildLines(
             $task,
             $companyId,
@@ -5846,19 +5863,31 @@ class TaskController extends Controller
         );
 
         if ($lines === []) {
-            Log::info('accounting.supplier_reassign.nothing_to_move', [
-                'task_id' => $task->id,
-                'company_id' => $companyId,
-                'payment_method_account_id' => $paymentMethodAccount->id,
-            ]);
+            $gatedOff = ! $payableDecision->shouldPost;
+
+            Log::info(
+                $gatedOff
+                    ? 'accounting.supplier_reassign.payable_gated_off'
+                    : 'accounting.supplier_reassign.nothing_to_move',
+                array_merge($payableDecision->toLogContext(), [
+                    'task_id' => $task->id,
+                    'company_id' => $companyId,
+                    'payment_method_account_id' => $paymentMethodAccount->id,
+                    'supplier_id' => $supplier?->id,
+                ])
+            );
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Payment account already carries this task\'s payable; nothing to reclassify.',
+                'message' => $gatedOff
+                    ? 'No supplier payable is accrued for this task ('.$payableDecision->reason.'); nothing to reclassify.'
+                    : 'Payment account already carries this task\'s payable; nothing to reclassify.',
                 'data' => [
                     'task_id' => $task->id,
                     'transaction_id' => null,
                     'payment_method_account_id' => $paymentMethodAccount->id,
+                    'payable_gated_off' => $gatedOff,
+                    'reason' => $payableDecision->reason,
                 ],
             ], 200);
         }

@@ -41,7 +41,13 @@ use App\Models\Setting;
  * ── Agent (NET) basis — `SaleDraftInput::BASIS_AGENT` ─────────────────────────────────────────────
  * Blueprint 03 §3 / `ChatController`'s own pre-existing shape, generalized to any service type:
  *   - Dr `RECEIVABLE_CONTROL` = sell (client's open item)
- *   - Cr `SERVICE_PAYABLE`/{type} = cost (supplier's open item)
+ *   - Cr `SERVICE_PAYABLE`/{type} = cost (supplier's open item) — OMITTED when
+ *     cost <= tolerance (CT-A3 E1 / CT-F34: a pure-fee sale with no supplier cost is legitimate;
+ *     the unguarded leg used to emit amount 0.000 and make PostingService REFUSE the whole
+ *     document, so invoice creation failed rather than degraded — 31 live documents on the
+ *     City Travelers dev data). Same rule the principal branch already applied to its own cost
+ *     pair. With the leg gone the margin below is sell − 0 = sell, so the document still
+ *     balances on two lines.
  *   - Cr `SERVICE_REVENUE`/{type} = margin (sell − cost), sign-aware:
  *     - margin > tolerance: Cr `SERVICE_REVENUE`/{type} = margin (ordinary case).
  *     - |margin| <= tolerance (sold at cost): the leg is OMITTED — the first two legs already
@@ -115,7 +121,9 @@ final class SaleDraftBuilder
 {
     /**
      * @return LineDraft[] 2 or 3 lines (agent basis) / 2 or 4 lines (principal basis) — see class
-     *                     docblock for exactly which lines are omitted and when.
+     *                     docblock for exactly which lines are omitted and when. CT-A3 E1 adds one
+     *                     more agent-basis 2-line shape: costAmount <= tolerance omits the
+     *                     SERVICE_PAYABLE leg and the margin leg carries the full sell.
      */
     public function buildLines(SaleDraftInput $input): array
     {
@@ -155,7 +163,25 @@ final class SaleDraftBuilder
                 ledgerType: 'receivable',
                 partyName: $input->clientName,
             ),
-            new LineDraft(
+        ];
+
+        // CT-A3 E1 (CT-F34, CT-A2 §3.2): the supplier-payable leg is OMITTED when there is no
+        // supplier cost, exactly as buildPrincipalBasisLines() already omits its own cost pair at
+        // :266. Before this guard the leg was emitted unconditionally with amount 0.000, and
+        // PostingService's step-3c non-positive-amount rule (PostingService.php:708/:750) threw
+        // NonNegativeAmountException out of InvoiceController::postSaleJournalEntries()
+        // UNCAUGHT — so a pure-fee sale did not degrade, it made invoice creation FAIL. CT-A2's
+        // replay measured 31 live documents refused on exactly this (21 flight + 10 visa,
+        // KWD 206.000 of sell, every one a task with `tasks.total = 0`), and SaleDraftInput's own
+        // docblock already states costAmount "may legitimately be 0.0 (a service with no supplier
+        // cost, e.g. a pure fee)".
+        //
+        // Balance is preserved by construction, not by luck: with the payable leg gone,
+        // margin = sell - 0 = sell, so the margin leg below carries the full sell as a credit
+        // against the AR debit. A zero-sell AND zero-cost draft still posts nothing but the AR
+        // line, which PostingService's own step-3c rejects — correctly, since that is not a sale.
+        if ($input->costAmount > $tolerance) {
+            $lines[] = new LineDraft(
                 purposeCode: 'SERVICE_PAYABLE',
                 accountId: null,
                 side: 'credit',
@@ -172,8 +198,8 @@ final class SaleDraftBuilder
                 taskId: $input->taskId,
                 ledgerType: 'payable',
                 partyName: $input->supplierName,
-            ),
-        ];
+            );
+        }
 
         $margin = $input->sellAmount - $input->costAmount;
 

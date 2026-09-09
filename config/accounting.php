@@ -569,6 +569,19 @@ return [
             // (AgentController::update()'s monthly salary accrual).
             'COMMISSION_EXPENSE',
             'COMMISSION_PAYABLE',
+            // CT-A3 E5 (CT-F37): the SERVICE_COST fallback target — see 'purpose_fallbacks' below.
+            // On this chart every per-service cost group (Flights Cost/Hotels Cost/etc., 5110-
+            // 5121) already has per-supplier children, so it fails AccountResolver::isLeaf() and
+            // cannot itself be a SERVICE_COST leaf for a service type with no dedicated per-
+            // service system_accounts row. Deliberately GLOBAL, not per_service: this is the one
+            // shared "no per-service leaf mapped yet" landing spot, not a 13th per-service leaf —
+            // minting one of those per service type is exactly the 13-orphan-leaf outcome CT-A2
+            // had to hand-create and this fallback exists to avoid repeating. NOT registered in
+            // SystemAccountsSeeder/EnsureSystemLeaves by this change (out of this build's file
+            // scope) — a company with nothing mapped to this purpose code simply keeps hitting
+            // UnmappedPurposeException on an unmapped service type, exactly as before this fix,
+            // until an operator maps it via the Purpose Mapping screen.
+            'COST_OF_SALES_CONTROL',
         ],
 
         'gateways' => [
@@ -588,6 +601,28 @@ return [
         'service_types' => [
             'flight', 'hotel', 'visa', 'insurance', 'tour', 'cruise',
             'car', 'rail', 'esim', 'event', 'lounge', 'ferry',
+        ],
+
+        /*
+        |--------------------------------------------------------------------------------------
+        | Purpose fallback chains (CT-A3 E5, CT-F37)
+        |--------------------------------------------------------------------------------------
+        | AccountResolver::resolve() walks this chain, in order, ONLY when the direct
+        | (company, purposeCode, serviceType) system_accounts lookup misses for a per_service
+        | purpose code — a mapped per-service leaf still always wins, no behaviour change there.
+        | Each key is one of 'per_service' above; each value is an ordinary GLOBAL purpose code
+        | (service_type=null) resolved via the exact same resolve() safety checks (tenant, leaf,
+        | disabled) as any direct hit. If a chain's own target purpose code is itself unmapped for
+        | the company, resolve() falls through to the next entry and, when the chain is exhausted,
+        | throws the same UnmappedPurposeException as an outright miss — naming both the original
+        | per-service purpose code and every fallback code tried, never a silent skip.
+        |
+        | This is data, not code, so extending a chain (or adding one for SERVICE_REVENUE, should
+        | that ever need one) never touches AccountResolver itself.
+        */
+        'purpose_fallbacks' => [
+            'SERVICE_PAYABLE' => ['PAYABLE_CONTROL'],
+            'SERVICE_COST' => ['COST_OF_SALES_CONTROL'],
         ],
 
         /*

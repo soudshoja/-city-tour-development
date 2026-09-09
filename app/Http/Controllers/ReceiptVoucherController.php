@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\InvoiceReceiptStatus;
 use App\Enums\InvoiceReceiptType;
 use App\Exceptions\Accounting\PostingException;
+use App\Exceptions\Accounting\UnresolvedReceiptCompanyException;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\Branch;
@@ -875,7 +876,25 @@ class ReceiptVoucherController extends Controller
      */
     private function buildVoucherDraft(InvoiceReceipt $r): DocumentDraft
     {
+        // CT-A3 E2 fix (CT-F35): `invoice_receipts.company_id` is NULL on every legacy-imported
+        // row (109 of 109, per CT-A2 §3.2) -- the old `(int) $r->company_id` cast turned that NULL
+        // into the sentinel `0`, which the very next line's AccountResolver call always threw
+        // UnmappedPurposeException for (no system_accounts mapping is ever seeded for company 0).
+        // A non-positive company_id on the row itself now falls back to the resolvable chain
+        // (invoice -> client/agent -> task -> account -> branch, see
+        // self::resolveReceiptCompanyId()'s own docblock for the exact precedence and why); a row
+        // that chain still cannot resolve throws the named UnresolvedReceiptCompanyException
+        // rather than silently posting under company 0.
         $companyId = (int) $r->company_id;
+        if ($companyId <= 0) {
+            $resolvedCompanyId = self::resolveReceiptCompanyId($r);
+
+            if ($resolvedCompanyId === null || $resolvedCompanyId <= 0) {
+                throw new UnresolvedReceiptCompanyException((int) $r->id);
+            }
+
+            $companyId = $resolvedCompanyId;
+        }
         $branchId = (int) $r->branch_id;
         $docDate = $r->doc_date ? Carbon::parse($r->doc_date) : Carbon::now();
         $amount = round((float) $r->amount, 3);
@@ -889,7 +908,12 @@ class ReceiptVoucherController extends Controller
         };
         VoucherSubTypeGuard::assertValid('RV', $subType);
 
-        $instrumentAccount = $this->resolveInstrumentLeg($r, $docDate);
+        // $companyId here is the RESOLVED value from above -- never re-derive company_id from $r
+        // directly (see resolveInstrumentLeg()'s own updated signature/docblock): $r->company_id
+        // itself may still be NULL/0 on a legacy row that was only resolved via the fallback chain
+        // above, and this row is deliberately never mutated/persisted as a side effect of posting
+        // (that is accounting:repair-receipt-company's job, not this method's).
+        $instrumentAccount = $this->resolveInstrumentLeg($r, $docDate, $companyId);
         $chequeDate = $r->cheque_date ? Carbon::parse($r->cheque_date) : null;
 
         $lines = [];
@@ -1156,10 +1180,16 @@ class ReceiptVoucherController extends Controller
      * date -> CHEQUES_IN_HAND (1215, the PDC float); an explicit bank leaf -> that leaf (validated
      * under the Bank Accounts group); otherwise -> CASH_IN_HAND.
      */
-    private function resolveInstrumentLeg(InvoiceReceipt $r, Carbon $docDate): Account
+    private function resolveInstrumentLeg(InvoiceReceipt $r, Carbon $docDate, int $companyId): Account
     {
-        $companyId = (int) $r->company_id;
-
+        // CT-A3 E2 fix (CT-F35): $companyId is now an explicit parameter -- the RESOLVED company
+        // id buildVoucherDraft() computed (its own $r->company_id when positive, otherwise the
+        // fallback-chain result from self::resolveReceiptCompanyId()) -- rather than this method
+        // re-reading `(int) $r->company_id` itself. Re-reading it here used to independently
+        // re-introduce the exact 0-sentinel bug buildVoucherDraft()'s own fix above just closed:
+        // even after buildVoucherDraft() correctly resolved a legacy NULL-company_id row via the
+        // chain, this method would have silently gone back to $r->company_id (still NULL/0 on the
+        // row itself) and resolved CASH_IN_HAND/CHEQUES_IN_HAND for company 0 anyway.
         if ($r->cheque_no && $r->cheque_date && Carbon::parse($r->cheque_date)->gt($docDate)) {
             return $this->accountResolver->resolve('CHEQUES_IN_HAND', $companyId);
         }
@@ -1169,6 +1199,101 @@ class ReceiptVoucherController extends Controller
         }
 
         return $this->accountResolver->resolve('CASH_IN_HAND', $companyId);
+    }
+
+    /**
+     * CT-A3 E2 (CT-F35) fix vehicle, half (a): derives a positive company id for an
+     * `invoice_receipts` row whose own `company_id` column is NULL/non-positive (every one of the
+     * 109 legacy-imported rows CT-A2 §3.2 found). PUBLIC and STATIC deliberately -- this is the
+     * ONE implementation of the resolution chain; {@see \App\Console\Commands::class} 's sibling
+     * data-repair command (`accounting:repair-receipt-company`, half (b) of this same fix) calls
+     * this exact method rather than re-implementing the chain a second time, so the two halves of
+     * the fix can never drift out of agreement on what a given row resolves to. Static because it
+     * needs no controller-instance state (no injected service) -- it is a pure function of the row
+     * and the database.
+     *
+     * Precedence (owner-specified order: "invoice -> client/agent -> task -> account -> branch"):
+     *
+     *  1. Invoice -- `invoice_id` if populated, else the first allocation's `invoice_id` (mirrors
+     *     {@see self::resolveAllocations()}'s own fallback for an INVOICE-type receipt whose own
+     *     `invoice_id` column was never populated). `Invoice` has no `company_id` column of its
+     *     own -- resolved via `agent->branch->company_id`, the SAME chain {@see \App\Models\
+     *     Invoice}'s own methods already use (e.g. its `toArray()`-adjacent `'company_id' =>
+     *     $this->agent?->branch?->company_id`).
+     *  2. Client -- `client_id`'s own `company_id` column first (the common case), then, if that
+     *     is itself null/non-positive, `client->agent->branch->company_id` (a client whose own
+     *     `company_id` was never backfilled can still be reachable through its agent).
+     *  3. Task -- `task_id`'s own `company_id` column (Task carries one directly).
+     *  4. Account -- `account_id`, then `bank_account_id`, each via `accounts.company_id`.
+     *     Queried `withoutGlobalScopes()` -- Account is the one model in this chain carrying a
+     *     `BelongsToCompany` global scope (see {@see \App\Traits\BelongsToCompany}), and this
+     *     method must behave identically with or without an authenticated request context, same
+     *     requirement {@see \App\Services\Accounting\AccountResolver}'s own class docblock states
+     *     for exactly this reason.
+     *  5. Branch -- `branch_id`'s own `company_id` column, last: every `invoice_receipts` row
+     *     carries a `branch_id`, but a branch alone says only "which office", not necessarily
+     *     which of possibly-several companies that office serves in a chart shared across a
+     *     migration -- the four links above are more specific to the money itself and are
+     *     preferred whenever any of them resolves.
+     *
+     * Returns null (never `0`) when none of the above resolves to a positive company id --
+     * callers must treat null as "unresolved" and refuse to post/backfill under the `0` sentinel
+     * (see {@see UnresolvedReceiptCompanyException} and `accounting:repair-receipt-company`'s own
+     * UNRESOLVED reporting).
+     */
+    public static function resolveReceiptCompanyId(InvoiceReceipt $r): ?int
+    {
+        $invoiceId = $r->invoice_id;
+        if (! $invoiceId && is_array($r->allocations) && $r->allocations !== []) {
+            $invoiceId = (int) ($r->allocations[0]['invoice_id'] ?? 0) ?: null;
+        }
+
+        if ($invoiceId) {
+            $invoice = Invoice::with('agent.branch')->find($invoiceId);
+            $companyId = (int) ($invoice?->agent?->branch?->company_id ?? 0);
+            if ($companyId > 0) {
+                return $companyId;
+            }
+        }
+
+        if ($r->client_id) {
+            $client = Client::with('agent.branch')->find($r->client_id);
+
+            $companyId = (int) ($client?->company_id ?? 0);
+            if ($companyId > 0) {
+                return $companyId;
+            }
+
+            $companyId = (int) ($client?->agent?->branch?->company_id ?? 0);
+            if ($companyId > 0) {
+                return $companyId;
+            }
+        }
+
+        if ($r->task_id) {
+            $companyId = (int) (Task::where('id', $r->task_id)->value('company_id') ?? 0);
+            if ($companyId > 0) {
+                return $companyId;
+            }
+        }
+
+        foreach ([$r->account_id, $r->bank_account_id] as $accountId) {
+            if ($accountId) {
+                $companyId = (int) (Account::withoutGlobalScopes()->where('id', $accountId)->value('company_id') ?? 0);
+                if ($companyId > 0) {
+                    return $companyId;
+                }
+            }
+        }
+
+        if ($r->branch_id) {
+            $companyId = (int) (Branch::where('id', $r->branch_id)->value('company_id') ?? 0);
+            if ($companyId > 0) {
+                return $companyId;
+            }
+        }
+
+        return null;
     }
 
     /**

@@ -550,6 +550,25 @@ return [
             // chain as FX_GAIN_REALISED (4139) directly above.
             'ASSET_DISPOSAL_LOSS',
             'ASSET_DISPOSAL_GAIN',
+            // CT-A3 wave 1 (owner ruling R-CT3, 2026-09-09): the asset leg of the task-issuance
+            // supplier-payable accrual — Dr this / Cr SERVICE_PAYABLE/{type}, posted by
+            // App\Services\Accounting\TaskIssuancePayableService when a task's supplier cost
+            // becomes a guaranteed liability before any invoice exists. Resolves to the
+            // 'Unbilled Supplier Cost' (1430) leaf under 'Supplier Advances/Prepayments' (1400) —
+            // the account every real chart already carries (CT-A1 §3.1) and that CoaSeeder now
+            // seeds for a fresh company too. NOT to be confused with PREPAID_SUPPLIER_COST
+            // (1431), which is the revenue-recognition deferral of a cost on an ALREADY-INVOICED
+            // at_travel sale; these two never carry the same money on the same task.
+            'UNBILLED_SUPPLIER_COST',
+            // CT-A3 E4 (CT-F38): a sales commission is not payroll. The engine's agent-commission
+            // feeder used SALARY_EXPENSE (5160 Agent Salaries) / SALARY_PAYABLE (2201 Salaries &
+            // Wages Payable) — a payroll pair — for what is a commission on a sale. These two
+            // resolve to 'Commissions Expense (Agents)' (5130) and 'Commissions (Agents)' (2210),
+            // the pair CoaSeeder already seeds and the legacy ledger already used. SALARY_EXPENSE
+            // / SALARY_PAYABLE stay registered and keep their own, genuinely-payroll call site
+            // (AgentController::update()'s monthly salary accrual).
+            'COMMISSION_EXPENSE',
+            'COMMISSION_PAYABLE',
         ],
 
         'gateways' => [

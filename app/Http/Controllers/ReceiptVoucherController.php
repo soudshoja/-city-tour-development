@@ -1882,7 +1882,8 @@ class ReceiptVoucherController extends Controller
             if ($commission > 0.0005) {
                 $commissionLines = [
                     new LineDraft(
-                        purposeCode: 'SALARY_EXPENSE', accountId: null, side: 'debit', amount: $commission,
+                        // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                        purposeCode: 'COMMISSION_EXPENSE', accountId: null, side: 'debit', amount: $commission,
                         currency: $currency, originalAmount: $commission, exchangeRate: $exchangeRate,
                         transactionType: 'AGENT_COMMISSION_EXPENSE',
                         description: 'Agents Commissions for (Expenses): '.$agent->name,
@@ -1890,7 +1891,8 @@ class ReceiptVoucherController extends Controller
                         taskId: $task->id, ledgerType: 'expense', partyName: $agent->name,
                     ),
                     new LineDraft(
-                        purposeCode: 'SALARY_PAYABLE', accountId: null, side: 'credit', amount: $commission,
+                        // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                        purposeCode: 'COMMISSION_PAYABLE', accountId: null, side: 'credit', amount: $commission,
                         currency: $currency, originalAmount: $commission, exchangeRate: $exchangeRate,
                         transactionType: 'AGENT_COMMISSION_PAYABLE',
                         description: 'Agents Commissions for (Liabilities): '.$agent->name,

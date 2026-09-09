@@ -713,7 +713,8 @@ final class RefundPostingService
             narration: 'Agent commission on refund event fee: '.$refund->refund_number,
             lines: [
                 new LineDraft(
-                    purposeCode: 'SALARY_EXPENSE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_EXPENSE',
                     accountId: null,
                     side: $expenseSide,
                     amount: $absCommission,
@@ -728,7 +729,8 @@ final class RefundPostingService
                     partyName: $agent->name,
                 ),
                 new LineDraft(
-                    purposeCode: 'SALARY_PAYABLE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_PAYABLE',
                     accountId: null,
                     side: $liabilitySide,
                     amount: $absCommission,

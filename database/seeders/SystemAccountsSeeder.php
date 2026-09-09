@@ -411,6 +411,47 @@ class SystemAccountsSeeder extends Seeder
         // SALARY_EXPENSE/PENALTY_COST_EXPENSE above.
         $this->mapByName($companyId, $companyLabel, 'AIRLINE_CLAWBACK_EXPENSE', null, 'Airline Refund Clawback');
 
+        // CT-A3 wave 1 (owner ruling R-CT3, 2026-09-09): the asset leg of the task-issuance
+        // supplier-payable accrual (TaskIssuancePayableService). Maps by CHAIN, not bare name —
+        // 'Supplier Advances/Prepayments' (1400) is a GROUP that also parents Prepaid Flights
+        // (1410), Prepaid Hotels (1420) and Prepaid Supplier Cost (1431), the same
+        // GROUP-not-leaf reasoning MARKUP_INCOME documents above. The 'Unbilled Supplier Cost'
+        // (1430) leaf already exists on every real chart (CT-A1 §3.1) and is now seeded by
+        // CoaSeeder for fresh companies too.
+        $this->mapByChain(
+            $companyId,
+            $companyLabel,
+            'UNBILLED_SUPPLIER_COST',
+            null,
+            'Unbilled Supplier Cost',
+            ['Supplier Advances/Prepayments', 'Assets']
+        );
+
+        // CT-A3 E4 (CT-F38): the agent-commission pair. Both map by CHAIN for the same
+        // GROUP-not-leaf reason as SALARY_PAYABLE above — 'Direct Expenses (Cost of Sales)'
+        // (5100) and 'Accrued Expenses' (2200) each parent many leaves. Targets are CoaSeeder's
+        // own pre-existing 'Commissions Expense (Agents)' (5130) and 'Commissions (Agents)'
+        // (2210), which the LEGACY ledger already used for this event
+        // (InvoiceController.php:3327/:3351) — so this is a return to the correct pair, not a new
+        // account family.
+        $this->mapByChain(
+            $companyId,
+            $companyLabel,
+            'COMMISSION_EXPENSE',
+            null,
+            'Commissions Expense (Agents)',
+            ['Direct Expenses (Cost of Sales)', 'Expenses']
+        );
+
+        $this->mapByChain(
+            $companyId,
+            $companyLabel,
+            'COMMISSION_PAYABLE',
+            null,
+            'Commissions (Agents)',
+            ['Accrued Expenses', 'Liabilities']
+        );
+
         // W5.L (w5-brief.md §W5.L item 4) — five voucher/instrument anchor purpose codes. See
         // config('accounting.purpose_codes')'s own docblock note on this array for the full
         // rationale behind each leaf choice.

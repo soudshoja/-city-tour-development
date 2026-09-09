@@ -511,7 +511,21 @@ class ReceiptVoucherController extends Controller
                 // findByIdempotencyKey()-style lookup return the wrong row. Suffixed exactly like
                 // PostingService::repost()'s own convention so both paths' replacement keys are
                 // derived identically.
-                $repostDraft = $this->withIdempotencyKeySuffix($newDraft, ':repost:'.$oldTransaction->id);
+                // CT-A3 R2-2: the replacement key comes from PostingService's ONE revision
+                // convention ({base}:rev{n}, monotonic and derived from the ledger), not from a
+                // second hard-coded ':repost:{id}' rule living here. Before R2-2 the ON path's
+                // suffix was conditional and silently stopped applying from the second edit
+                // onwards (verify R1 D6); this OFF path was safe by accident, because its suffix
+                // was unconditional. Both now ask the same method, so the two paths cannot drift
+                // and a company that flips the engine on mid-life keeps one key family per
+                // document.
+                $repostDraft = $this->withReplacementIdempotencyKey(
+                    $newDraft,
+                    $this->postingService->nextRepostIdempotencyKey(
+                        (int) $newDraft->companyId,
+                        (string) $oldTransaction->idempotency_key
+                    )
+                );
                 $newTransactionId = $this->writeLegacyTransaction($repostDraft, $invoiceReceipt)->id;
             }
 
@@ -1595,9 +1609,11 @@ class ReceiptVoucherController extends Controller
     /**
      * DocumentDraft has no setter (every property is `readonly`) -- this rebuilds an equivalent
      * draft with only `idempotencyKey` changed, for `update()`'s OFF-path repost branch (see that
-     * call site's own comment for why the suffix is needed).
+     * call site's own comment for where the replacement key comes from -- CT-A3 R2-2 moved that
+     * decision into PostingService::nextRepostIdempotencyKey(), so this helper now takes the FULL
+     * key rather than a suffix it would have had to know how to build).
      */
-    private function withIdempotencyKeySuffix(DocumentDraft $draft, string $suffix): DocumentDraft
+    private function withReplacementIdempotencyKey(DocumentDraft $draft, string $idempotencyKey): DocumentDraft
     {
         return new DocumentDraft(
             companyId: $draft->companyId,
@@ -1607,7 +1623,7 @@ class ReceiptVoucherController extends Controller
             docDate: $draft->docDate,
             narration: $draft->narration,
             lines: $draft->lines,
-            idempotencyKey: $draft->idempotencyKey.$suffix,
+            idempotencyKey: $idempotencyKey,
             sourceType: $draft->sourceType,
             sourceId: $draft->sourceId,
             invoiceId: $draft->invoiceId,

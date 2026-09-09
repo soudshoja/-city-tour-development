@@ -436,6 +436,16 @@ final class PostingService
      *      constraint, rather than guessing at behaviour change, is the chosen fix. */
     private const TRANSACTION_RETRY_ATTEMPTS = 3;
 
+    /**
+     * CT-A3 R2-2 — the two replacement-key suffix shapes a reposted document can carry.
+     *
+     * `:rev{n}` is the current convention ({@see self::nextRepostSuffix()}); `:repost:{id}` is the
+     * pre-R2 one, still on every document that was edited before this fix shipped. Both are
+     * recognised so a base key can be recovered from either, and so a family count spans the two.
+     * Anchored at the end of the string: a key may legitimately CONTAIN a colon-delimited number.
+     */
+    private const REPOST_REVISION_SUFFIX_PATTERN = '/(?::rev\d+|:repost:\d+)$/';
+
     /** The exact name Laravel's schema builder gives `$table->unique(['company_id',
      *  'idempotency_key'])` with no explicit name (migration 2026_08_24_120004) — verified against
      *  that migration's literal call, not guessed. Used by isIdempotencyKeyRaceViolation() (P1 fix
@@ -1937,12 +1947,45 @@ final class PostingService
                 $new = $this->withoutPaymentId($new);
             }
 
-            // P1 FIX ROUND 3 (MEDIUM finding): enforce the key convention documented on this
-            // method above BEFORE reverse() runs, using $old->idempotency_key as it stands right
-            // now — reverse() never touches that column (only posting_status and
-            // reversal_of_transaction_id), so there is no ordering hazard in reading it here first.
-            if ($new->idempotencyKey !== null && $new->idempotencyKey === $old->idempotency_key) {
-                $new = $this->withRepostIdempotencyKey($new, ':repost:'.$old->id);
+            // ── CT-A3 R2-2 — VERIFY-CT-A3-STACK-R1 §3.2 D6 (BLOCKER) ────────────────────────────
+            // WAS: the suffix was applied CONDITIONALLY, only when the caller's replacement key
+            // happened to be string-identical to $old's:
+            //
+            //     if ($new->idempotencyKey !== null && $new->idempotencyKey === $old->idempotency_key) {
+            //         $new = $this->withRepostIdempotencyKey($new, ':repost:'.$old->id);
+            //     }
+            //
+            // That condition holds on the FIRST edit of a document and never again. Every caller
+            // rebuilds the same base key from the row's own id (`rv:{id}`, `pv:{id}`,
+            // `invoice-detail:{id}:sale`) because the row id does not change across an edit — so on
+            // the SECOND edit $old->idempotency_key is already `…:repost:{T1}`, the strings differ,
+            // no suffix is applied, reverse($old) runs, and then post()'s step-1 idempotency
+            // short-circuit finds the ALREADY-REVERSED first document under the base key and
+            // returns it WITHOUT POSTING ANYTHING. Net ledger effect of the document: zero
+            // (T1+REV(T1)=0, T2+REV(T2)=0), while the caller is handed a PostedDocument, re-points
+            // its row at the dead first transaction, and tells the operator the edit succeeded.
+            // Measured on a receipt voucher: cash/bank understated by the full receipt amount, the
+            // GL receivable still open, the subledger saying `paid`, no exception and no log.
+            //
+            // NOW: the replacement key is ALWAYS a MONOTONICALLY INCREASING REVISION of the
+            // document's own base key — `{base}:rev{n}` — derived by counting how many postings
+            // already occupy that base key's family ON THE LEDGER. A counter cannot have a "second
+            // time" special case the way a string comparison does, and it is correct however the
+            // caller built $new->idempotencyKey: a caller that rebuilds the base key from the row
+            // id and a caller that reuses $old's already-suffixed key both normalise to the same
+            // base (see repostBaseKey()) and therefore both get the next free revision.
+            //
+            // The `:repost:{id}` keys minted by the old convention are counted as revisions of the
+            // same base, so a document already carrying one keeps its history and simply gains
+            // `:rev2` next — no data migration, and no key is ever reused.
+            if ($new->idempotencyKey !== null) {
+                $baseKey = $this->repostBaseKey($new->idempotencyKey);
+
+                $new = $this->withRepostIdempotencyKey(
+                    $new,
+                    $this->nextRepostSuffix($new->companyId, $baseKey),
+                    $baseKey
+                );
             }
 
             $this->reverse($old, $date, $userId, false);
@@ -1989,8 +2032,15 @@ final class PostingService
      * is deliberately still non-null — proving the line's own effect, not merely its current
      * no-op-ness at the one call site that happens to pre-clear it today.
      */
-    private function withRepostIdempotencyKey(DocumentDraft $draft, string $suffix): DocumentDraft
+    private function withRepostIdempotencyKey(DocumentDraft $draft, string $suffix, ?string $baseKey = null): DocumentDraft
     {
+        // CT-A3 R2-2: $baseKey lets repost() REBASE as well as suffix, so a caller that hands us
+        // the previous revision's own already-suffixed key (`rv:5:rev1`) produces `rv:5:rev2` and
+        // not `rv:5:rev1:rev2`. Defaulting to $draft->idempotencyKey keeps the original
+        // append-only behaviour for every other caller (and for the reflection pin in
+        // PostingServiceRepostPaymentIdTest, which asserts exactly that shape).
+        $key = ($baseKey ?? $draft->idempotencyKey).$suffix;
+
         return new DocumentDraft(
             companyId: $draft->companyId,
             branchId: $draft->branchId,
@@ -1999,7 +2049,7 @@ final class PostingService
             docDate: $draft->docDate,
             narration: $draft->narration,
             lines: $draft->lines,
-            idempotencyKey: $draft->idempotencyKey.$suffix,
+            idempotencyKey: $key,
             sourceType: $draft->sourceType,
             sourceId: $draft->sourceId,
             invoiceId: $draft->invoiceId,
@@ -2018,6 +2068,96 @@ final class PostingService
             // $docDate instead.
             postingDate: $draft->postingDate,
         );
+    }
+
+    /**
+     * CT-A3 R2-2 — the base key a repost revision counts from.
+     *
+     * Strips ONE trailing revision marker, in either convention this codebase has minted:
+     * `:rev{n}` (the current one) or `:repost:{transactionId}` (the pre-R2 one, still on any
+     * document edited before this fix shipped). Both normalise to the same base, so a caller that
+     * rebuilds the key from the row's own id (`ReceiptVoucherController::buildVoucherDraft()`,
+     * which always emits `rv:{id}`) and a caller that reuses $old's key verbatim
+     * (`InvoiceController`'s price-correction sites, which pass `$oldSaleTransaction->
+     * idempotency_key`) count from the same family and can never collide with each other.
+     *
+     * Deliberately strips only ONE marker: a key is rebased once per edit, so a legitimate key
+     * that genuinely ends in something that looks like a marker cannot be eaten repeatedly.
+     */
+    private function repostBaseKey(string $idempotencyKey): string
+    {
+        return (string) preg_replace(self::REPOST_REVISION_SUFFIX_PATTERN, '', $idempotencyKey);
+    }
+
+    /**
+     * CT-A3 R2-2 — the full replacement key for the next revision of `$currentKey`'s document.
+     *
+     * PUBLIC because the two ENGINE-OFF edit paths — {@see \App\Http\Controllers\
+     * ReceiptVoucherController::update()} and {@see \App\Http\Controllers\BankPaymentController::
+     * update()} — write their replacement header themselves and must mint the SAME key the ON path
+     * would, or the two paths drift and a company that flips the engine on mid-life ends up with
+     * two key conventions in one family. Before R2-2 those two sites each hard-coded
+     * `':repost:'.$old->id`; they now ask this method, so there is exactly one place that decides
+     * what a replacement key looks like.
+     */
+    public function nextRepostIdempotencyKey(int $companyId, string $currentKey): string
+    {
+        $base = $this->repostBaseKey($currentKey);
+
+        return $base.$this->nextRepostSuffix($companyId, $base);
+    }
+
+    /**
+     * CT-A3 R2-2 — the next free `:rev{n}` suffix for a document's base key.
+     *
+     * `n` is the number of postings that ALREADY occupy this base key's family on the ledger
+     * (the base itself, plus every `:rev{n}` and every legacy `:repost:{id}`), so the first edit
+     * of a document produces `:rev1`, the second `:rev2`, and so on — monotonic by construction
+     * and derived from the ledger rather than from a column that could drift.
+     *
+     * Counted, not max()-ed: a max() over a text column would have to parse `rev12` vs `rev2` and
+     * would be wrong the moment the two conventions mixed. The loop below then guarantees the
+     * chosen key is genuinely free even if a gap or a hand-made row makes the count collide, so
+     * the caller can never be handed a key `post()` would short-circuit on. Bounded, because an
+     * unbounded search on a corrupt key space is a hang, not a fix.
+     *
+     * Soft-deleted rows are excluded on purpose: `post()`'s own step 1 treats a collision with a
+     * soft-deleted document as {@see SupersededIdempotencyKeyException}, never as a silent reuse,
+     * so counting them would push every revision one higher for no gain.
+     */
+    private function nextRepostSuffix(int $companyId, string $baseKey): string
+    {
+        // LIKE metacharacters escaped: an idempotency key is caller-supplied text and a stray `_`
+        // (common in `gateway_settlement:…`-shaped keys) would otherwise match a single character
+        // of an unrelated family and inflate the count.
+        $prefix = addcslashes($baseKey, '%_\\');
+
+        $family = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where(function ($q) use ($baseKey, $prefix) {
+                $q->where('idempotency_key', $baseKey)
+                    ->orWhere('idempotency_key', 'like', $prefix.':rev%')
+                    ->orWhere('idempotency_key', 'like', $prefix.':repost:%');
+            })
+            ->count();
+
+        $revision = max(1, $family);
+
+        for ($attempt = 0; $attempt < 1000; $attempt++) {
+            $candidate = ':rev'.($revision + $attempt);
+
+            if ($this->findByIdempotencyKey($companyId, $baseKey.$candidate) === null) {
+                return $candidate;
+            }
+        }
+
+        throw new \RuntimeException(sprintf(
+            'PostingService::nextRepostSuffix(): could not find a free revision for company #%d key "%s" '
+            .'after 1000 attempts. Something is minting revisions of this document in a loop.',
+            $companyId,
+            $baseKey
+        ));
     }
 
     /**

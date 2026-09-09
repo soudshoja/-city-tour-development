@@ -502,7 +502,21 @@ class BankPaymentController extends Controller
             } else {
                 JournalEntry::where('transaction_id', $oldTransaction->id)->delete();
                 $this->markTransactionReversed($oldTransaction);
-                $repostDraft = $this->withIdempotencyKeySuffix($newDraft, ':repost:'.$oldTransaction->id);
+                // CT-A3 R2-2: the replacement key comes from PostingService's ONE revision
+                // convention ({base}:rev{n}, monotonic and derived from the ledger), not from a
+                // second hard-coded ':repost:{id}' rule living here. Before R2-2 the ON path's
+                // suffix was conditional and silently stopped applying from the second edit
+                // onwards (verify R1 D6); this OFF path was safe by accident, because its suffix
+                // was unconditional. Both now ask the same method, so the two paths cannot drift
+                // and a company that flips the engine on mid-life keeps one key family per
+                // document.
+                $repostDraft = $this->withReplacementIdempotencyKey(
+                    $newDraft,
+                    $this->postingService->nextRepostIdempotencyKey(
+                        (int) $newDraft->companyId,
+                        (string) $oldTransaction->idempotency_key
+                    )
+                );
                 $newTransactionId = $this->writeLegacyTransaction($repostDraft, $bankPayment)->id;
             }
 
@@ -1119,8 +1133,9 @@ class BankPaymentController extends Controller
 
     /** DocumentDraft has no setter (every property is `readonly`) -- rebuilds an equivalent draft
      * with only `idempotencyKey` changed, for `update()`'s OFF-path repost branch. Mirrors
-     * ReceiptVoucherController::withIdempotencyKeySuffix()'s identical convention. */
-    private function withIdempotencyKeySuffix(DocumentDraft $draft, string $suffix): DocumentDraft
+     * ReceiptVoucherController::withReplacementIdempotencyKey()'s identical convention; CT-A3 R2-2
+     * moved the key DERIVATION itself into PostingService::nextRepostIdempotencyKey(). */
+    private function withReplacementIdempotencyKey(DocumentDraft $draft, string $idempotencyKey): DocumentDraft
     {
         return new DocumentDraft(
             companyId: $draft->companyId,
@@ -1130,7 +1145,7 @@ class BankPaymentController extends Controller
             docDate: $draft->docDate,
             narration: $draft->narration,
             lines: $draft->lines,
-            idempotencyKey: $draft->idempotencyKey.$suffix,
+            idempotencyKey: $idempotencyKey,
             sourceType: $draft->sourceType,
             sourceId: $draft->sourceId,
             userId: $draft->userId,

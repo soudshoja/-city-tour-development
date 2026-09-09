@@ -42,7 +42,9 @@ class RealisedFxRepostChainTest extends AccountingTestCase
     use CreatesTenantFixtures;
 
     private array $tenant;
+
     private int $companyId;
+
     private int $clientId;
 
     protected function setUp(): void
@@ -55,7 +57,7 @@ class RealisedFxRepostChainTest extends AccountingTestCase
         $this->clientId = $this->tenant['client']->id;
 
         CoaSeeder::run($this->companyId);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         Artisan::call('accounting:engine', ['company' => $this->companyId, '--enable' => true]);
         $this->trackCompanyForInvariants($this->companyId);
     }
@@ -277,8 +279,16 @@ class RealisedFxRepostChainTest extends AccountingTestCase
     }
 
     /**
-     * Case 3 — edited twice: the LIVE (second) replacement wins, i.e. the walk follows the chain
-     * for more than one hop. Keys nest: K -> K:repost:{O} -> K:repost:{O}:repost:{R1}.
+     * Case 3 — edited twice: the LIVE (second) replacement wins.
+     *
+     * CT-A3 R2-2 changed the shape this case exercises, and it is worth being explicit about what
+     * did and did not change. The OLD convention nested (K -> K:repost:{O} -> K:repost:{O}:repost:
+     * {R1}) and required a multi-HOP walk; worse, its suffix was applied only when the replacement
+     * key collided with $old's, so the second edit silently posted NOTHING at all (verify-R1 D6) —
+     * a chain that could not be followed because it was never minted. Revisions are now a FLAT
+     * family off one base key (K, K:rev1, K:rev2), so "the live end of the chain" is one query and
+     * cannot break halfway. The BEHAVIOUR this case pins is unchanged: two edits, and the resolver
+     * must land on the SECOND replacement's rate.
      */
     public function test_case3_edited_twice_resolves_the_live_end_of_the_chain(): void
     {
@@ -291,9 +301,14 @@ class RealisedFxRepostChainTest extends AccountingTestCase
         $second = $this->repostSource($first->transaction->fresh(), 0.330);
 
         $this->assertSame(
-            'chain:c3:repost:'.$original->transaction->id.':repost:'.$first->transaction->id,
+            'chain:c3:rev1',
+            (string) $first->transaction->idempotency_key,
+            'precondition: the first edit is revision 1 of the base key'
+        );
+        $this->assertSame(
+            'chain:c3:rev2',
             (string) $second->transaction->idempotency_key,
-            'precondition: repost() nests its suffix when the caller passes $old\'s own key'
+            'precondition: the SECOND edit mints revision 2 — before CT-A3 R2-2 it posted nothing at all'
         );
 
         $doc = $this->apply($payment, $invoice, 91003);
@@ -364,11 +379,14 @@ class RealisedFxRepostChainTest extends AccountingTestCase
     }
 
     /**
-     * Case 7 — a malformed, over-long chain must TERMINATE (the walk is hop-bounded) and skip.
-     * A true cycle is not constructible: every hop's key is its predecessor's key plus a
-     * non-empty ':repost:{id}' suffix, so keys grow strictly and can never revisit one. The
-     * bound is the defence against a chain that is merely absurd. The test completing at all is
-     * the termination proof.
+     * Case 7 — a malformed, over-long chain must TERMINATE and skip.
+     *
+     * The fixture below is built in the LEGACY nested ':repost:{id}' convention on purpose: those
+     * keys are on every ledger that was edited before CT-A3 R2-2, and the resolver must still
+     * refuse them cleanly rather than spin or throw. Under the flat-family resolution the
+     * termination argument is stronger than the old hop bound — there is no walk to bound, only a
+     * single family query — but the case is kept because "13 reversed documents sharing one base
+     * key, none live" is exactly the state that must produce a clean skip and not a wrong answer.
      */
     public function test_case7_an_overlong_malformed_chain_terminates_and_skips(): void
     {
@@ -380,8 +398,9 @@ class RealisedFxRepostChainTest extends AccountingTestCase
         $head = $this->postSource(0.310, $key, $payment->id)->transaction;
         $ids = [$head->id];
 
-        // 12 further links, each keyed by the convention off its predecessor — longer than the
-        // resolver's 10-hop bound.
+        // 12 further links in the LEGACY nested convention, each keyed off its predecessor —
+        // deliberately longer than the pre-R2-2 resolver's 10-hop bound, so this fixture still
+        // probes the shape that used to need one.
         $previousId = $head->id;
         for ($i = 0; $i < 12; $i++) {
             $key = $key.':repost:'.$previousId;
@@ -469,7 +488,7 @@ class RealisedFxRepostChainTest extends AccountingTestCase
             null
         );
 
-        $draft = (new CreditApplicationDraftBuilder())->build(
+        $draft = (new CreditApplicationDraftBuilder)->build(
             invoice: $invoice,
             applications: [new CreditApplicationInput(
                 idSource: CreditApplicationInput::SOURCE_PAYMENT_APPLICATION,

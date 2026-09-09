@@ -28,6 +28,10 @@ use App\Services\Accounting\PostingSeam;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\SaleDraftBuilder;
 use App\Services\Accounting\SaleDraftInput;
+use App\Services\Accounting\SupplierChargeLineBuilder;
+use App\Services\Accounting\SupplierChargeLineInput;
+use App\Services\Accounting\SupplierChargeRuleResolver;
+use App\Services\Accounting\TaskIssuancePayableService;
 use App\Services\TaskStatus\MappedStatus;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -315,6 +319,25 @@ class TaskStatusService
         $companyId = (int) $task->company_id;
         $status = strtolower((string) $task->status);
         $engineOn = $companyId > 0 && app(PostingSeam::class)->isEnabledFor($companyId);
+
+        // CT-A3 wave 1 feeder E-iss (owner rulings 2026-09-09, R-CT3). Runs FIRST, on EVERY
+        // status, and for the engine-ON path only. Owner: "anything comes into task where its
+        // been issued/vouchered and needs to be paid to supplier we want to automatically add it
+        // to the right account so we know how much we need to pay regardless of them being
+        // invoiced".
+        //
+        // Called unconditionally rather than from inside the per-status branches below, because
+        // status TRANSITIONS are what drive it in both directions and no single branch sees them
+        // all: a task held today and confirmed tomorrow accrues on the later dispatch; a task
+        // that reaches `void`/`cancelled`/`refund` has its accrual reversed on that dispatch.
+        // Everything else about whether to post is decided by master data in
+        // {@see \App\Services\Accounting\SupplierPayableRule}, not here — including the
+        // "not hold or some supplier confirmed" gate — and the whole call is a cheap no-op when
+        // the rule says nothing is due. It never posts for a task whose sale document already
+        // carries the cost, so the `issued` -> auto-invoice path below is unaffected.
+        if ($engineOn) {
+            app(TaskIssuancePayableService::class)->postIfDue($task);
+        }
 
         if ($engineOn && $status === 'issued') {
             $this->issue($task);
@@ -1038,11 +1061,22 @@ class TaskStatusService
                     'invoice_status' => $task->invoiceDetail?->invoice?->status,
                     'crn' => null,
                     'fee' => null,
+                    'supplier_cancellation_fee' => null,
                     'commission_unearn' => null,
                     'fee_commission' => null,
                     'disposition' => null,
                 ];
             }
+
+            // CT-A3 wave 1, feeder E-iss (owner ruling 2026-09-09): "Reversal on task
+            // cancel/void". A task voided BEFORE it was ever invoiced still carries its issuance
+            // accrual (Dr 1430 / Cr SERVICE_PAYABLE) — the agency no longer owes the supplier, so
+            // the accrual comes off here, through PostingService::reverse(). A no-op when the
+            // task was never accrued (already invoiced, supplier on hold, trigger not reached),
+            // so it is safe on every void path. Deliberately BEFORE the sale reversal below: the
+            // two documents are independent and reversing the accrual first keeps the AP control
+            // monotonic for anyone watching it during the transaction.
+            app(TaskIssuancePayableService::class)->reverseForTask($task);
 
             $this->normalizeTicketStatus($task);
             $this->assertVoidPreconditions($task);
@@ -1053,6 +1087,14 @@ class TaskStatusService
             $docDate = Carbon::now();
 
             $crn = $this->voidReverseSale($task, $invoiceDetail, $posting, $docDate, $userId);
+
+            // CT-A3 wave 2, item W2-5. The sale reversal above carries the supplier payable with
+            // it (under wave 1's GROSS basis the sale document has its own SERVICE_COST /
+            // SERVICE_PAYABLE pair), so after it the agency owes this supplier nothing for this
+            // task -- as though every cancellation were free. When the supplier actually KEEPS a
+            // fee, that fee is put back as a payable here, from configured master data.
+            $supplierCancellationFee = $this->voidSupplierCancellationFee($task, $invoiceDetail, $companyId, $docDate, $userId, $posting);
+
             $fee = $this->voidPostFee($task, $invoiceDetail, $invoice, $companyId, $docDate, $userId, $feeOverride, $posting);
             $unearn = $this->voidCommissionUnearn($task, $invoiceDetail, $companyId, $docDate, $userId, $posting);
             $feeCommission = $this->voidFeeCommission($task, $fee, $companyId, $docDate, $userId, $posting);
@@ -1085,6 +1127,7 @@ class TaskStatusService
                 'invoice_status' => $invoiceStatus,
                 'crn' => $crn,
                 'fee' => $fee,
+                'supplier_cancellation_fee' => $supplierCancellationFee,
                 'commission_unearn' => $unearn,
                 'fee_commission' => $feeCommission,
                 'disposition' => $disposition,
@@ -1201,6 +1244,136 @@ class TaskStatusService
         Transaction::withoutGlobalScopes()->whereKey($reversed->transaction->id)->update(['bsptype' => 'VOID']);
 
         return $reversed;
+    }
+
+    /**
+     * CT-A3 wave 2, item W2-5 — the SUPPLIER's own cancellation fee, under owner ruling R-CT3.
+     *
+     * ── The gap this closes ─────────────────────────────────────────────────────────────────────
+     * {@see self::voidReverseSale()} reverses the whole sale document. Under wave 1's GROSS basis
+     * (R-CT1) that document carries its own `SERVICE_COST` / `SERVICE_PAYABLE` pair, so the
+     * reversal takes the supplier payable to zero along with the revenue and the receivable. That
+     * is right when a cancellation genuinely costs nothing — and wrong the moment a supplier keeps
+     * a fee, which is the ordinary case for a flight consolidator. Nothing in the engine expressed
+     * that fee, so every void looked free.
+     *
+     * ── Configured master data, not a constant ──────────────────────────────────────────────────
+     * The fee comes from `supplier_charge_rules` with `charge_kind = 'cancellation_fee'` (migration
+     * 2026_09_09_000004), resolved by the SAME {@see SupplierChargeRuleResolver} the sale feeder
+     * uses, with the same documented precedence (supplier+service beats supplier beats service
+     * beats company-wide, `channel` a filter rather than a tier) and the same effective-date and
+     * `active` handling. The amount basis (`fixed`, `percent_of_fare`, `percent_of_total`,
+     * `per_passenger`, `per_segment`), the cost account override and the recharge policy are all
+     * the rule's own, evaluated by {@see SupplierChargeLineBuilder}. No supplier name, no id, no
+     * hard-coded percentage appears anywhere in this file.
+     *
+     * That reuse is the point: `supplier_charge_rules` is ALREADY the fee-policy table, with a
+     * resolver, a line builder and a dedup contract. Adding a `suppliers.cancellation_fee` column
+     * would have been a second fee mechanism competing with the first — exactly the duplication
+     * CT-A1 §1.7 found twenty variants of on the refund path.
+     *
+     * ── The document ────────────────────────────────────────────────────────────────────────────
+     *   Dr `SUPPLIER_CHARGE_EXPENSE` (or the rule's `cost_account` override) = the fee
+     *       Cr `SERVICE_PAYABLE`/{type}                                     = the fee (party = supplier)
+     *   plus, when `recharge_policy = recharge_client`, the builder's own
+     *   `Dr RECEIVABLE_CONTROL / Cr SUPPLIER_CHARGE_RECHARGE_INCOME` pair.
+     *
+     * `JV`/`SUPPLIER_CXL_FEE` (16 chars — `transactions.sub_type` is varchar(16), the ceiling that
+     * caught wave 1's `SUPPLIER_REASSIGN`), keyed `void:{task}:supplier-cxl-fee`, so a re-voided
+     * task never fees twice.
+     *
+     * A no-op (returns null) when no cancellation-fee rule is active for this supplier / service /
+     * company on this date, which is the state of every company today: this migration adds the
+     * capability, it does not invent a fee for anybody.
+     */
+    private function voidSupplierCancellationFee(
+        Task $task,
+        ?InvoiceDetail $invoiceDetail,
+        int $companyId,
+        \DateTimeInterface $docDate,
+        ?int $userId,
+        PostingService $posting
+    ): ?PostedDocument {
+        if ($task->supplier_id === null || empty($task->reference)) {
+            return null;
+        }
+
+        $resolver = new SupplierChargeRuleResolver;
+
+        $applicable = $resolver->resolveApplicable(
+            $companyId,
+            (int) $task->supplier_id,
+            (string) $task->type,
+            null,
+            $docDate
+        );
+
+        $rule = $applicable['cancellation_fee'] ?? null;
+
+        if ($rule === null) {
+            return null;
+        }
+
+        $supplier = $task->supplier_id ? Supplier::find($task->supplier_id) : null;
+        $sellAmount = (float) ($invoiceDetail?->task_price ?? $task->price ?? 0.0);
+
+        $lines = (new SupplierChargeLineBuilder($resolver))->buildLines(
+            ['cancellation_fee' => $rule],
+            new SupplierChargeLineInput(
+                serviceType: (string) $task->type,
+                postingBasis: SaleDraftBuilder::resolvePostingBasis($companyId, (string) $task->type),
+                companyId: $companyId,
+                reference: (string) $task->reference,
+                fareAmount: $sellAmount,
+                totalAmount: $sellAmount,
+                passengerCount: 1,
+                segmentCount: 1,
+                supplierId: $supplier?->id,
+                supplierName: $supplier?->name,
+                clientId: $task->client_id,
+                clientName: $task->client_name,
+                invoiceId: $invoiceDetail?->invoice_id,
+                invoiceDetailId: $invoiceDetail?->id,
+                taskId: $task->id,
+                currency: (string) config('accounting.engine.base_currency'),
+            )
+        );
+
+        if ($lines === []) {
+            return null;
+        }
+
+        $draft = new DocumentDraft(
+            companyId: $companyId,
+            branchId: (int) ($task->agent?->branch_id ?? 0),
+            docType: 'JV',
+            subType: 'SUPPLIER_CXL_FEE',
+            docDate: $docDate,
+            narration: 'Supplier cancellation fee retained on void: '.$task->reference,
+            lines: $lines,
+            idempotencyKey: 'void:'.$task->id.':supplier-cxl-fee',
+            sourceType: 'Payment',
+            sourceId: $task->id,
+            userId: $userId,
+        );
+
+        $posted = $posting->post($draft, $userId);
+
+        // The write half of the once_per_reference dedup contract
+        // ({@see SupplierChargeRuleResolver}'s own docblock: record INSIDE the same transaction as
+        // the post it guards, AFTER that post succeeds). void() wraps this whole call in its own
+        // DB::transaction(), so this write shares it.
+        $resolver->recordFiring($rule, (string) $task->reference, $companyId, $task->id, $docDate);
+
+        Log::info('accounting.void.supplier_cancellation_fee_posted', [
+            'task_id' => $task->id,
+            'company_id' => $companyId,
+            'supplier_id' => $supplier?->id,
+            'supplier_charge_rule_id' => $rule->id,
+            'transaction_id' => $posted->transaction->id,
+        ]);
+
+        return $posted;
     }
 
     /**
@@ -1430,7 +1603,8 @@ class TaskStatusService
             narration: 'Agent commission on void fee: '.$task->reference,
             lines: [
                 new LineDraft(
-                    purposeCode: 'SALARY_EXPENSE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_EXPENSE',
                     accountId: null,
                     side: $expenseSide,
                     amount: $absCommission,
@@ -1445,7 +1619,8 @@ class TaskStatusService
                     partyName: $agent->name,
                 ),
                 new LineDraft(
-                    purposeCode: 'SALARY_PAYABLE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_PAYABLE',
                     accountId: null,
                     side: $liabilitySide,
                     amount: $absCommission,
@@ -1764,7 +1939,7 @@ class TaskStatusService
      *     boundary {@see self::issue()}'s own docblock states for the ordinary import path -- this
      *     sub-wave "does not touch void/reissue/bulk-void" per W6.C's own brief section).
      *
-     * @param  array{fee?: float|null, user_id?: int|null} $opts
+     * @param  array{fee?: float|null, user_id?: int|null}  $opts
      * @return array{idempotent: bool, reversal: ?PostedDocument, new_sale: ?PostedDocument,
      *               fee: ?PostedDocument, commission_unearn: ?PostedDocument,
      *               commission_earn: ?PostedDocument, fee_commission: ?PostedDocument,
@@ -2089,9 +2264,9 @@ class TaskStatusService
      * a third ledger document (see {@see self::reissue()}'s own docblock for why).
      *
      * @return array{type: string, amount: float} `type` is `dbn` (newSell > oldSell -- the client
-     *                                             now owes more), `crn` (newSell < oldSell -- the
-     *                                             client is credited), or `none` (equal, within
-     *                                             tolerance). `amount` is always >= 0.
+     *                                            now owes more), `crn` (newSell < oldSell -- the
+     *                                            client is credited), or `none` (equal, within
+     *                                            tolerance). `amount` is always >= 0.
      */
     private function reissueFareDifference(float $oldSell, float $newSell): array
     {
@@ -2245,7 +2420,8 @@ class TaskStatusService
             narration: 'Agent commission on reissued sale: '.$newTask->reference,
             lines: [
                 new LineDraft(
-                    purposeCode: 'SALARY_EXPENSE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_EXPENSE',
                     accountId: null,
                     side: 'debit',
                     amount: $commission,
@@ -2262,7 +2438,8 @@ class TaskStatusService
                     partyName: $agent->name,
                 ),
                 new LineDraft(
-                    purposeCode: 'SALARY_PAYABLE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_PAYABLE',
                     accountId: null,
                     side: 'credit',
                     amount: $commission,
@@ -2336,7 +2513,8 @@ class TaskStatusService
             narration: 'Agent commission on reissue fee: '.$newTask->reference,
             lines: [
                 new LineDraft(
-                    purposeCode: 'SALARY_EXPENSE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_EXPENSE',
                     accountId: null,
                     side: $expenseSide,
                     amount: $absCommission,
@@ -2351,7 +2529,8 @@ class TaskStatusService
                     partyName: $agent->name,
                 ),
                 new LineDraft(
-                    purposeCode: 'SALARY_PAYABLE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_PAYABLE',
                     accountId: null,
                     side: $liabilitySide,
                     amount: $absCommission,

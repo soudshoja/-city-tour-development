@@ -13,8 +13,14 @@ class RefundDetail extends Model
      * W4.R (w4-brief.md §4 process decisions): `supplier_charge` is kept, unrenamed — it carries
      * the airline/consolidator PENALTY amount deducted from the supplier's refund (documented
      * here, not renamed, per the brief's own instruction). `supplier_refund_amount` is the NEW
-     * column: what the supplier actually refunds (defaults to original_task_cost - supplier_charge
-     * when not explicitly overridden — see RefundPostingService::supplierRefundAmount()).
+     * column: what the supplier actually refunds.
+     *
+     * CT-A3 wave 2 (W2-3, CT-F11): a NULL `supplier_refund_amount` used to default to
+     * `original_task_cost - supplier_charge`, i.e. "assume the supplier refunds". That assumption
+     * erased costs the agency had genuinely borne. Null now means exactly "nobody has recorded
+     * what the supplier did", and {@see \App\Services\Accounting\SupplierRefundRule} decides
+     * from the supplier's configured `refund_trigger`/`refund_hold` and the task's own normalised
+     * status. A figure typed here still always wins over that rule.
      */
     protected $fillable = [
         'refund_id',

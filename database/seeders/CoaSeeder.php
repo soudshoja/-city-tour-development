@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Account;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class CoaSeeder extends Seeder
@@ -35,7 +34,7 @@ class CoaSeeder extends Seeder
             // cheque-instrument RV debits until it clears (w5-brief.md §W5.R). See
             // SystemAccountsSeeder's mapByCode('CHEQUES_IN_HAND', ..., '1215', ...) mapping.
             ['code' => '1215', 'name' => 'Cheques In Hand', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '1300', 'name'  => 'Payment Gateway', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1300', 'name' => 'Payment Gateway', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
 
             ['code' => '1350', 'name' => 'Accounts Receivable', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1351', 'name' => 'Clients', 'level' => 3, 'parent' => 'Accounts Receivable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
@@ -64,6 +63,24 @@ class CoaSeeder extends Seeder
             // company owns it, and no CoaSeeder/EnsureSystemLeaves/SystemAccountsSeeder row
             // claims it) both in akeed_verify_snapshot and in this code-space.
             ['code' => '1431', 'name' => 'Prepaid Supplier Cost', 'level' => 3, 'parent' => 'Supplier Advances/Prepayments', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            // CT-A3 wave 1 (owner ruling R-CT3, 2026-09-09) — the UNBILLED_SUPPLIER_COST purpose
+            // code's target leaf: the asset TaskIssuancePayableService debits when a task's
+            // supplier cost becomes a guaranteed liability BEFORE any invoice exists, against a
+            // credit to SERVICE_PAYABLE. Owner: "anything comes into task where its been
+            // issued/vouchered and needs to be paid to supplier we want to automatically add it
+            // to the right account so we know how much we need to pay regardless of them being
+            // invoiced". Released by reversing the whole accrual document once the sale posts its
+            // own cost pair (see that service's docblock).
+            //
+            // CODE 1430 AND THIS NAME ARE NOT A NEW INVENTION: every real chart already carries
+            // this exact account under this exact parent (see the 1431 comment immediately above,
+            // and CT-A1 §3.1 measuring KWD 660,888.716 sitting on it). It was simply never in
+            // CoaSeeder, so a FRESHLY seeded company had no leaf for the purpose code to resolve.
+            // Account::updateOrCreate() keys on (name, parent_id, company_id, root_id), so on an
+            // existing chart this row ADOPTS the account already there rather than minting a
+            // second one — the 1430 collision the comment above describes cannot recur, because
+            // this row deliberately claims the SAME identity.
+            ['code' => '1430', 'name' => 'Unbilled Supplier Cost', 'level' => 3, 'parent' => 'Supplier Advances/Prepayments', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
 
             ['code' => '1500', 'name' => 'Stock Assets', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1510', 'name' => 'Stock In Hand', 'level' => 3, 'parent' => 'Stock Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
@@ -309,6 +326,21 @@ class CoaSeeder extends Seeder
             ['code' => '5119', 'name' => 'Lounge Cost', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5121', 'name' => 'Ferry Cost', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5130', 'name' => 'Commissions Expense (Agents)', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            // CT-A3 wave 2 (W2-3, CT-F11) - the SUPPLIER_REFUND_LOSS purpose code's target leaf.
+            // When a booking is refunded to the client but the supplier does NOT give the cost
+            // back, that cost is no longer the cost OF A SALE (the sale has been reversed) - it is
+            // a loss on a refunded booking, and it belongs on its own line where the owner can see
+            // it, not buried in COGS and not silently erased as the pre-wave-2 refund feeder did.
+            //
+            // CODE 5131, NOT 5126. The 5122-5129 run under this parent is full, and 5126 in
+            // particular is RESERVED for P5.13's not-yet-built 'Loss Recovery (Agents)' leaf --
+            // reserved in PostingService's resolved-gap #9 note, in
+            // InvoiceController::postAgentLossRecoveryHook()'s docblock, in this seeder's own
+            // 5125/5127 comments, and guarded by SystemAccountsSeederVoucherAnchorsTest's
+            // "5126 is reserved for P5.13 and must remain unused by this wave". The first cut of
+            // this wave took 5126 and that test caught it. 5131 is the next free code after
+            // Commissions Expense (Agents) 5130 and before Payment Gateway Charges 5140.
+            ['code' => '5131', 'name' => 'Supplier Refund Loss', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5140', 'name' => 'Payment Gateway Charges', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5141', 'name' => 'TAP Charges', 'level' => 4, 'parent' => 'Payment Gateway Charges', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5142', 'name' => 'MyFatoorah Charges', 'level' => 4, 'parent' => 'Payment Gateway Charges', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
@@ -353,6 +385,16 @@ class CoaSeeder extends Seeder
             // (Cost of Sales)' after 5121-5125/5127 -- NOT 5126, reserved for P5.13's not-yet-built
             // agent-loss-recovery leaf (same reservation CASH_OVER_SHORT's own comment above notes).
             ['code' => '5128', 'name' => 'Supplier Fees & Surcharges', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
+            // CT-A3 E5 (CT-F37) — the COST_OF_SALES_CONTROL purpose code's target leaf: the ONE
+            // cost-of-sales control account an unmapped per-service SERVICE_COST/{type} falls back
+            // to (AccountResolver::resolveViaFallback()). This is the "single COGS leaf" the owner
+            // ruling names — deliberately ONE account, not the 13 per-service control leaves CT-A2
+            // had to hand-create just to make its replay run and recorded as scaffolding, "not a
+            // recommendation". A company that DOES map SERVICE_COST per service type keeps using
+            // its own leaves; nothing here changes that path.
+            // CODE 5129: the next free code under this parent (5110-5128 are all taken above),
+            // verified against CoaSeeder, EnsureSystemLeaves and SystemAccountsSeeder.
+            ['code' => '5129', 'name' => 'Cost of Sales Control', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
 
             ['code' => '5150', 'name' => 'Stock Expenses', 'level' => 3, 'parent' => 'Direct Expenses (Cost of Sales)', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '5151', 'name' => 'Cost of Goods Sold', 'level' => 4, 'parent' => 'Stock Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],

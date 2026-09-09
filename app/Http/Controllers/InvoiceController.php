@@ -2039,6 +2039,27 @@ class InvoiceController extends Controller
             }
         }
 
+        // CT-A3 wave-1 server-replay finding (2026-09-09): SaleDraftBuilder returns an EMPTY line
+        // array when a sale carries neither a sell price nor a supplier cost — nothing happened,
+        // so there is no document to post. Before the builder omitted the zero legs, that shape
+        // reached PostingService as a 0.000-amount line and threw NonNegativeAmountException
+        // straight out of this method uncaught, failing invoice creation for a line carrying no
+        // money in either direction (7 documents on the City Travelers dev data). Returning null
+        // here matches this method's own documented contract: anything that is not a string means
+        // "proceed".
+        if ($lines === []) {
+            Log::info('accounting.sale.nothing_to_post', [
+                'company_id' => $companyId,
+                'invoice_id' => $invoiceId,
+                'invoice_detail_id' => $invoiceDetailId,
+                'task_id' => $task->id ?? null,
+                'sell' => $selling,
+                'cost' => (float) ($task->total ?? 0),
+            ]);
+
+            return null;
+        }
+
         $draft = new DocumentDraft(
             companyId: $companyId,
             branchId: (int) ($agent->branch_id ?? 0),
@@ -2052,6 +2073,17 @@ class InvoiceController extends Controller
         );
 
         $posted = app(PostingSeam::class)->post($draft, $legacy, 'invoice.sale');
+
+        // CT-A3 wave 1, feeder E-iss — the "reclassify to COGS on invoice" half of the owner's
+        // 2026-09-09 ruling. If this task was accrued at issuance (Dr 1430 Unbilled Supplier Cost
+        // / Cr SERVICE_PAYABLE, because it had no invoice yet), the sale document just posted its
+        // OWN cost pair, so the accrual must come off. Reversed through
+        // PostingService::reverse() — a dated REV document — never an UPDATE or a delete over a
+        // posted line. A no-op for the overwhelmingly common task that auto-invoiced and was
+        // therefore never accrued at all.
+        if ($task !== null && $posted instanceof \App\Services\Accounting\PostedDocument) {
+            app(\App\Services\Accounting\TaskIssuancePayableService::class)->reverseForTask($task);
+        }
 
         // Write half of the once_per_reference dedup contract (SupplierChargeRuleResolver's own
         // docblock: "must call recordFiring() INSIDE the same DB transaction as the
@@ -3409,7 +3441,15 @@ class InvoiceController extends Controller
             narration: 'Agent commission: '.$agent->name,
             lines: [
                 new LineDraft(
-                    purposeCode: 'SALARY_EXPENSE',
+                    // CT-A3 E4 (CT-F38): was SALARY_EXPENSE -> 5160 'Agent Salaries', a PAYROLL
+                    // leaf. A commission on a sale is not payroll. COMMISSION_EXPENSE resolves to
+                    // 5130 'Commissions Expense (Agents)' — the leaf the legacy ledger already
+                    // used for this exact event (InvoiceController.php:3327) and that CoaSeeder
+                    // has always seeded. SALARY_EXPENSE keeps its own, genuinely-payroll call
+                    // site in AgentController::update()'s monthly salary accrual. CT-A2 §4.2
+                    // measured KWD 15,207.752 of commission landing on 5160/2201 under the old
+                    // mapping.
+                    purposeCode: 'COMMISSION_EXPENSE',
                     accountId: null,
                     side: 'debit',
                     amount: $commission,
@@ -3426,7 +3466,10 @@ class InvoiceController extends Controller
                     partyName: $agent->name,
                 ),
                 new LineDraft(
-                    purposeCode: 'SALARY_PAYABLE',
+                    // CT-A3 E4 (CT-F38): was SALARY_PAYABLE -> 2201 'Salaries & Wages Payable'.
+                    // COMMISSION_PAYABLE resolves to 2210 'Commissions (Agents)', the liability
+                    // the legacy ledger credited for this event (InvoiceController.php:3351).
+                    purposeCode: 'COMMISSION_PAYABLE',
                     accountId: null,
                     side: 'credit',
                     amount: $commission,
@@ -8526,7 +8569,8 @@ class InvoiceController extends Controller
             narration: ($additionalDesc ?? '').'Agent commission on invoice charge: '.$agent->name,
             lines: [
                 new LineDraft(
-                    purposeCode: 'SALARY_EXPENSE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_EXPENSE',
                     accountId: null,
                     side: $expenseSide,
                     amount: $absCommission,
@@ -8541,7 +8585,8 @@ class InvoiceController extends Controller
                     partyName: $agent->name,
                 ),
                 new LineDraft(
-                    purposeCode: 'SALARY_PAYABLE',
+                    // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                    purposeCode: 'COMMISSION_PAYABLE',
                     accountId: null,
                     side: $liabilitySide,
                     amount: $absCommission,

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\InvoiceReceiptStatus;
 use App\Enums\InvoiceReceiptType;
 use App\Exceptions\Accounting\PostingException;
+use App\Exceptions\Accounting\UnresolvedReceiptCompanyException;
 use App\Models\Account;
 use App\Models\Agent;
 use App\Models\Branch;
@@ -28,6 +29,7 @@ use App\Services\Accounting\PaymentIdempotencyKey;
 use App\Services\Accounting\PostedDocument;
 use App\Services\Accounting\PostingSeam;
 use App\Services\Accounting\PostingService;
+use App\Services\Accounting\ReceiptPostingRule;
 use App\Services\Accounting\ReconciliationService;
 use App\Services\Accounting\SequenceService;
 use App\Services\Accounting\VoucherOptions;
@@ -98,6 +100,10 @@ class ReceiptVoucherController extends Controller
         private readonly AccountResolver $accountResolver,
         private readonly ReconciliationService $reconciliation,
         private readonly ChequeImageStore $chequeImageStore,
+        // CT-A3 wave 2 (W2-2), R-CT3: WHICH receipt statuses post, which reverse, and WHICH
+        // cash/bank leaf the instrument leg debits -- all from configured master data, never from
+        // a constant in this controller. See ReceiptPostingRule's own docblock.
+        private readonly ReceiptPostingRule $receiptRule,
     ) {}
 
     public function index(Request $request)
@@ -234,7 +240,15 @@ class ReceiptVoucherController extends Controller
         $overpayPolicy = VoucherOptions::overpayPolicy((int) ($companyId ?? 0));
         $approvalThreshold = VoucherOptions::approvalThreshold((int) ($companyId ?? 0));
 
+        // CT-A3 wave 2 (W2-2), R-CT3. The payment methods this company has configured, each with
+        // whether it actually names a bank account (`charges.acc_bank_id`). Rendered as the
+        // "Received through" picker, and the ones with no account are labelled as such on the
+        // screen rather than silently falling back to cash -- which is how a card receipt ended
+        // up in CASH_IN_HAND in the first place.
+        $settlementChannels = $this->settlementChannelsFor($companyId);
+
         return view('receipt-voucher.create', compact(
+            'settlementChannels',
             'accounts',
             'companies',
             'branches',
@@ -396,7 +410,12 @@ class ReceiptVoucherController extends Controller
         $canReconcile = Gate::allows('reconcile', $invoiceReceipt);
         $canEditFields = Gate::allows('update', $invoiceReceipt) && ($invoiceReceipt->isPending() || (! $isLocked && ! $isReconciled));
 
+        // CT-A3 wave 2 (W2-2): same "Received through" picker as create(), so a channel recorded
+        // at creation stays visible and editable rather than becoming an invisible column.
+        $settlementChannels = $this->settlementChannelsFor($companyId);
+
         return view('receipt-voucher.edit', compact(
+            'settlementChannels',
             'companies',
             'invoiceReceipt',
             'accounts',
@@ -456,8 +475,26 @@ class ReceiptVoucherController extends Controller
             return redirect()->back()->with('error', 'This receipt voucher has a reconciled line and cannot be edited. Un-reconcile it first.');
         }
 
-        $companyId = (int) $invoiceReceipt->company_id;
-        $oldTransaction = Transaction::withoutGlobalScopes()->findOrFail($invoiceReceipt->transaction_id);
+        // CT-A3 R2-3 SERVER FINDING: resolved, never the raw column — see companyIdFor().
+        // `$this->seam->isEnabledFor(0)` is false for every legacy row, which silently routed
+        // the whole edit/delete/bounce path down the LEGACY branch (delete the journal rows and
+        // stamp the header) instead of posting a dated reversal.
+        $companyId = self::companyIdFor($invoiceReceipt);
+        $oldTransaction = $this->resolvePostedDocumentFor($invoiceReceipt);
+
+        if ($oldTransaction === null) {
+            // CT-A3 R2-3: was `findOrFail($invoiceReceipt->transaction_id)`, which threw a raw
+            // ModelNotFoundException (a 404) on any row whose linkage column is missing -- the
+            // entire `accounting:replay` backfill population before this fix. Named, not raw.
+            Log::critical('accounting.rv_update_no_document', [
+                'invoice_receipt_id' => $invoiceReceipt->id,
+                'company_id' => $companyId,
+                'idempotency_key' => 'rv:'.$invoiceReceipt->id,
+            ]);
+
+            return redirect()->back()->with('error', 'This receipt voucher has no posted document to edit.');
+        }
+
         $engineOn = $this->seam->isEnabledFor($companyId);
 
         DB::beginTransaction();
@@ -492,7 +529,21 @@ class ReceiptVoucherController extends Controller
                 // findByIdempotencyKey()-style lookup return the wrong row. Suffixed exactly like
                 // PostingService::repost()'s own convention so both paths' replacement keys are
                 // derived identically.
-                $repostDraft = $this->withIdempotencyKeySuffix($newDraft, ':repost:'.$oldTransaction->id);
+                // CT-A3 R2-2: the replacement key comes from PostingService's ONE revision
+                // convention ({base}:rev{n}, monotonic and derived from the ledger), not from a
+                // second hard-coded ':repost:{id}' rule living here. Before R2-2 the ON path's
+                // suffix was conditional and silently stopped applying from the second edit
+                // onwards (verify R1 D6); this OFF path was safe by accident, because its suffix
+                // was unconditional. Both now ask the same method, so the two paths cannot drift
+                // and a company that flips the engine on mid-life keeps one key family per
+                // document.
+                $repostDraft = $this->withReplacementIdempotencyKey(
+                    $newDraft,
+                    $this->postingService->nextRepostIdempotencyKey(
+                        (int) $newDraft->companyId,
+                        (string) $oldTransaction->idempotency_key
+                    )
+                );
                 $newTransactionId = $this->writeLegacyTransaction($repostDraft, $invoiceReceipt)->id;
             }
 
@@ -579,8 +630,25 @@ class ReceiptVoucherController extends Controller
             return redirect()->back()->with('error', 'This receipt voucher has a reconciled line and cannot be deleted. Un-reconcile it first.');
         }
 
-        $companyId = (int) $invoiceReceipt->company_id;
-        $oldTransaction = Transaction::withoutGlobalScopes()->findOrFail($invoiceReceipt->transaction_id);
+        // CT-A3 R2-3 SERVER FINDING: resolved, never the raw column — see companyIdFor().
+        // `$this->seam->isEnabledFor(0)` is false for every legacy row, which silently routed
+        // the whole edit/delete/bounce path down the LEGACY branch (delete the journal rows and
+        // stamp the header) instead of posting a dated reversal.
+        $companyId = self::companyIdFor($invoiceReceipt);
+        $oldTransaction = $this->resolvePostedDocumentFor($invoiceReceipt);
+
+        if ($oldTransaction === null) {
+            // CT-A3 R2-3, D7's mirror: `findOrFail($invoiceReceipt->transaction_id)` threw on
+            // every replay-backfilled row, so those vouchers could not be reversed at all.
+            Log::critical('accounting.rv_delete_no_document', [
+                'invoice_receipt_id' => $invoiceReceipt->id,
+                'company_id' => $companyId,
+                'idempotency_key' => 'rv:'.$invoiceReceipt->id,
+            ]);
+
+            return redirect()->back()->with('error', 'This receipt voucher has no posted document to reverse.');
+        }
+
         $engineOn = $this->seam->isEnabledFor($companyId);
 
         DB::beginTransaction();
@@ -636,21 +704,78 @@ class ReceiptVoucherController extends Controller
             return back()->with('error', 'This receipt voucher has no outstanding cheque to clear.');
         }
 
-        $companyId = (int) $invoiceReceipt->company_id;
+        // CT-A3 R2-3 SERVER FINDING: resolved, never the raw column — see companyIdFor().
+        // `$this->seam->isEnabledFor(0)` is false for every legacy row, which silently routed
+        // the whole edit/delete/bounce path down the LEGACY branch (delete the journal rows and
+        // stamp the header) instead of posting a dated reversal.
+        $companyId = self::companyIdFor($invoiceReceipt);
         $branchId = (int) $invoiceReceipt->branch_id;
         $clearanceDate = isset($data['clearance_date']) ? Carbon::parse($data['clearance_date']) : Carbon::now();
         $amount = round((float) $invoiceReceipt->amount, 3);
 
         $chequesInHand = $this->accountResolver->resolve('CHEQUES_IN_HAND', $companyId);
+
+        // ── CT-A3 R2-7 — VERIFY-CT-A3-STACK-R1 §3.3 D9 and D9b ───────────────────────────────
+        // This method credits CHEQUES_IN_HAND and debits a bank leaf UNCONDITIONALLY, on the
+        // assumption that the receipt document put the money in the cheque float. It only ever
+        // did for a genuinely POST-DATED cheque: {@see ReceiptPostingRule::instrumentAccountFor()}
+        // debits CHEQUES_IN_HAND only when `cheque_date > docDate`, and a same-day, past-dated or
+        // NULL-dated cheque takes the bank / channel / CASH_IN_HAND branch instead. Nothing
+        // requires post-dating (`cheque_date` validates as `nullable|date`, with no `after:`) and
+        // the UI offers "clear" for any cheque — so clearing one of those DEBITED THE BANK A SECOND
+        // TIME and left the cheque float permanently negative by the cheque amount (D9).
+        //
+        // D9b is the same method with no status guard at all: it read neither `status` nor
+        // `transaction_id`, so a PENDING (unposted) receipt could be "cleared", posting
+        // `rv-clear:{id}` with no `rv:{id}` behind it — bank overstated, float negative, nothing on
+        // AR, and the voucher then permanently unpostable via bounce().
+        //
+        // Both are closed by asking the LEDGER what this receipt actually did, structurally, rather
+        // than assuming: find the live receipt document, and clear only if its instrument leg is
+        // the cheque float. Never by description, and never by re-deriving the post-dating test —
+        // re-deriving it would just be a second copy of the rule that produced the mismatch.
+        $receiptDocument = $this->resolvePostedDocumentFor($invoiceReceipt);
+
+        if ($receiptDocument === null || $receiptDocument->posting_status !== 'posted') {
+            return back()->with('error',
+                'This receipt voucher has no posted document, so there is nothing in the cheque float to clear. '
+                .'Approve the voucher first.');
+        }
+
+        $instrumentLegOnFloat = JournalEntry::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('transaction_id', $receiptDocument->id)
+            ->where('account_id', $chequesInHand->id)
+            ->where('debit', '>', 0)
+            ->exists();
+
+        if (! $instrumentLegOnFloat) {
+            Log::warning('accounting.rv_clear_refused_not_on_float', [
+                'invoice_receipt_id' => $invoiceReceipt->id,
+                'company_id' => $companyId,
+                'transaction_id' => $receiptDocument->id,
+                'cheques_in_hand_account_id' => $chequesInHand->id,
+            ]);
+
+            return back()->with('error',
+                'This cheque was never held in the cheque float — the receipt already debited a bank or cash '
+                .'account directly (it was not post-dated), so there is nothing to reclassify. Clearing it '
+                .'would debit the bank a second time.');
+        }
         $bankAccount = $this->accountResolver->assertUnderBankGroup((int) $data['bank_account_id'], $companyId);
 
         $narration = "Cheque clearance for Receipt Voucher #{$invoiceReceipt->id}";
 
         $lines = [
+            // CT-A3 wave 2 (W2-2): both clearance legs carry the paying client as their party
+            // and a canonical ledger type, for the same reason the receipt's own legs do -- a
+            // cheque that moves from float to bank is still that client's money.
             new LineDraft(
                 purposeCode: '', accountId: $bankAccount->id, side: 'debit', amount: $amount,
                 currency: 'KWD', originalAmount: $amount, exchangeRate: 1.0,
                 transactionType: 'CHEQUE_CLEARED', description: $narration,
+                partyAccountRef: $invoiceReceipt->client_id,
+                ledgerType: 'bank',
                 chequeNo: $invoiceReceipt->cheque_no,
                 chequeDate: $invoiceReceipt->cheque_date ? Carbon::parse($invoiceReceipt->cheque_date) : null,
                 chequeClearanceDate: $clearanceDate,
@@ -659,6 +784,8 @@ class ReceiptVoucherController extends Controller
                 purposeCode: '', accountId: $chequesInHand->id, side: 'credit', amount: $amount,
                 currency: 'KWD', originalAmount: $amount, exchangeRate: 1.0,
                 transactionType: 'CHEQUE_CLEARED', description: $narration,
+                partyAccountRef: $invoiceReceipt->client_id,
+                ledgerType: 'bank',
                 chequeNo: $invoiceReceipt->cheque_no,
                 chequeDate: $invoiceReceipt->cheque_date ? Carbon::parse($invoiceReceipt->cheque_date) : null,
                 chequeClearanceDate: $clearanceDate,
@@ -707,7 +834,11 @@ class ReceiptVoucherController extends Controller
             return back()->with('error', 'This receipt voucher has no cleared cheque to bounce.');
         }
 
-        $companyId = (int) $invoiceReceipt->company_id;
+        // CT-A3 R2-3 SERVER FINDING: resolved, never the raw column — see companyIdFor().
+        // `$this->seam->isEnabledFor(0)` is false for every legacy row, which silently routed
+        // the whole edit/delete/bounce path down the LEGACY branch (delete the journal rows and
+        // stamp the header) instead of posting a dated reversal.
+        $companyId = self::companyIdFor($invoiceReceipt);
         $branchId = (int) $invoiceReceipt->branch_id;
 
         $clearanceTransaction = Transaction::withoutGlobalScopes()
@@ -718,8 +849,10 @@ class ReceiptVoucherController extends Controller
 
         DB::beginTransaction();
         try {
+            $engineOn = $this->seam->isEnabledFor($companyId);
+
             if ($clearanceTransaction !== null) {
-                if ($this->seam->isEnabledFor($companyId)) {
+                if ($engineOn) {
                     $this->postingService->reverse($clearanceTransaction, now(), Auth::id());
                 } else {
                     JournalEntry::where('transaction_id', $clearanceTransaction->id)->delete();
@@ -727,8 +860,62 @@ class ReceiptVoucherController extends Controller
                 }
             }
 
+            // ── CT-A3 wave 2 (W2-2), R-CT3 ────────────────────────────────────────────────────
+            // THE DEFECT THIS CLOSES. Until wave 2 this method reversed only the CLEARANCE
+            // journal above -- the cheque came back out of the bank and into the cheques-in-hand
+            // float -- and then stopped. The receipt document itself (`rv:{id}`: Dr cheque-in-hand
+            // / Cr RECEIVABLE_CONTROL) stayed on the ledger and the invoice stayed `paid`. So a
+            // bounced cheque left the agency showing a collected receivable, a settled invoice
+            // and a permanent debit sitting in the cheque float for money it never received.
+            //
+            // A bounce is not a bank reclassification: the money never arrived. Under R-CT3 the
+            // statuses that take a receipt back OFF the ledger are CONFIGURED
+            // (`accounting.receipt.reversing_statuses`, which lists `bounced`), and the receipt
+            // document is reversed through PostingService::reverse() -- a dated REV document,
+            // never an UPDATE and never a delete -- with the invoice allocations undone so the
+            // client owes the money again.
+            $bounceDecision = $this->receiptRule->decide(InvoiceReceipt::STATUS_BOUNCED);
+
+            // CT-A3 R2-3 — VERIFY-CT-A3-STACK-R1 §3.2 D7 (BLOCKER). This used to read
+            // `&& $invoiceReceipt->transaction_id !== null`, while the status flip below sat
+            // OUTSIDE the guard. `ReceiptReplaySource` never wrote that column back, so every
+            // receipt the cutover backfill posted had a LIVE `rv:{id}` document and a NULL
+            // transaction_id: the bounce marked the row `bounced`, left the receipt document on
+            // the ledger and the invoice allocations `paid`, and reported success -- the exact
+            // defect W2-2 exists to close, still open for the entire replay population.
+            //
+            // The replay now writes the linkage back (half 1 of the fix), but that only helps
+            // FUTURE backfills; every row an earlier run already left behind still carries a NULL.
+            // So the document is resolved by the receipt's own IDEMPOTENCY KEY FAMILY when the
+            // column is missing or stale -- the fix shape the report itself names, and the same
+            // structural lookup the clearance leg a few lines above already uses.
+            if ($bounceDecision->shouldReverse) {
+                $receiptTransaction = $this->resolvePostedDocumentFor($invoiceReceipt);
+
+                if ($receiptTransaction !== null && $receiptTransaction->posting_status !== 'reversed') {
+                    $this->undoAllocationsForVoucher($invoiceReceipt);
+
+                    if ($engineOn) {
+                        $this->postingService->reverse($receiptTransaction, now(), Auth::id());
+                    } else {
+                        JournalEntry::where('transaction_id', $receiptTransaction->id)->delete();
+                        $this->markTransactionReversed($receiptTransaction);
+                    }
+
+                    Log::info('accounting.receipt.reversed_on_bounce', array_merge(
+                        $bounceDecision->toLogContext(),
+                        [
+                            'invoice_receipt_id' => $invoiceReceipt->id,
+                            'company_id' => $companyId,
+                            'transaction_id' => $receiptTransaction->id,
+                        ]
+                    ));
+                }
+            }
+
             $invoiceReceipt->cheque_clearance_date = null;
             $invoiceReceipt->status = InvoiceReceipt::STATUS_BOUNCED;
+            $invoiceReceipt->is_used = false;
             $invoiceReceipt->save();
 
             $bounceFee = round((float) ($data['bounce_fee_amount'] ?? 0), 3);
@@ -748,6 +935,8 @@ class ReceiptVoucherController extends Controller
                         purposeCode: 'BANK_CHARGES_EXPENSE', accountId: null, side: 'credit', amount: $bounceFee,
                         currency: 'KWD', originalAmount: $bounceFee, exchangeRate: 1.0,
                         transactionType: 'BOUNCE_FEE_RECOVERY', description: $narration,
+                        partyAccountRef: $invoiceReceipt->client_id,
+                        ledgerType: 'expense',
                     ),
                 ];
 
@@ -831,6 +1020,25 @@ class ReceiptVoucherController extends Controller
      */
     private function postVoucher(InvoiceReceipt $invoiceReceipt): Transaction
     {
+        // CT-A3 wave 2 (W2-2), R-CT3. Which statuses put a receipt document on the ledger is
+        // CONFIGURED (`accounting.receipt.posting_statuses` / `reversing_statuses`), not decided
+        // by an `if` here. Two things this buys that the old hard-coded `isPending()` check did
+        // not: a receipt that has already reached a REVERSING status (bounced/reversed/rejected)
+        // can never be posted by a stray approve() -- the old code would happily have re-posted a
+        // bounced cheque's receipt -- and a company that wants a different approval vocabulary
+        // changes config rather than this controller.
+        $reversing = $this->receiptRule->decideFor($invoiceReceipt);
+
+        if ($reversing->shouldReverse) {
+            throw new \RuntimeException(sprintf(
+                'ReceiptVoucherController::postVoucher(): receipt voucher #%d is at status "%s", which '
+                .'config("accounting.receipt.reversing_statuses") lists as a REVERSING status -- a '
+                .'receipt at that status must not be posted.',
+                $invoiceReceipt->id,
+                $invoiceReceipt->status
+            ));
+        }
+
         $draft = $this->buildVoucherDraft($invoiceReceipt);
 
         $legacy = fn () => $this->writeLegacyTransaction($draft, $invoiceReceipt);
@@ -873,9 +1081,27 @@ class ReceiptVoucherController extends Controller
      * credits. This resolves HEAD's own ambiguous debit/credit branching (w5-state.md's "Not
      * enforced" row) into one unambiguous rule.
      */
-    private function buildVoucherDraft(InvoiceReceipt $r): DocumentDraft
+    public function buildVoucherDraft(InvoiceReceipt $r): DocumentDraft
     {
+        // CT-A3 E2 fix (CT-F35): `invoice_receipts.company_id` is NULL on every legacy-imported
+        // row (109 of 109, per CT-A2 §3.2) -- the old `(int) $r->company_id` cast turned that NULL
+        // into the sentinel `0`, which the very next line's AccountResolver call always threw
+        // UnmappedPurposeException for (no system_accounts mapping is ever seeded for company 0).
+        // A non-positive company_id on the row itself now falls back to the resolvable chain
+        // (invoice -> client/agent -> task -> account -> branch, see
+        // self::resolveReceiptCompanyId()'s own docblock for the exact precedence and why); a row
+        // that chain still cannot resolve throws the named UnresolvedReceiptCompanyException
+        // rather than silently posting under company 0.
         $companyId = (int) $r->company_id;
+        if ($companyId <= 0) {
+            $resolvedCompanyId = self::resolveReceiptCompanyId($r);
+
+            if ($resolvedCompanyId === null || $resolvedCompanyId <= 0) {
+                throw new UnresolvedReceiptCompanyException((int) $r->id);
+            }
+
+            $companyId = $resolvedCompanyId;
+        }
         $branchId = (int) $r->branch_id;
         $docDate = $r->doc_date ? Carbon::parse($r->doc_date) : Carbon::now();
         $amount = round((float) $r->amount, 3);
@@ -889,7 +1115,19 @@ class ReceiptVoucherController extends Controller
         };
         VoucherSubTypeGuard::assertValid('RV', $subType);
 
-        $instrumentAccount = $this->resolveInstrumentLeg($r, $docDate);
+        // $companyId here is the RESOLVED value from above -- never re-derive company_id from $r
+        // directly (see ReceiptPostingRule::instrumentAccountFor()'s own signature): $r->company_id
+        // itself may still be NULL/0 on a legacy row that was only resolved via the fallback chain
+        // above, and this row is deliberately never mutated/persisted as a side effect of posting
+        // (that is accounting:repair-receipt-company's job, not this method's).
+        // CT-A3 wave 2 (W2-2). The instrument leg is resolved by {@see ReceiptPostingRule::
+        // instrumentAccountFor()} -- post-dated cheque -> CHEQUES_IN_HAND, else the operator's
+        // explicit bank_account_id, else THE CONFIGURED PAYMENT-METHOD ACCOUNT for this receipt's
+        // settlement_channel (charges.acc_bank_id), and only then the configured fallback purpose.
+        // Before wave 2 the third step did not exist and every card/gateway/transfer receipt
+        // without an explicit bank account landed in CASH_IN_HAND -- the hard-coded constant
+        // owner ruling R-CT3 forbids.
+        $instrumentAccount = $this->receiptRule->instrumentAccountFor($r, $docDate, $companyId);
         $chequeDate = $r->cheque_date ? Carbon::parse($r->cheque_date) : null;
 
         $lines = [];
@@ -940,6 +1178,14 @@ class ReceiptVoucherController extends Controller
                     purposeCode: '', accountId: $account->id, side: 'credit', amount: $amount,
                     currency: 'KWD', originalAmount: $amount, exchangeRate: 1.0,
                     transactionType: 'RECEIPT', description: $narration,
+                    // CT-A3 wave 2 (W2-2): party on EVERY receipt line, not only the instrument
+                    // leg. CT-A1 CT-F26 measured party attribution missing across the legacy
+                    // ledger and CT-A2 §0 item 2 records the engine closing it "on 100% of AR and
+                    // AP lines" -- this leg was the one receipt line still carrying none, so an
+                    // account-type receipt could not be attributed to the client who paid it and
+                    // the AR-control-vs-party reconciliation (CT-A3-WAVE1 §4.4) had a blind spot.
+                    partyAccountRef: $r->client_id,
+                    ledgerType: 'receivable',
                 );
                 break;
 
@@ -1152,23 +1398,98 @@ class ReceiptVoucherController extends Controller
     // ────────────────────────────────────────────────────────────────────────────────────────
 
     /**
-     * Dr instrument leg selection (w5-brief.md §W5.R): a cheque dated AFTER the voucher's own
-     * date -> CHEQUES_IN_HAND (1215, the PDC float); an explicit bank leaf -> that leaf (validated
-     * under the Bank Accounts group); otherwise -> CASH_IN_HAND.
+     * CT-A3 E2 (CT-F35) fix vehicle, half (a): derives a positive company id for an
+     * `invoice_receipts` row whose own `company_id` column is NULL/non-positive (every one of the
+     * 109 legacy-imported rows CT-A2 §3.2 found). PUBLIC and STATIC deliberately -- this is the
+     * ONE implementation of the resolution chain; {@see \App\Console\Commands::class} 's sibling
+     * data-repair command (`accounting:repair-receipt-company`, half (b) of this same fix) calls
+     * this exact method rather than re-implementing the chain a second time, so the two halves of
+     * the fix can never drift out of agreement on what a given row resolves to. Static because it
+     * needs no controller-instance state (no injected service) -- it is a pure function of the row
+     * and the database.
+     *
+     * Precedence (owner-specified order: "invoice -> client/agent -> task -> account -> branch"):
+     *
+     *  1. Invoice -- `invoice_id` if populated, else the first allocation's `invoice_id` (mirrors
+     *     {@see self::resolveAllocations()}'s own fallback for an INVOICE-type receipt whose own
+     *     `invoice_id` column was never populated). `Invoice` has no `company_id` column of its
+     *     own -- resolved via `agent->branch->company_id`, the SAME chain {@see \App\Models\
+     *     Invoice}'s own methods already use (e.g. its `toArray()`-adjacent `'company_id' =>
+     *     $this->agent?->branch?->company_id`).
+     *  2. Client -- `client_id`'s own `company_id` column first (the common case), then, if that
+     *     is itself null/non-positive, `client->agent->branch->company_id` (a client whose own
+     *     `company_id` was never backfilled can still be reachable through its agent).
+     *  3. Task -- `task_id`'s own `company_id` column (Task carries one directly).
+     *  4. Account -- `account_id`, then `bank_account_id`, each via `accounts.company_id`.
+     *     Queried `withoutGlobalScopes()` -- Account is the one model in this chain carrying a
+     *     `BelongsToCompany` global scope (see {@see \App\Traits\BelongsToCompany}), and this
+     *     method must behave identically with or without an authenticated request context, same
+     *     requirement {@see \App\Services\Accounting\AccountResolver}'s own class docblock states
+     *     for exactly this reason.
+     *  5. Branch -- `branch_id`'s own `company_id` column, last: every `invoice_receipts` row
+     *     carries a `branch_id`, but a branch alone says only "which office", not necessarily
+     *     which of possibly-several companies that office serves in a chart shared across a
+     *     migration -- the four links above are more specific to the money itself and are
+     *     preferred whenever any of them resolves.
+     *
+     * Returns null (never `0`) when none of the above resolves to a positive company id --
+     * callers must treat null as "unresolved" and refuse to post/backfill under the `0` sentinel
+     * (see {@see UnresolvedReceiptCompanyException} and `accounting:repair-receipt-company`'s own
+     * UNRESOLVED reporting).
      */
-    private function resolveInstrumentLeg(InvoiceReceipt $r, Carbon $docDate): Account
+    public static function resolveReceiptCompanyId(InvoiceReceipt $r): ?int
     {
-        $companyId = (int) $r->company_id;
-
-        if ($r->cheque_no && $r->cheque_date && Carbon::parse($r->cheque_date)->gt($docDate)) {
-            return $this->accountResolver->resolve('CHEQUES_IN_HAND', $companyId);
+        $invoiceId = $r->invoice_id;
+        if (! $invoiceId && is_array($r->allocations) && $r->allocations !== []) {
+            $invoiceId = (int) ($r->allocations[0]['invoice_id'] ?? 0) ?: null;
         }
 
-        if ($r->bank_account_id) {
-            return $this->accountResolver->assertUnderBankGroup((int) $r->bank_account_id, $companyId);
+        if ($invoiceId) {
+            $invoice = Invoice::with('agent.branch')->find($invoiceId);
+            $companyId = (int) ($invoice?->agent?->branch?->company_id ?? 0);
+            if ($companyId > 0) {
+                return $companyId;
+            }
         }
 
-        return $this->accountResolver->resolve('CASH_IN_HAND', $companyId);
+        if ($r->client_id) {
+            $client = Client::with('agent.branch')->find($r->client_id);
+
+            $companyId = (int) ($client?->company_id ?? 0);
+            if ($companyId > 0) {
+                return $companyId;
+            }
+
+            $companyId = (int) ($client?->agent?->branch?->company_id ?? 0);
+            if ($companyId > 0) {
+                return $companyId;
+            }
+        }
+
+        if ($r->task_id) {
+            $companyId = (int) (Task::where('id', $r->task_id)->value('company_id') ?? 0);
+            if ($companyId > 0) {
+                return $companyId;
+            }
+        }
+
+        foreach ([$r->account_id, $r->bank_account_id] as $accountId) {
+            if ($accountId) {
+                $companyId = (int) (Account::withoutGlobalScopes()->where('id', $accountId)->value('company_id') ?? 0);
+                if ($companyId > 0) {
+                    return $companyId;
+                }
+            }
+        }
+
+        if ($r->branch_id) {
+            $companyId = (int) (Branch::where('id', $r->branch_id)->value('company_id') ?? 0);
+            if ($companyId > 0) {
+                return $companyId;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -1181,6 +1502,34 @@ class ReceiptVoucherController extends Controller
      *
      * @return \Illuminate\Support\Collection<int, Account>
      */
+    /**
+     * CT-A3 wave 2 (W2-2). The company's configured payment methods, for the "Received through"
+     * picker. Reads `charges` -- the master data that already carries `acc_bank_id`, the account
+     * an operator sets per payment method -- rather than inventing a second channel vocabulary.
+     * `has_account` is surfaced so the screen can say "no account configured" out loud.
+     *
+     * @return \Illuminate\Support\Collection<int, object{name: string, has_account: bool}>
+     */
+    private function settlementChannelsFor(?int $companyId): \Illuminate\Support\Collection
+    {
+        if (! $companyId) {
+            return collect();
+        }
+
+        // `charges` carries no `deleted_at` column (2024_10_29_032151_create_charges_table and
+        // its four follow-ups) -- no soft-delete filter here, deliberately, rather than a
+        // whereNull() that would throw on a table that has no such column.
+        return \App\Models\Charge::withoutGlobalScopes()
+            ->where('company_id', $companyId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'acc_bank_id', 'is_active'])
+            ->map(fn ($charge) => (object) [
+                'name' => (string) $charge->name,
+                'has_account' => $charge->acc_bank_id !== null,
+                'is_active' => (bool) $charge->is_active,
+            ]);
+    }
+
     private function bankLeavesFor(?int $companyId): \Illuminate\Support\Collection
     {
         if (! $companyId) {
@@ -1353,6 +1702,96 @@ class ReceiptVoucherController extends Controller
      * correctly, matching how {@see self::writeLegacyTransaction()} already writes this same
      * column via `forceCreate()`.
      */
+    /**
+     * CT-A3 R2-3 — the LIVE posted document for a receipt voucher, or null when there is none.
+     *
+     * Two sources, in this order, because they answer different questions:
+     *
+     *  1. `invoice_receipts.transaction_id` — what the live `postVoucher()`/`update()` paths write.
+     *     Accepted only when the row it names is still LIVE (`posting_status = 'posted'`): after an
+     *     edit or a prior reversal the column can name a document that is no longer the current
+     *     one, and acting on a reversed document is how a receipt gets reversed twice.
+     *  2. The receipt's own IDEMPOTENCY KEY FAMILY — `rv:{id}` plus every revision
+     *     {@see PostingService::repost()} has minted off it (`:rev{n}`, and the pre-R2-2
+     *     `:repost:{id}`). This is what covers the `accounting:replay` backfill population, whose
+     *     rows have a live document and no linkage column at all (D7), and it is the structural,
+     *     never-by-description lookup this controller already uses for the clearance JV.
+     *
+     * Returns null when nothing was ever posted — a genuine `pending` draft. The lookup is WIDER
+     * than the old `findOrFail($r->transaction_id)`; it is not weaker. "No document" still means
+     * "reverse nothing".
+     */
+    /**
+     * CT-A3 R2-3 — which company a receipt belongs to, by the ONE chain this codebase has.
+     *
+     * Mirrors {@see self::buildVoucherDraft()}'s own precedence exactly: the row's own `company_id`
+     * when it is positive, otherwise the public static resolution chain (invoice -> client/agent ->
+     * task -> account -> branch). `invoice_receipts.company_id` is NULL on every legacy row on the
+     * City Travelers data, so a bare `(int) $r->company_id` resolves to the sentinel 0 and every
+     * company-scoped lookup built on it silently matches nothing.
+     *
+     * Returns 0 when nothing resolves — the same sentinel `buildVoucherDraft()` refuses on, so a
+     * caller that uses this value in a `where()` finds nothing rather than finding somebody else's
+     * document.
+     */
+    public static function companyIdFor(InvoiceReceipt $r): int
+    {
+        $own = (int) ($r->company_id ?? 0);
+
+        if ($own > 0) {
+            return $own;
+        }
+
+        $resolved = self::resolveReceiptCompanyId($r);
+
+        return $resolved !== null && $resolved > 0 ? $resolved : 0;
+    }
+
+    private function resolvePostedDocumentFor(InvoiceReceipt $invoiceReceipt): ?Transaction
+    {
+        if ($invoiceReceipt->transaction_id !== null) {
+            $byColumn = Transaction::withoutGlobalScopes()
+                ->whereNull('deleted_at')
+                ->find($invoiceReceipt->transaction_id);
+
+            if ($byColumn !== null && $byColumn->posting_status === 'posted') {
+                return $byColumn;
+            }
+        }
+
+        $baseKey = 'rv:'.$invoiceReceipt->id;
+        $prefix = addcslashes($baseKey, '%_\\');
+
+        $byKey = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            // CT-A3 R2-3 SERVER FINDING. This was `(int) $invoiceReceipt->company_id`, and on the
+            // City Travelers data that is NULL on every legacy row (CT-F35, 109 of 109) -- the cast
+            // turns it into the sentinel 0, the key lookup matches nothing, and the whole fix
+            // silently did nothing for exactly the population it exists for. Found by exercising
+            // the bounce lifecycle against real data on the scratch copy, not by a test: every unit
+            // fixture carries a company_id, because a fixture that did not could not be built.
+            ->where('company_id', self::companyIdFor($invoiceReceipt))
+            ->where('posting_status', 'posted')
+            ->where(function ($q) use ($baseKey, $prefix) {
+                $q->where('idempotency_key', $baseKey)
+                    ->orWhere('idempotency_key', 'like', $prefix.':rev%')
+                    ->orWhere('idempotency_key', 'like', $prefix.':repost:%');
+            })
+            ->orderByDesc('id')
+            ->first();
+
+        if ($byKey !== null) {
+            return $byKey;
+        }
+
+        // Last resort: the column names a document that is no longer live and the key family has
+        // nothing posted. Hand back whatever the column names so the caller's own
+        // `posting_status !== 'reversed'` guards keep behaving exactly as they did.
+        return $invoiceReceipt->transaction_id !== null
+            ? Transaction::withoutGlobalScopes()->whereNull('deleted_at')->find($invoiceReceipt->transaction_id)
+            : null;
+    }
+
     private function markTransactionReversed(Transaction $transaction): void
     {
         $transaction->posting_status = 'reversed';
@@ -1362,9 +1801,11 @@ class ReceiptVoucherController extends Controller
     /**
      * DocumentDraft has no setter (every property is `readonly`) -- this rebuilds an equivalent
      * draft with only `idempotencyKey` changed, for `update()`'s OFF-path repost branch (see that
-     * call site's own comment for why the suffix is needed).
+     * call site's own comment for where the replacement key comes from -- CT-A3 R2-2 moved that
+     * decision into PostingService::nextRepostIdempotencyKey(), so this helper now takes the FULL
+     * key rather than a suffix it would have had to know how to build).
      */
-    private function withIdempotencyKeySuffix(DocumentDraft $draft, string $suffix): DocumentDraft
+    private function withReplacementIdempotencyKey(DocumentDraft $draft, string $idempotencyKey): DocumentDraft
     {
         return new DocumentDraft(
             companyId: $draft->companyId,
@@ -1374,7 +1815,7 @@ class ReceiptVoucherController extends Controller
             docDate: $draft->docDate,
             narration: $draft->narration,
             lines: $draft->lines,
-            idempotencyKey: $draft->idempotencyKey.$suffix,
+            idempotencyKey: $idempotencyKey,
             sourceType: $draft->sourceType,
             sourceId: $draft->sourceId,
             invoiceId: $draft->invoiceId,
@@ -1386,7 +1827,7 @@ class ReceiptVoucherController extends Controller
      * Draft builder for {@see self::createReceiptVoucher()}/{@see self::autoGenerate()} ONLY --
      * deliberately NOT {@see self::buildVoucherDraft()}, the shared builder every OTHER posting
      * action in this class uses. That builder resolves its instrument leg EAGERLY, inside the
-     * builder itself ({@see self::resolveInstrumentLeg()}), via {@see AccountResolver} -- which
+     * builder itself ({@see ReceiptPostingRule::instrumentAccountFor()}), via {@see AccountResolver} -- which
      * requires a `system_accounts` CASH_IN_HAND mapping to exist for the company REGARDLESS of
      * whether the engine ends up posting the document or running the OFF-path legacy closure
      * (confirmed by this class's own W5.R test suite: even an engine-OFF `store()` test seeds
@@ -1561,6 +2002,10 @@ class ReceiptVoucherController extends Controller
             'allocations.*.invoice_id' => ['required_with:allocations', 'integer', 'exists:invoices,id'],
             'allocations.*.amount' => ['required_with:allocations', 'numeric', 'min:0.001'],
             'bank_account_id' => ['nullable', 'integer', 'exists:accounts,id'],
+            // CT-A3 wave 2 (W2-2). 24 chars, matching journal_entries.settlement_channel and
+            // Accounting\ReconciliationController's own rule, so one channel token travels from
+            // the receipt through to its reconciliation without a truncation step.
+            'settlement_channel' => ['nullable', 'string', 'max:24'],
             'cheque_no' => ['nullable', 'string', 'max:100'],
             'cheque_date' => ['nullable', 'date'],
             'bank_info' => ['nullable', 'string', 'max:200'],
@@ -1654,6 +2099,7 @@ class ReceiptVoucherController extends Controller
             'remainder_amount' => $remainder,
             'remainder_policy' => VoucherOptions::overpayPolicy($companyId),
             'bank_account_id' => $validated['bank_account_id'] ?? null,
+            'settlement_channel' => $validated['settlement_channel'] ?? null,
             'cheque_no' => $validated['cheque_no'] ?? null,
             'cheque_date' => $validated['cheque_date'] ?? null,
             'bank_info' => $validated['bank_info'] ?? null,
@@ -1680,6 +2126,7 @@ class ReceiptVoucherController extends Controller
             'remainder_amount' => $data['remainder_amount'],
             'remainder_policy' => $data['remainder_policy'],
             'bank_account_id' => $data['bank_account_id'],
+            'settlement_channel' => $data['settlement_channel'] ?? null,
             'cheque_no' => $data['cheque_no'],
             'cheque_date' => $data['cheque_date'],
             'bank_info' => $data['bank_info'],
@@ -1882,7 +2329,8 @@ class ReceiptVoucherController extends Controller
             if ($commission > 0.0005) {
                 $commissionLines = [
                     new LineDraft(
-                        purposeCode: 'SALARY_EXPENSE', accountId: null, side: 'debit', amount: $commission,
+                        // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                        purposeCode: 'COMMISSION_EXPENSE', accountId: null, side: 'debit', amount: $commission,
                         currency: $currency, originalAmount: $commission, exchangeRate: $exchangeRate,
                         transactionType: 'AGENT_COMMISSION_EXPENSE',
                         description: 'Agents Commissions for (Expenses): '.$agent->name,
@@ -1890,7 +2338,8 @@ class ReceiptVoucherController extends Controller
                         taskId: $task->id, ledgerType: 'expense', partyName: $agent->name,
                     ),
                     new LineDraft(
-                        purposeCode: 'SALARY_PAYABLE', accountId: null, side: 'credit', amount: $commission,
+                        // CT-A3 E4 (CT-F38): commission is not payroll — see config('accounting.purpose_codes').
+                        purposeCode: 'COMMISSION_PAYABLE', accountId: null, side: 'credit', amount: $commission,
                         currency: $currency, originalAmount: $commission, exchangeRate: $exchangeRate,
                         transactionType: 'AGENT_COMMISSION_PAYABLE',
                         description: 'Agents Commissions for (Liabilities): '.$agent->name,
@@ -2029,6 +2478,12 @@ class ReceiptVoucherController extends Controller
                 'allocations' => [['invoice_id' => $invoice->id, 'amount' => $amount]],
                 'remainder_amount' => 0,
                 'remainder_policy' => VoucherOptions::overpayPolicy($companyId),
+                // CT-A3 wave 2 (W2-2): this method has ALWAYS been handed the gateway the money
+                // arrived through (its own `$gateway` argument, default 'Cash') and has always
+                // thrown it away. Persisting it is what lets ReceiptPostingRule resolve the
+                // configured payment-method account instead of defaulting every card and gateway
+                // receipt into CASH_IN_HAND.
+                'settlement_channel' => $gateway,
                 'voucher_number' => $ref,
                 'status' => InvoiceReceiptStatus::PENDING,
                 'is_used' => true,

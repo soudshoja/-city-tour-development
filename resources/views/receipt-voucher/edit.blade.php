@@ -217,6 +217,20 @@
                 <section class="rounded-lg border border-gray-200 bg-white p-6">
                     <h2 class="text-sm font-semibold uppercase tracking-wide text-gray-500">Instrument</h2>
                     <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        {{-- CT-A3 wave 2 (W2-2), R-CT3: the configured payment-method account is
+                             what the instrument leg debits; an explicit bank account overrides it. --}}
+                        <div>
+                            <label for="settlement_channel" class="mb-1 block text-sm font-medium text-gray-700">Received through</label>
+                            <select id="settlement_channel" name="settlement_channel" {{ $fieldsDisabled ? 'disabled' : '' }}
+                                    class="w-full rounded-md border-gray-300 text-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400">
+                                <option value="">Not recorded (falls back to cash in hand)</option>
+                                @foreach ($settlementChannels as $channel)
+                                    <option value="{{ $channel->name }}" {{ (string) $r->settlement_channel === $channel->name ? 'selected' : '' }}>
+                                        {{ $channel->name }}@unless ($channel->has_account) &nbsp;— no account configured @endunless
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
                         <div>
                             <label for="bank_account_id" class="mb-1 block text-sm font-medium text-gray-700">Bank account</label>
                             <select id="bank_account_id" name="bank_account_id" {{ $fieldsDisabled ? 'disabled' : '' }}

@@ -217,13 +217,38 @@ class SystemAccountsSeeder extends Seeder
             ['Accounts Receivable', 'Assets']
         );
 
-        $this->mapByChain(
+        // CT-A4 G1 — the PAYABLE_CONTROL half of the same "pool grew children behind the
+        // seeder's back" problem mapSupplierPoolLeaf() already solves for SERVICE_PAYABLE, one
+        // family over.
+        //
+        // A bare mapByChain() here maps the purpose only for as long as 'Creditors' (2110) is
+        // still a leaf. On the City Travelers dev chart it is not: six company payment
+        // instruments (the accounts `tasks.payment_method_account_id` points at — a corporate
+        // card, a bank purchasing card, an instalment facility) were minted as its children, so
+        // mapByChain() finds it, sees children, and skips. PAYABLE_CONTROL then has no row at
+        // all — and because wave 1's E5 fallback resolves SERVICE_PAYABLE/{type} THROUGH
+        // PAYABLE_CONTROL, every flight and hotel sale on that chart dies on
+        // UnmappedPurposeException. Measured: CT-A4-COA-GAP-2026-09-09.md §2.3 / §6 G1.
+        //
+        // Resolution order, never guessing:
+        //   1. 'Creditors' not found at all -> mapByChain() reports the gap, unchanged.
+        //   2. 'Creditors' is still a leaf -> mapByChain() maps onto it directly, byte-identical
+        //      to this call's behaviour before CT-A4 (the case on every CoaSeeder-fresh chart).
+        //   3. 'Creditors' HAS children -> map onto its own dedicated 'Creditors Control' child
+        //      if one exists. That leaf is minted by `accounting:coa-linkage`
+        //      ({@see \App\Console\Commands\CoaLinkage::repairControlPools()}), not by this
+        //      seeder and not by CoaSeeder — precisely because on a fresh chart it must NOT
+        //      exist (creating it would turn 2110 into a group and move the purpose off an
+        //      account that may already carry history).
+        //   4. 'Creditors' has children and no 'Creditors Control' child -> report the gap, the
+        //      same outcome as before, with a message that names the fix.
+        $this->mapControlPoolLeaf(
             $companyId,
             $companyLabel,
             'PAYABLE_CONTROL',
-            null,
             'Creditors',
-            ['Accounts Payable', 'Liabilities']
+            ['Accounts Payable', 'Liabilities'],
+            'Creditors Control'
         );
 
         $this->mapByCode($companyId, $companyLabel, 'RETAINED_EARNINGS', null, '3400', 'Retained Earnings');
@@ -405,11 +430,72 @@ class SystemAccountsSeeder extends Seeder
         // 5124) is unique in the seed COA, same bare-name resolution as SALARY_EXPENSE above.
         $this->mapByName($companyId, $companyLabel, 'PENALTY_COST_EXPENSE', null, 'Refund Penalty Cost');
 
+        // CT-A3 wave 2 (W2-3, CT-F11): the cost of a refunded booking the supplier is NOT giving
+        // back. Mapped by NAME, like its sibling 'Refund Penalty Cost' just above - both are
+        // unique leaves under Direct Expenses (Cost of Sales) with no name collision anywhere on
+        // the chart.
+        $this->mapByName($companyId, $companyLabel, 'SUPPLIER_REFUND_LOSS', null, 'Supplier Refund Loss');
+
         // W4.R (w4-brief.md §4e, target-spec.md §B three-event clawback model, step (a)):
         // RefundPostingService's unconditional clawback feeder. 'Airline Refund Clawback'
         // (CoaSeeder code 5125) is unique in the seed COA, same bare-name resolution as
         // SALARY_EXPENSE/PENALTY_COST_EXPENSE above.
         $this->mapByName($companyId, $companyLabel, 'AIRLINE_CLAWBACK_EXPENSE', null, 'Airline Refund Clawback');
+
+        // CT-A3 wave 1 (owner ruling R-CT3, 2026-09-09): the asset leg of the task-issuance
+        // supplier-payable accrual (TaskIssuancePayableService). Maps by CHAIN, not bare name —
+        // 'Supplier Advances/Prepayments' (1400) is a GROUP that also parents Prepaid Flights
+        // (1410), Prepaid Hotels (1420) and Prepaid Supplier Cost (1431), the same
+        // GROUP-not-leaf reasoning MARKUP_INCOME documents above. The 'Unbilled Supplier Cost'
+        // (1430) leaf already exists on every real chart (CT-A1 §3.1) and is now seeded by
+        // CoaSeeder for fresh companies too.
+        $this->mapByChain(
+            $companyId,
+            $companyLabel,
+            'UNBILLED_SUPPLIER_COST',
+            null,
+            'Unbilled Supplier Cost',
+            ['Supplier Advances/Prepayments', 'Assets']
+        );
+
+        // CT-A3 E4 (CT-F38): the agent-commission pair. Both map by CHAIN for the same
+        // GROUP-not-leaf reason as SALARY_PAYABLE above — 'Direct Expenses (Cost of Sales)'
+        // (5100) and 'Accrued Expenses' (2200) each parent many leaves. Targets are CoaSeeder's
+        // own pre-existing 'Commissions Expense (Agents)' (5130) and 'Commissions (Agents)'
+        // (2210), which the LEGACY ledger already used for this event
+        // (InvoiceController.php:3327/:3351) — so this is a return to the correct pair, not a new
+        // account family.
+        $this->mapByChain(
+            $companyId,
+            $companyLabel,
+            'COMMISSION_EXPENSE',
+            null,
+            'Commissions Expense (Agents)',
+            ['Direct Expenses (Cost of Sales)', 'Expenses']
+        );
+
+        $this->mapByChain(
+            $companyId,
+            $companyLabel,
+            'COMMISSION_PAYABLE',
+            null,
+            'Commissions (Agents)',
+            ['Accrued Expenses', 'Liabilities']
+        );
+
+        // CT-A3 E5 (CT-F37): the ONE cost-of-sales control leaf an unmapped per-service
+        // SERVICE_COST/{type} falls back to (AccountResolver::resolveViaFallback()). Mapped by
+        // CHAIN for the same GROUP-not-leaf reason as every other leaf under 'Direct Expenses
+        // (Cost of Sales)'. The payable side of the same fallback reuses PAYABLE_CONTROL, already
+        // mapped above.
+        $this->mapByChain(
+            $companyId,
+            $companyLabel,
+            'COST_OF_SALES_CONTROL',
+            null,
+            'Cost of Sales Control',
+            ['Direct Expenses (Cost of Sales)', 'Expenses']
+        );
 
         // W5.L (w5-brief.md §W5.L item 4) — five voucher/instrument anchor purpose codes. See
         // config('accounting.purpose_codes')'s own docblock note on this array for the full
@@ -1226,6 +1312,99 @@ class SystemAccountsSeeder extends Seeder
         }
 
         $this->upsert($companyId, $companyLabel, $purposeCode, $serviceType, $account);
+    }
+
+    /**
+     * CT-A4 G1 — mapByChain() for a GLOBAL control purpose whose target pool a live system can
+     * turn into a group behind this seeder's back.
+     *
+     * The direct structural analogue of {@see self::mapSupplierPoolLeaf()} (which solves exactly
+     * this for the per-service SERVICE_PAYABLE/SERVICE_COST pools), differing only in where it
+     * looks once the pool has children: mapSupplierPoolLeaf() resolves the ONE active supplier
+     * and descends to that supplier's own leaf, because a per-service payable legitimately
+     * belongs to a supplier; a GLOBAL control account has no such party, so the only correct
+     * target is a dedicated control child, and the only correct behaviour when there isn't one
+     * is to report the gap.
+     *
+     * NEVER creates anything. Minting the control child is `accounting:coa-linkage`'s job —
+     * a seeder that silently added a child to 'Creditors' would turn a leaf into a group on
+     * every fresh chart and move PAYABLE_CONTROL off an account that may already hold history.
+     *
+     * @param  array<int, string>  $ancestorChain
+     */
+    private function mapControlPoolLeaf(
+        int $companyId,
+        string $companyLabel,
+        string $purposeCode,
+        string $poolName,
+        array $ancestorChain,
+        string $controlLeafName
+    ): void {
+        $candidates = Account::query()
+            ->where('company_id', $companyId)
+            ->where('name', $poolName)
+            ->get()
+            ->filter(fn (Account $account) => $this->ancestorChainMatches($account, $ancestorChain))
+            ->values();
+
+        // Cases 1 and 2 of the resolution order documented at the call site: not found, or
+        // ambiguous, or still a leaf. All three are mapByChain()'s exact pre-CT-A4 behaviour, so
+        // delegate rather than re-implement — there must be one skip-message vocabulary, not two.
+        if ($candidates->count() !== 1 || ! $candidates->first()->children()->exists()) {
+            $this->mapByChain($companyId, $companyLabel, $purposeCode, null, $poolName, $ancestorChain);
+
+            return;
+        }
+
+        $pool = $candidates->first();
+
+        $control = Account::query()
+            ->where('company_id', $companyId)
+            ->where('parent_id', $pool->id)
+            ->where('name', $controlLeafName)
+            ->get();
+
+        $chainLabel = implode(' > ', $ancestorChain);
+
+        if ($control->count() !== 1) {
+            $this->skip(
+                $companyId,
+                $companyLabel,
+                $purposeCode,
+                null,
+                sprintf(
+                    "'%s' (id=%d, code=%s) under [%s] has %d child account(s) and is therefore not a leaf, and %s "
+                    ."dedicated '%s' child to map instead. Run `php artisan accounting:coa-linkage --company=%d "
+                    .'--apply` to mint it (CT-A4 G1).',
+                    $poolName,
+                    $pool->id,
+                    $pool->code,
+                    $chainLabel,
+                    $pool->children()->count(),
+                    $control->isEmpty() ? 'there is no' : "there are {$control->count()} accounts named",
+                    $controlLeafName,
+                    $companyId
+                )
+            );
+
+            return;
+        }
+
+        $leaf = $control->first();
+
+        if ($leaf->children()->exists()) {
+            $this->skip(
+                $companyId,
+                $companyLabel,
+                $purposeCode,
+                null,
+                "'{$controlLeafName}' (id={$leaf->id}, code={$leaf->code}) has itself acquired children and is no longer a leaf"
+            );
+
+            return;
+        }
+
+        $this->upsert($companyId, $companyLabel, $purposeCode, null, $leaf);
     }
 
     private function ancestorChainMatches(Account $account, array $ancestorChain): bool

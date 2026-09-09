@@ -19,7 +19,6 @@ use App\Models\Transaction;
 use App\Models\User;
 use App\Services\Accounting\DocumentDraft;
 use App\Services\Accounting\LineDraft;
-use App\Services\Accounting\PostingSeam;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\RefundPostingService;
 use App\Services\Accounting\SaleDraftBuilder;
@@ -635,8 +634,33 @@ class RefundPostingServiceTest extends AccountingTestCase
 
         $this->assertNotNull($supplierCredit);
         $this->assertSame('REFUND', $supplierCredit->bsptype, 'transactions.bsptype must be REFUND for the supplier credit item.');
-        $this->assertEqualsWithDelta(0.0, (float) $supplierCredit->total_debit - (float) $supplierCredit->total_credit, 0.0005, 'Must balance: net (50) + penalty (10) = full cost (60).');
-        $this->assertEqualsWithDelta(60.000, (float) $supplierCredit->total_credit, 0.0005, 'Cr COGS must equal the FULL original cost.');
+        $this->assertEqualsWithDelta(0.0, (float) $supplierCredit->total_debit - (float) $supplierCredit->total_credit, 0.0005, 'The supplier credit item must balance.');
+
+        // CT-A3 wave 2 (W2-3) rewrote what this document contains, and this assertion with it.
+        //
+        // It used to read `Cr COGS must equal the FULL original cost` -- i.e. every refund credits
+        // the whole cost back as a recovery. That expectation WAS CT-A1 CT-F11: it assumes the
+        // supplier refunds, on a task nobody has recorded a supplier refund for (this fixture's
+        // task is not at a refund-confirmed status and carries no explicit
+        // supplier_refund_amount). It also double-relieved the payable, because under wave 1's
+        // GROSS sale the CRN's reverse() already reversed the cost/payable pair.
+        //
+        // The end state is now asserted instead of the document's internals, which pins strictly
+        // more: the sale is fully undone, the agency still owes the supplier the whole 60 it never
+        // got back, and that 60 is visible as a refund LOSS rather than silently erased.
+        $payable = app(\App\Services\Accounting\AccountResolver::class)->resolve('SERVICE_PAYABLE', $company->id, $task->type);
+        $cost = app(\App\Services\Accounting\AccountResolver::class)->resolve('SERVICE_COST', $company->id, $task->type);
+        $loss = app(\App\Services\Accounting\AccountResolver::class)->resolve('SUPPLIER_REFUND_LOSS', $company->id);
+
+        $net = fn ($account) => round(
+            (float) DB::table('journal_entries')->where('account_id', $account->id)->whereNull('deleted_at')->sum('debit')
+            - (float) DB::table('journal_entries')->where('account_id', $account->id)->whereNull('deleted_at')->sum('credit'),
+            3
+        );
+
+        $this->assertEqualsWithDelta(-60.000, $net($payable), 0.0005, 'The supplier is still owed the full cost: it refunded nothing.');
+        $this->assertEqualsWithDelta(0.000, $net($cost), 0.0005, 'Cost of sales is fully relieved: the sale it matched has been reversed.');
+        $this->assertEqualsWithDelta(60.000, $net($loss), 0.0005, 'The unrecovered cost is visible on 5131 Supplier Refund Loss.');
     }
 
     public function test_supplier_refund_amount_override_is_honoured_and_document_still_balances(): void
@@ -666,15 +690,32 @@ class RefundPostingServiceTest extends AccountingTestCase
             ->where('idempotency_key', 'refund:'.$refund->id.':supplier-credit:'.$detail->id)
             ->first();
 
-        // net (45, overridden) + derived penalty-cost (60 - 45 = 15) = full cost (60).
-        $this->assertEqualsWithDelta(60.000, (float) $supplierCredit->total_debit, 0.0005);
-        $this->assertEqualsWithDelta(60.000, (float) $supplierCredit->total_credit, 0.0005);
+        // CT-A3 wave 2 (W2-3): the operator's explicit 45 still wins over every rule, and the
+        // derived penalty is still 60 - 45 = 15 (never the client-facing supplier_charge of 10) --
+        // that is the whole point of this test and it is unchanged.
+        //
+        // What changed is the document's SIZE. Under wave 1's GROSS sale the CRN's reverse()
+        // already reversed the cost (Cr 60) and the payable (Dr 60), so re-posting that pair here
+        // debited the payable twice. The supplier credit item now posts only the DIFFERENCE from
+        // the correct end state, which for this scenario is the 15 the supplier kept.
+        $this->assertEqualsWithDelta(15.000, (float) $supplierCredit->total_debit, 0.0005);
+        $this->assertEqualsWithDelta(15.000, (float) $supplierCredit->total_credit, 0.0005);
         $this->assertEqualsWithDelta(0.0, (float) $supplierCredit->total_debit - (float) $supplierCredit->total_credit, 0.0005, 'Must still balance even with an overridden supplier_refund_amount.');
 
         $penaltyAccount = Account::where('company_id', $company->id)->where('name', 'Refund Penalty Cost')->firstOrFail();
         $penaltyLine = DB::table('journal_entries')->where('transaction_id', $supplierCredit->id)->where('account_id', $penaltyAccount->id)->first();
         $this->assertNotNull($penaltyLine);
         $this->assertEqualsWithDelta(15.000, (float) $penaltyLine->debit, 0.0005, 'Derived penalty-cost (60 - 45) must be 15, not the client-facing supplier_charge (10).');
+
+        // And the end state, which the old assertions never checked: the supplier is left owed
+        // exactly the 15 it kept -- not zero (the old double-relief) and not 60.
+        $payable = app(\App\Services\Accounting\AccountResolver::class)->resolve('SERVICE_PAYABLE', $company->id, $task->type);
+        $payableNet = round(
+            (float) DB::table('journal_entries')->where('account_id', $payable->id)->whereNull('deleted_at')->sum('debit')
+            - (float) DB::table('journal_entries')->where('account_id', $payable->id)->whereNull('deleted_at')->sum('credit'),
+            3
+        );
+        $this->assertEqualsWithDelta(-15.000, $payableNet, 0.0005, 'The supplier keeps 15; the agency still owes exactly that.');
     }
 
     // ────────────────────────────────────────────────────────────────────────────────────────

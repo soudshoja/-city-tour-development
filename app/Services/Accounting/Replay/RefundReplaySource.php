@@ -58,8 +58,11 @@ final class RefundReplaySource implements ReplaySource
         $query = Refund::withoutGlobalScopes()
             ->whereNull('deleted_at')
             ->where('company_id', $companyId)
-            ->when($from, fn ($q) => $q->whereDate('refund_date', '>=', $from))
-            ->when($to, fn ($q) => $q->whereDate('refund_date', '<=', $to))
+            // CT-A3 R2-4 (D8 "Secondary"): the window must use the SAME expression the ordering
+            // does. A bare whereDate('refund_date', …) against a COALESCE(...) ordering silently
+            // dropped every NULL-refund_date row from any --from/--to run, with no report line.
+            ->when($from, fn ($q) => $q->whereRaw('DATE(COALESCE(refund_date, created_at)) >= ?', [$from->toDateString()]))
+            ->when($to, fn ($q) => $q->whereRaw('DATE(COALESCE(refund_date, created_at)) <= ?', [$to->toDateString()]))
             ->orderByRaw('COALESCE(refund_date, created_at)')
             ->orderBy('id');
 

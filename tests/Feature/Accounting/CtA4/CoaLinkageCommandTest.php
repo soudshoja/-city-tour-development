@@ -265,7 +265,12 @@ class CoaLinkageCommandTest extends AccountingTestCase
             ->first();
 
         $this->assertNotNull($control, 'The control leaf must be minted under the pool.');
-        $this->assertSame($creditors->code.'09', (string) $control->code, "The '{pool code}09' convention (CT-A2 21209/21309, CT-A3-verified).");
+        // The LITERAL code, not `$creditors->code . $suffix` — an expression built from the same
+        // constant the production code reads agrees with any suffix, including the wrong one. A
+        // '09' suffix shipped '211009' to the first server dry run and this assertion, as it was
+        // then written, passed.
+        $this->assertSame('2110', (string) $creditors->code, 'Precondition: CoaSeeder puts Creditors at 2110.');
+        $this->assertSame('21109', (string) $control->code, "The '{pool code}9' convention: CT-A2's 21209/21309, CT-A3-verified.");
         $this->assertFalse((bool) $control->is_group);
 
         $resolved = app(AccountResolver::class)->resolve('PAYABLE_CONTROL', $company->id);

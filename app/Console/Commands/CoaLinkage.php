@@ -98,9 +98,16 @@ class CoaLinkage extends Command
      * carried on `journal_entries.type_reference_id`, not on per-client leaves (CT-A4 §3.4).
      * Adding it here "just in case" would mint a leaf nobody needs on every chart.
      *
-     * `controlSuffix` is the '{pool code}09' convention CT-A2 established (21209 under 2120,
-     * 21309 under 2130) and CT-A3's replay verified; it is a PREFERENCE, not a requirement —
-     * nextControlCode() falls through to max(numeric sibling)+1 if it is already taken.
+     * `controlSuffix` is the '{pool code}9' convention CT-A2 established and CT-A3's replay
+     * verified: 2120 -> 21209, 2130 -> 21309, and therefore 2110 -> 21109. It is a PREFERENCE,
+     * not a requirement — nextControlCode() falls through to max(numeric sibling)+1 if the
+     * preferred code is already taken anywhere in the company.
+     *
+     * The suffix is '9' and not '09': the first server dry run against a faithful copy of the
+     * City Travelers dev chart produced '211009' from a '09' suffix, which is neither CT-A2's
+     * convention nor a code any sibling would recognise. Caught by reading the change list, not
+     * by a test — the unit fixture asserted `poolCode . suffix` and so agreed with whatever the
+     * suffix happened to be. The test now pins the literal '21109'.
      *
      * @var array<int, array{poolName: string, poolChain: array<int, string>, purposeCode: string, controlName: string, controlSuffix: string}>
      */
@@ -110,7 +117,7 @@ class CoaLinkage extends Command
             'poolChain' => ['Accounts Payable', 'Liabilities'],
             'purposeCode' => 'PAYABLE_CONTROL',
             'controlName' => 'Creditors Control',
-            'controlSuffix' => '09',
+            'controlSuffix' => '9',
         ],
     ];
 

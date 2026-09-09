@@ -95,14 +95,53 @@ final class ReceiptReplaySource implements ReplaySource
             $existing = $this->existingDocument($draft->companyId, $draft->idempotencyKey);
 
             if ($existing !== null) {
+                $this->linkDocumentToRow($row, (int) $existing->id);
+
                 return ReplayOutcome::posted($row->id, (int) $existing->id, null, true);
             }
 
             $posted = $this->posting->post($draft);
 
+            $this->linkDocumentToRow($row, (int) $posted->transaction->id);
+
             return ReplayOutcome::posted($row->id, (int) $posted->transaction->id, $amount);
         } catch (\Throwable $e) {
             return ReplayOutcome::refused($row->id, $e->getMessage(), $e, $amount);
         }
+    }
+
+    /**
+     * CT-A3 R2-3 — VERIFY-CT-A3-STACK-R1 §3.2 D7 (BLOCKER). Write the posted document back onto
+     * the source row, exactly as the LIVE feeder does
+     * ({@see ReceiptVoucherController::postVoucher()}: `$invoiceReceipt->transaction_id =
+     * $transaction->id`).
+     *
+     * WHY THIS IS NOT "the replay mutating history". The class docblock's rule — a historical
+     * backfill must not rewrite `invoices.status` / `invoice_partials` that the source system
+     * already settled — is about BUSINESS STATE. `transaction_id` is not business state, it is the
+     * row's LINKAGE to its own ledger document, and leaving it NULL while a live `rv:{id}` document
+     * exists is precisely what made every backfilled receipt un-bounceable and un-deletable: D7's
+     * `bounce()` gated on this column and simply skipped the reversal, leaving a collected
+     * receivable for money that never arrived, while `destroy()` threw on it.
+     *
+     * `status` is deliberately NOT touched: whether a row's status should change is
+     * {@see ReceiptPostingRule}'s decision and the row already carries a posting status the rule
+     * agreed with, or `replay()` would not have reached here. Written with a bare query builder
+     * update rather than `$row->save()` so no model event, observer or `updated_at` touch fires on
+     * a historical row — and it participates in `--dry-run`'s outer transaction like every other
+     * write, so a dry run still writes nothing.
+     */
+    private function linkDocumentToRow(InvoiceReceipt $row, int $transactionId): void
+    {
+        if ((int) ($row->transaction_id ?? 0) === $transactionId) {
+            return;
+        }
+
+        InvoiceReceipt::withoutGlobalScopes()
+            ->whereKey($row->getKey())
+            ->update(['transaction_id' => $transactionId]);
+
+        $row->transaction_id = $transactionId;
+        $row->syncOriginalAttribute('transaction_id');
     }
 }

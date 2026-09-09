@@ -476,7 +476,21 @@ class ReceiptVoucherController extends Controller
         }
 
         $companyId = (int) $invoiceReceipt->company_id;
-        $oldTransaction = Transaction::withoutGlobalScopes()->findOrFail($invoiceReceipt->transaction_id);
+        $oldTransaction = $this->resolvePostedDocumentFor($invoiceReceipt);
+
+        if ($oldTransaction === null) {
+            // CT-A3 R2-3: was `findOrFail($invoiceReceipt->transaction_id)`, which threw a raw
+            // ModelNotFoundException (a 404) on any row whose linkage column is missing -- the
+            // entire `accounting:replay` backfill population before this fix. Named, not raw.
+            Log::critical('accounting.rv_update_no_document', [
+                'invoice_receipt_id' => $invoiceReceipt->id,
+                'company_id' => $companyId,
+                'idempotency_key' => 'rv:'.$invoiceReceipt->id,
+            ]);
+
+            return redirect()->back()->with('error', 'This receipt voucher has no posted document to edit.');
+        }
+
         $engineOn = $this->seam->isEnabledFor($companyId);
 
         DB::beginTransaction();
@@ -613,7 +627,20 @@ class ReceiptVoucherController extends Controller
         }
 
         $companyId = (int) $invoiceReceipt->company_id;
-        $oldTransaction = Transaction::withoutGlobalScopes()->findOrFail($invoiceReceipt->transaction_id);
+        $oldTransaction = $this->resolvePostedDocumentFor($invoiceReceipt);
+
+        if ($oldTransaction === null) {
+            // CT-A3 R2-3, D7's mirror: `findOrFail($invoiceReceipt->transaction_id)` threw on
+            // every replay-backfilled row, so those vouchers could not be reversed at all.
+            Log::critical('accounting.rv_delete_no_document', [
+                'invoice_receipt_id' => $invoiceReceipt->id,
+                'company_id' => $companyId,
+                'idempotency_key' => 'rv:'.$invoiceReceipt->id,
+            ]);
+
+            return redirect()->back()->with('error', 'This receipt voucher has no posted document to reverse.');
+        }
+
         $engineOn = $this->seam->isEnabledFor($companyId);
 
         DB::beginTransaction();
@@ -785,10 +812,21 @@ class ReceiptVoucherController extends Controller
             // client owes the money again.
             $bounceDecision = $this->receiptRule->decide(InvoiceReceipt::STATUS_BOUNCED);
 
-            if ($bounceDecision->shouldReverse && $invoiceReceipt->transaction_id !== null) {
-                $receiptTransaction = Transaction::withoutGlobalScopes()
-                    ->whereNull('deleted_at')
-                    ->find($invoiceReceipt->transaction_id);
+            // CT-A3 R2-3 — VERIFY-CT-A3-STACK-R1 §3.2 D7 (BLOCKER). This used to read
+            // `&& $invoiceReceipt->transaction_id !== null`, while the status flip below sat
+            // OUTSIDE the guard. `ReceiptReplaySource` never wrote that column back, so every
+            // receipt the cutover backfill posted had a LIVE `rv:{id}` document and a NULL
+            // transaction_id: the bounce marked the row `bounced`, left the receipt document on
+            // the ledger and the invoice allocations `paid`, and reported success -- the exact
+            // defect W2-2 exists to close, still open for the entire replay population.
+            //
+            // The replay now writes the linkage back (half 1 of the fix), but that only helps
+            // FUTURE backfills; every row an earlier run already left behind still carries a NULL.
+            // So the document is resolved by the receipt's own IDEMPOTENCY KEY FAMILY when the
+            // column is missing or stale -- the fix shape the report itself names, and the same
+            // structural lookup the clearance leg a few lines above already uses.
+            if ($bounceDecision->shouldReverse) {
+                $receiptTransaction = $this->resolvePostedDocumentFor($invoiceReceipt);
 
                 if ($receiptTransaction !== null && $receiptTransaction->posting_status !== 'reversed') {
                     $this->undoAllocationsForVoucher($invoiceReceipt);
@@ -1600,6 +1638,64 @@ class ReceiptVoucherController extends Controller
      * correctly, matching how {@see self::writeLegacyTransaction()} already writes this same
      * column via `forceCreate()`.
      */
+    /**
+     * CT-A3 R2-3 — the LIVE posted document for a receipt voucher, or null when there is none.
+     *
+     * Two sources, in this order, because they answer different questions:
+     *
+     *  1. `invoice_receipts.transaction_id` — what the live `postVoucher()`/`update()` paths write.
+     *     Accepted only when the row it names is still LIVE (`posting_status = 'posted'`): after an
+     *     edit or a prior reversal the column can name a document that is no longer the current
+     *     one, and acting on a reversed document is how a receipt gets reversed twice.
+     *  2. The receipt's own IDEMPOTENCY KEY FAMILY — `rv:{id}` plus every revision
+     *     {@see PostingService::repost()} has minted off it (`:rev{n}`, and the pre-R2-2
+     *     `:repost:{id}`). This is what covers the `accounting:replay` backfill population, whose
+     *     rows have a live document and no linkage column at all (D7), and it is the structural,
+     *     never-by-description lookup this controller already uses for the clearance JV.
+     *
+     * Returns null when nothing was ever posted — a genuine `pending` draft. The lookup is WIDER
+     * than the old `findOrFail($r->transaction_id)`; it is not weaker. "No document" still means
+     * "reverse nothing".
+     */
+    private function resolvePostedDocumentFor(InvoiceReceipt $invoiceReceipt): ?Transaction
+    {
+        if ($invoiceReceipt->transaction_id !== null) {
+            $byColumn = Transaction::withoutGlobalScopes()
+                ->whereNull('deleted_at')
+                ->find($invoiceReceipt->transaction_id);
+
+            if ($byColumn !== null && $byColumn->posting_status === 'posted') {
+                return $byColumn;
+            }
+        }
+
+        $baseKey = 'rv:'.$invoiceReceipt->id;
+        $prefix = addcslashes($baseKey, '%_\\');
+
+        $byKey = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', (int) $invoiceReceipt->company_id)
+            ->where('posting_status', 'posted')
+            ->where(function ($q) use ($baseKey, $prefix) {
+                $q->where('idempotency_key', $baseKey)
+                    ->orWhere('idempotency_key', 'like', $prefix.':rev%')
+                    ->orWhere('idempotency_key', 'like', $prefix.':repost:%');
+            })
+            ->orderByDesc('id')
+            ->first();
+
+        if ($byKey !== null) {
+            return $byKey;
+        }
+
+        // Last resort: the column names a document that is no longer live and the key family has
+        // nothing posted. Hand back whatever the column names so the caller's own
+        // `posting_status !== 'reversed'` guards keep behaving exactly as they did.
+        return $invoiceReceipt->transaction_id !== null
+            ? Transaction::withoutGlobalScopes()->whereNull('deleted_at')->find($invoiceReceipt->transaction_id)
+            : null;
+    }
+
     private function markTransactionReversed(Transaction $transaction): void
     {
         $transaction->posting_status = 'reversed';

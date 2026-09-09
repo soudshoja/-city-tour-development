@@ -1536,9 +1536,10 @@ final class PostingService
         Transaction $posted,
         \DateTimeInterface $reversalDate,
         ?int $userId,
-        bool $force = false
+        bool $force = false,
+        ?string $idempotencyKey = null
     ): PostedDocument {
-        return DB::transaction(function () use ($posted, $reversalDate, $userId, $force) {
+        return DB::transaction(function () use ($posted, $reversalDate, $userId, $force, $idempotencyKey) {
             // P1 FIX ROUND (HIGH soft-delete finding): withoutGlobalScopes() drops
             // SoftDeletingScope along with every other scope — exclude deleted_at explicitly so a
             // soft-deleted transaction cannot be reversed as if it were live.
@@ -1747,7 +1748,14 @@ final class PostingService
                 narration: 'Reversal of transaction #'.$posted->id
                     .($posted->reference_number ? " ({$posted->reference_number})" : ''),
                 lines: $swappedLines,
-                idempotencyKey: 'rev:'.$posted->id,
+                // CT-A3 R2-1: the caller MAY name the reversal's own key. Default unchanged —
+                // 'rev:{id}', deterministic per source document, which is what makes reverse()
+                // idempotent for every existing caller. RefundPostingService::postCrnForDetail()
+                // passes its own 'refund:{refund}:crn:{detail}' instead, because a credit note has
+                // to be identifiable as THIS REFUND'S document: 'rev:{saleTxnId}' says only "the
+                // sale was reversed", which is why "the sale is already reversed" used to be
+                // indistinguishable from "this refund already ran" (verify-R1 D5).
+                idempotencyKey: $idempotencyKey ?? 'rev:'.$posted->id,
                 sourceType: $posted->reference_type,
                 sourceId: $posted->invoice_id ?? $posted->id,
                 // P1 FIX ROUND (BLOCKER 3): propagate the ORIGINAL's actual invoice_id, if any —
@@ -2454,6 +2462,24 @@ final class PostingService
 
             return null;
         }
+    }
+
+    /**
+     * CT-A3 R2-1 — the document already posted under (company, key), rebuilt as a PostedDocument,
+     * or null when there is none.
+     *
+     * PUBLIC because a feeder that owns a document's key must be able to answer "did I already
+     * post this?" without either re-posting it (post()'s step-1 short-circuit does return the
+     * existing document, but only after building a full draft — which for a credit note means
+     * resolving a sale that may no longer be there) or reaching into the engine's internals. The
+     * lookup is exactly post()'s own: company-scoped, soft-deleted rows excluded, ANY
+     * posting_status — a reversed document still occupies its key.
+     */
+    public function findPostedDocument(int $companyId, string $idempotencyKey): ?PostedDocument
+    {
+        $transaction = $this->findByIdempotencyKey($companyId, $idempotencyKey);
+
+        return $transaction === null ? null : $this->toPostedDocument($transaction);
     }
 
     /** Rebuilds a PostedDocument from an already-posted Transaction (idempotent-return paths). */

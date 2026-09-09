@@ -203,6 +203,51 @@ final class RefundPostingService
      *
      * Idempotency key: `refund:{refund_id}:crn:{refund_detail_id}` (per-detail — one refund can
      * cover several tasks/invoice-details, each needs its own CRN leg / reversal).
+     *
+     * ── CT-A3 R2-1 — VERIFY-CT-A3-STACK-R1 §3.2 D5 (BLOCKER), and §4 claim 1 ────────────────────
+     * The key above is what this method's docblock has always PROMISED. The verify report found it
+     * was never minted: on the engine path the reversal went out under `reverse()`'s own
+     * `rev:{saleTxnId}`, and the sale itself was looked up by the FIXED key
+     * `invoice-detail:{id}:sale` in ANY status. `PostingService::reverse()` short-circuits on any
+     * pre-existing reversal, so after ANY prior reversal of that sale this method returned
+     * somebody else's REV document as this refund's credit note — no revenue reversed, no
+     * exception, no log, a success message, and a trial balance that still foots. Three ordinary
+     * producers reach it:
+     *
+     *   1. **An invoice price correction, then a refund.** `repost()` renames the REPLACEMENT, so
+     *      after a correction the dead, reversed sale still owns `invoice-detail:{id}:sale` and
+     *      the LIVE sale sits under a revision key. This method reversed the corpse.
+     *   2. **A second refund on the same task** — nothing prevents one.
+     *   3. **A refund raised against the original task of a reissue**, whose sale
+     *      `TaskStatusService::reissueReverseOldSale()` already reversed.
+     *
+     * Worked (sale 100, penalty 20, fee 5, credit disposition): revenue stays **+100** un-reversed
+     * and AR reaches **+200** against a client who was credited 75. The COST half was relieved
+     * correctly throughout, because {@see self::postSupplierCreditForDetail()} reads the LEDGER —
+     * which is exactly why no supplier-side or AP-control check in the wave reports could see it.
+     *
+     * WHAT IT DOES NOW, in order:
+     *
+     *   1. **Retry first.** If a document already exists under THIS refund detail's own CRN key
+     *      (engine or legacy), return it. That is what carries idempotency now — previously it was
+     *      carried by accident, by the very "the sale is already reversed" condition that made the
+     *      defect silent.
+     *   2. **Compute the sale's CURRENT POSTED POSITION** — every sale-family document for this
+     *      invoice detail (the base key plus every `repost()` revision of it) that is STILL LIVE.
+     *      That set IS the outstanding revenue / AR / COGS / payable for the detail: a reversed
+     *      document and its REV cancel out, so what remains posted is what is still carried.
+     *      Reversing exactly those documents credits exactly what is outstanding, whichever
+     *      revision the live sale happens to be.
+     *   3. **Refuse loudly** — {@see NothingOutstandingToCreditException}, plus an
+     *      `AccountingLog::event('refund_crn_refused', …)` row — when nothing is live and no legacy
+     *      sale remains uncredited. The alternative is a second credit note for money that was
+     *      already given back once.
+     *
+     * NOT FIXED HERE, and deliberately: a PARTIAL credit. The credit note is a FULL reversal of the
+     * live sale, so a refund whose `original_invoice_price` is less than the outstanding sell still
+     * reverses the whole document — it is logged with both figures, and "what a partial or second
+     * refund on an already-refunded task means" is owner ruling territory (verify report §7 item
+     * 2), not a patch.
      */
     private function postCrnForDetail(
         Refund $refund,
@@ -229,24 +274,82 @@ final class RefundPostingService
         }
 
         $saleKey = 'invoice-detail:'.$invoiceDetail->id.':sale';
+        $crnKey = 'refund:'.$refund->id.':crn:'.$detail->id;
+        $legacyKey = 'refund:'.$refund->id.':crn-legacy:'.$detail->id;
 
-        // Structural targeting by idempotency_key — NEVER description (w4-brief.md hard rule).
-        // Deliberately NOT filtered to posting_status='posted': on a retry (this refund already
-        // posted once), the sale's own status is by then 'reversed' -- excluding it here would
-        // make this method wrongly fall through to the "legacy, never engine-posted" branch below
-        // and post a SECOND, redundant standalone CRN on every retry. reverse() is itself
-        // idempotent (returns the existing reversal) regardless of $posted's own current status,
-        // so finding the sale transaction by key alone, in ANY status, is what makes THIS method's
-        // own idempotency hold too.
-        $saleTransaction = Transaction::withoutGlobalScopes()
-            ->whereNull('deleted_at')
-            ->where('company_id', $companyId)
-            ->where('idempotency_key', $saleKey)
-            ->first();
+        // ── (1) RETRY ────────────────────────────────────────────────────────────────────────
+        // This refund detail's OWN credit note, in either form, if it already exists. Structural
+        // targeting by idempotency_key -- NEVER description (w4-brief.md hard rule).
+        $existing = $this->posting->findPostedDocument($companyId, $crnKey)
+            ?? $this->posting->findPostedDocument($companyId, $legacyKey);
 
-        if ($saleTransaction !== null) {
-            // Engine-posted sale: a true reverse() of every original line.
-            return $this->posting->reverse($saleTransaction, $docDate, $userId);
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        // ── (2) THE SALE'S CURRENT POSTED POSITION ───────────────────────────────────────────
+        // Every sale-family document for this invoice detail: the base key plus every revision
+        // repost() has minted off it (':rev{n}', and ':repost:{id}' for anything edited before
+        // CT-A3 R2-2). A reversed document and its REV cancel on the ledger, so the members still
+        // at posting_status='posted' ARE the outstanding revenue / AR / COGS / payable.
+        $saleFamily = $this->saleFamilyFor($companyId, $saleKey);
+        $liveSales = $saleFamily->where('posting_status', 'posted')->values();
+
+        if ($liveSales->isNotEmpty()) {
+            $liveIds = $liveSales->pluck('id')->map(static fn ($id) => (int) $id)->all();
+            $outstandingSell = $this->sellCarriedBy($companyId, $liveIds, (int) $invoiceDetail->id);
+            $creditedSell = round((float) ($detail->original_invoice_price ?? 0.0), 3);
+
+            AccountingLog::event('refund_crn_posted', [
+                'refund_id' => $refund->id,
+                'refund_detail_id' => $detail->id,
+                'company_id' => $companyId,
+                'invoice_detail_id' => $invoiceDetail->id,
+                'idempotency_key' => $crnKey,
+                'live_sale_transaction_ids' => $liveIds,
+                'outstanding_sell' => $outstandingSell,
+                'credited_sell' => $creditedSell,
+                // Recorded, not enforced: the credit note is a FULL reversal of the live sale, so a
+                // mismatch here is the partial-credit ruling this wave deliberately did not make
+                // (verify report §7 item 2), never a silent rounding.
+                'partial_credit_requested' => abs($outstandingSell - $creditedSell) > 0.0005,
+            ]);
+
+            $first = null;
+
+            foreach ($liveSales as $index => $saleTransaction) {
+                // One live document is the ordinary shape. More than one can only arise from a
+                // feeder minting two sale documents for one invoice detail; each gets its own
+                // suffixed CRN key so none collides, and EVERY one is reversed -- silently
+                // reversing only the first would leave revenue standing, which is D5 again in a
+                // different costume.
+                $document = $this->posting->reverse(
+                    $saleTransaction,
+                    $docDate,
+                    $userId,
+                    false,
+                    $index === 0 ? $crnKey : $crnKey.':'.$saleTransaction->id
+                );
+
+                $first ??= $document;
+            }
+
+            /** @var PostedDocument $first */
+            return $first;
+        }
+
+        if ($saleFamily->isNotEmpty()) {
+            // Every engine sale document for this invoice detail is already reversed. Nothing is
+            // outstanding, and reverse() would hand back whoever reversed it first.
+            $this->refuseNothingOutstanding(
+                $refund,
+                $detail,
+                $companyId,
+                (int) $invoiceDetail->id,
+                $saleFamily->count(),
+                'every sale document for this invoice detail is already reversed (a prior refund, a '
+                .'reissue, or a deleted invoice)'
+            );
         }
 
         // w4-brief.md §4a "Legacy original ... transactions.idempotency_key IS NULL for the
@@ -265,7 +368,34 @@ final class RefundPostingService
             );
         }
 
-        $legacyKey = 'refund:'.$refund->id.':crn-legacy:'.$detail->id;
+        // CT-A3 R2-1, D5 producer 2 on the LEGACY side. A legacy sale carries no idempotency key,
+        // so "has this already been credited?" cannot be asked of the sale -- it has to be asked of
+        // the CREDIT NOTES. This refund's own is already ruled out at step (1); what remains is a
+        // DIFFERENT refund having credited the same legacy sale earlier, which before R2-1 posted a
+        // second full standalone CRN and reversed the same revenue twice.
+        $priorLegacyCrn = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where('idempotency_key', 'like', 'refund:%:crn-legacy:%')
+            ->whereIn('id', function ($q) use ($invoiceDetail) {
+                $q->select('transaction_id')
+                    ->from('journal_entries')
+                    ->whereNull('deleted_at')
+                    ->where('invoice_detail_id', $invoiceDetail->id);
+            })
+            ->count();
+
+        if ($priorLegacyCrn > 0) {
+            $this->refuseNothingOutstanding(
+                $refund,
+                $detail,
+                $companyId,
+                (int) $invoiceDetail->id,
+                $priorLegacyCrn,
+                'this invoice detail\'s legacy sale has already been credited by '
+                ."{$priorLegacyCrn} earlier credit note(s)"
+            );
+        }
 
         $draft = new DocumentDraft(
             companyId: $companyId,
@@ -673,6 +803,112 @@ final class RefundPostingService
         Transaction::withoutGlobalScopes()->whereKey($posted->transaction->id)->update(['bsptype' => 'REFUND']);
 
         return $posted;
+    }
+
+    /**
+     * CT-A3 R2-1 — every SALE document ever posted for one invoice detail, in any status.
+     *
+     * The family is the base key `invoice-detail:{id}:sale` plus every replacement
+     * {@see PostingService::repost()} has minted off it. Both revision conventions are matched:
+     * `:rev{n}` (current, CT-A3 R2-2) and `:repost:{transactionId}` (pre-R2, still on any invoice
+     * whose price was corrected before that fix). Matching only the base key is precisely the D5
+     * defect — after ANY correction the base key belongs to the dead document.
+     *
+     * LIKE metacharacters in the prefix are escaped: an invoice-detail id cannot contain one
+     * today, but the escape is what makes that a fact about the data rather than a coincidence.
+     *
+     * @return \Illuminate\Support\Collection<int, Transaction>
+     */
+    private function saleFamilyFor(int $companyId, string $saleKey): \Illuminate\Support\Collection
+    {
+        $prefix = addcslashes($saleKey, '%_\\');
+
+        return Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where(function ($q) use ($saleKey, $prefix) {
+                $q->where('idempotency_key', $saleKey)
+                    ->orWhere('idempotency_key', 'like', $prefix.':rev%')
+                    ->orWhere('idempotency_key', 'like', $prefix.':repost:%');
+            })
+            ->orderBy('id')
+            ->get();
+    }
+
+    /**
+     * CT-A3 R2-1 — the SELL still carried by the live sale documents for one invoice detail:
+     * Cr − Dr on their revenue lines, read from the posted rows, never from a stored balance
+     * column (CT-A1 §4.1 measured Σ|drift| KWD 6,277,563.301 on those).
+     *
+     * Reported, not enforced. The credit note is a FULL reversal of whatever is live, so this
+     * figure exists to be LOGGED against the refund's own `original_invoice_price` — the pair is
+     * what an operator needs to see when the two disagree, and what the partial-credit ruling
+     * (verify report §7 item 2) will be decided from.
+     *
+     * @param  int[]  $transactionIds
+     */
+    private function sellCarriedBy(int $companyId, array $transactionIds, int $invoiceDetailId): float
+    {
+        if ($transactionIds === []) {
+            return 0.0;
+        }
+
+        $net = (float) (DB::table('journal_entries')
+            ->where('company_id', $companyId)
+            ->whereIn('transaction_id', $transactionIds)
+            ->where('invoice_detail_id', $invoiceDetailId)
+            ->whereNull('deleted_at')
+            // `journal_entries.type` carries LedgerType's canonical vocabulary (CT-A3 E7): the
+            // sale's revenue leg is stamped 'income' by SaleDraftBuilder, and reverse() carries
+            // the original line's own `type` through verbatim.
+            ->where('type', \App\Enums\LedgerType::INCOME->value)
+            ->selectRaw('COALESCE(SUM(credit) - SUM(debit), 0) as net')
+            ->value('net') ?? 0.0);
+
+        return round($net, 3);
+    }
+
+    /**
+     * CT-A3 R2-1 — refuse a credit note that has nothing to credit, LOUDLY: a named exception the
+     * replay command can bucket by class, and an audit row that survives the rollback the throw
+     * triggers, so the refusal is findable afterwards rather than only visible to whoever was
+     * watching the screen.
+     *
+     * @return never
+     */
+    private function refuseNothingOutstanding(
+        Refund $refund,
+        RefundDetail $detail,
+        int $companyId,
+        int $invoiceDetailId,
+        int $reversedSaleDocuments,
+        string $reason
+    ): void {
+        Log::warning('accounting.refund_crn.nothing_outstanding', [
+            'refund_id' => $refund->id,
+            'refund_detail_id' => $detail->id,
+            'company_id' => $companyId,
+            'invoice_detail_id' => $invoiceDetailId,
+            'task_id' => $detail->task_id,
+            'reversed_sale_documents' => $reversedSaleDocuments,
+            'reason' => $reason,
+        ]);
+
+        AccountingLog::event('refund_crn_refused', [
+            'refund_id' => $refund->id,
+            'refund_detail_id' => $detail->id,
+            'company_id' => $companyId,
+            'invoice_detail_id' => $invoiceDetailId,
+            'reason' => $reason,
+        ]);
+
+        throw new \App\Exceptions\Accounting\NothingOutstandingToCreditException(
+            (int) $detail->id,
+            $invoiceDetailId,
+            $detail->task_id !== null ? (int) $detail->task_id : null,
+            $reversedSaleDocuments,
+            $reason
+        );
     }
 
     /**

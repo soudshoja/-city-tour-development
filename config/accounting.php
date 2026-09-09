@@ -583,7 +583,7 @@ return [
             // until an operator maps it via the Purpose Mapping screen.
             'COST_OF_SALES_CONTROL',
             // CT-A3 wave 2 (W2-3, CT-F11): the cost of a refunded booking that the supplier is
-            // NOT giving back. Resolves to leaf 5126 'Supplier Refund Loss' under Direct Expenses
+            // NOT giving back. Resolves to leaf 5131 'Supplier Refund Loss' under Direct Expenses
             // (Cost of Sales). Global, not per_service: a refund the agency ate is one number the
             // owner wants to see whole, not thirteen scattered across service types.
             'SUPPLIER_REFUND_LOSS',

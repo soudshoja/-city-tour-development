@@ -280,7 +280,7 @@ final class TaskIssuancePayableService
      *     `refund_hold`, or the task has only been *asked* for a refund and not confirmed one).
      *     The agency still owes the supplier -- so the payable STAYS -- but the 1430 balance is no
      *     longer an asset, because there is no longer a sale it will ever be billed against. It is
-     *     a loss. Reclassified onto `5126 Supplier Refund Loss` by its own document, keyed
+     *     a loss. Reclassified onto `5131 Supplier Refund Loss` by its own document, keyed
      *     `task:{id}:refund-loss`, so a later confirmation can still reverse the accrual normally
      *     and the loss line is visible instead of the cost quietly staying an asset forever.
      *

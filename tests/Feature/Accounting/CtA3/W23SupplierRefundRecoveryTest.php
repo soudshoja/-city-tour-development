@@ -45,7 +45,7 @@ use Tests\Support\AccountingTestCase;
  *     `RefundPostingService::supplierRefundAmount()` defaulted to `cost - penalty`, so "nobody
  *     recorded what the supplier did" was booked as a full recovery.
  *  2. **When it does not come back, the cost is not erased**: it is reclassified onto
- *     `5126 Supplier Refund Loss` and the supplier payable is left standing, because the agency
+ *     `5131 Supplier Refund Loss` and the supplier payable is left standing, because the agency
  *     still owes it.
  *  3. **The cost is credited back where it actually sits.** A task whose cost is still in
  *     `1430 Unbilled Supplier Cost` relieves 1430, not COGS — CT-F11's exact complaint.
@@ -267,7 +267,7 @@ class W23SupplierRefundRecoveryTest extends AccountingTestCase
     /**
      * Case 3 — THE DEFECT. The supplier does not refund (default trigger, task only at `refund`).
      * The cost must NOT be credited back as a recovery: the payable stands and the cost lands on
-     * 5126 Supplier Refund Loss.
+     * 5131 Supplier Refund Loss.
      *
      * Before wave 2 this posted Dr SERVICE_PAYABLE 100 / Cr SERVICE_COST 100 — erasing a cost the
      * agency had really borne and clearing a payable it still owed.
@@ -288,7 +288,7 @@ class W23SupplierRefundRecoveryTest extends AccountingTestCase
             100.000,
             $loss,
             0.001,
-            'A cost the supplier is not giving back must land on 5126 Supplier Refund Loss.'
+            'A cost the supplier is not giving back must land on 5131 Supplier Refund Loss.'
         );
 
         $this->assertEqualsWithDelta(

@@ -63,7 +63,7 @@ use Illuminate\Support\Facades\Schema;
  * was the system ASSUMING recovery. A cost is only removed from the books when the supplier has
  * actually confirmed the refund (task status `refunded`), or when an operator has explicitly typed
  * the amount. Everything else keeps the cost — reclassified out of cost-of-sales into
- * `SUPPLIER_REFUND_LOSS` (5126), where a refund the agency ate is visible as exactly that instead
+ * `SUPPLIER_REFUND_LOSS` (5131), where a refund the agency ate is visible as exactly that instead
  * of hiding inside COGS or, worse, vanishing.
  *
  * Note this default does NOT reproduce the legacy ledger, and that is deliberate — unlike wave 1's

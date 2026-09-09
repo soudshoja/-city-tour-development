@@ -660,7 +660,7 @@ class RefundPostingServiceTest extends AccountingTestCase
 
         $this->assertEqualsWithDelta(-60.000, $net($payable), 0.0005, 'The supplier is still owed the full cost: it refunded nothing.');
         $this->assertEqualsWithDelta(0.000, $net($cost), 0.0005, 'Cost of sales is fully relieved: the sale it matched has been reversed.');
-        $this->assertEqualsWithDelta(60.000, $net($loss), 0.0005, 'The unrecovered cost is visible on 5126 Supplier Refund Loss.');
+        $this->assertEqualsWithDelta(60.000, $net($loss), 0.0005, 'The unrecovered cost is visible on 5131 Supplier Refund Loss.');
     }
 
     public function test_supplier_refund_amount_override_is_honoured_and_document_still_balances(): void

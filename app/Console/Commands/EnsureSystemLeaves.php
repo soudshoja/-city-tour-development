@@ -484,7 +484,7 @@ class EnsureSystemLeaves extends Command
         // every CoaSeeder chart, old or new, so this leaf can always be backfilled.
         [
             'leafName' => 'Supplier Refund Loss',
-            'code' => '5126',
+            'code' => '5131',
             'parentChain' => ['Direct Expenses (Cost of Sales)', 'Expenses'],
             'purposeCode' => 'SUPPLIER_REFUND_LOSS',
             'core' => true,

@@ -492,7 +492,7 @@ final class RefundPostingService
      *                                        refunds nothing — because we still owe that money)
      *
      * and the balancing leg is `PENALTY_COST_EXPENSE` when the supplier IS refunding and merely
-     * kept a charge, or `SUPPLIER_REFUND_LOSS` (5126) when it is not refunding — the owner's "the
+     * kept a charge, or `SUPPLIER_REFUND_LOSS` (5131) when it is not refunding — the owner's "the
      * cost stays and a refund-loss expense line carries the non-recoverable part". Nothing is
      * posted at all when the ledger is already in the correct state (an engine sale, fully
      * refunded, no penalty): a balanced no-op document would be noise.
@@ -604,7 +604,7 @@ final class RefundPostingService
 
         if (abs($residual) > $tolerance) {
             // Recovering with a charge kept -> a real penalty cost (5124). Not recovering -> the
-            // agency's own loss on a refunded booking (5126). The two must stay distinguishable:
+            // agency's own loss on a refunded booking (5131). The two must stay distinguishable:
             // a penalty is the price of a refund that happened, a loss is a refund that did not.
             $isPenalty = $decision->shouldRecover;
 

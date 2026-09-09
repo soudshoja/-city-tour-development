@@ -118,8 +118,17 @@ final class ReceiptPostingRule
      * the fallback is used, because inventing a bank leaf for a misconfigured payment method is
      * how money ends up in the wrong account quietly.
      */
-    public function instrumentAccountFor(InvoiceReceipt $receipt, Carbon $docDate, int $companyId): Account
+    public function instrumentAccountFor(InvoiceReceipt $receipt, \DateTimeInterface $docDate, int $companyId): Account
     {
+        // `\DateTimeInterface`, deliberately, NOT `Illuminate\Support\Carbon`. The caller builds
+        // its document date as `$r->doc_date ? Carbon::parse($r->doc_date) : Carbon::now()` with
+        // `Carbon\Carbon` imported -- and those two branches return DIFFERENT classes:
+        // `Carbon::parse()` on an already-Carbon value returns a clone of THAT object (an
+        // `Illuminate\Support\Carbon`, because Eloquent's `date` cast produces one), while
+        // `Carbon::now()` returns a plain `Carbon\Carbon`, which is the PARENT class and therefore
+        // not an instance of the child. A receipt with a NULL `doc_date` -- 5 of the 109 on the
+        // City Travelers data -- took the second branch and died on a TypeError before this
+        // method's first line ran. Found by the server dry run; see this wave's report §5.
         if ($receipt->cheque_no && $receipt->cheque_date && Carbon::parse($receipt->cheque_date)->gt($docDate)) {
             return $this->accounts->resolve('CHEQUES_IN_HAND', $companyId);
         }

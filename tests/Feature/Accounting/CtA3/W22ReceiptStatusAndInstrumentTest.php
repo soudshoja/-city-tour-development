@@ -327,6 +327,43 @@ class W22ReceiptStatusAndInstrumentTest extends AccountingTestCase
     }
 
     /**
+     * Case 6b — the NULL `doc_date` regression. `ReceiptVoucherController::buildVoucherDraft()`
+     * builds its document date as `$r->doc_date ? Carbon::parse($r->doc_date) : Carbon::now()`
+     * with `Carbon\Carbon` imported, and those two branches return DIFFERENT classes:
+     * `Carbon::parse()` on an already-Carbon value clones it (an `Illuminate\Support\Carbon`,
+     * from Eloquent's `date` cast), while `Carbon::now()` returns a plain `Carbon\Carbon` — the
+     * PARENT, not an instance of the child. `instrumentAccountFor()`'s first cut type-hinted the
+     * child and died on a TypeError for exactly this row shape: 5 of the 109 real City Travelers
+     * receipts carry no `doc_date`. Every case above sets one, which is why none of them caught it
+     * and the server dry run did.
+     */
+    public function test_a_receipt_with_no_doc_date_still_resolves_its_instrument_leg(): void
+    {
+        [$company, $branch, $agent, $client, $admin] = $this->makeFixture();
+
+        $cash = $this->accountByCode($company->id, '1120');
+
+        $receipt = $this->makeReceipt($company, $branch, $client, ['doc_date' => null]);
+
+        $this->actingAs($admin)->post(route('receipt-voucher.approve', $receipt->id))->assertRedirect();
+
+        $receipt->refresh();
+        $this->assertSame(InvoiceReceipt::STATUS_APPROVED, $receipt->status, 'A receipt with no doc_date must still post.');
+
+        $debit = JournalEntry::where('transaction_id', $receipt->transaction_id)->where('debit', '>', 0)->first();
+        $this->assertNotNull($debit);
+        $this->assertSame($cash->id, (int) $debit->account_id);
+
+        // And the rule itself accepts the plain Carbon\Carbon that Carbon::now() returns.
+        $account = app(ReceiptPostingRule::class)->instrumentAccountFor(
+            $receipt->fresh(),
+            \Carbon\Carbon::now(),
+            $company->id
+        );
+        $this->assertSame($cash->id, (int) $account->id);
+    }
+
+    /**
      * Case 7: an explicit `bank_account_id` on the voucher still wins over the channel — an
      * operator's own choice beats a default.
      */

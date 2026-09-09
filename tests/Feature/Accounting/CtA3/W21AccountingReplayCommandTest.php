@@ -293,6 +293,58 @@ class W21AccountingReplayCommandTest extends AccountingTestCase
         );
     }
 
+    /**
+     * Case 5b: `--receipt-statuses` is an explicit, per-run override and nothing more.
+     *
+     * 104 of the 109 real City Travelers receipts sit at `pending`, which W2-2's vocabulary
+     * correctly treats as a draft with no ledger footprint -- while CT-A1 CT-F12 names those same
+     * rows as unposted money. The command refuses to decide that silently: by default a pending
+     * receipt is skipped with the reason `status_is_draft`, and an operator who has decided
+     * otherwise says so on the command line, where it is visible.
+     */
+    public function test_receipt_statuses_is_an_explicit_per_run_override(): void
+    {
+        [$company, $branch, $agent, $client] = $this->makeFixture();
+
+        $pending = \App\Models\InvoiceReceipt::create([
+            'type' => 'account',
+            'company_id' => $company->id,
+            'branch_id' => $branch->id,
+            'doc_date' => now()->subDay()->toDateString(),
+            'client_id' => $client->id,
+            'account_id' => Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1351')->value('id'),
+            'amount' => 40.000,
+            'remainder_amount' => 0,
+            'remainder_policy' => 'credit',
+            'status' => 'pending',
+        ]);
+
+        $this->artisan('accounting:replay', ['--company' => $company->id, '--class' => 'receipt'])
+            ->assertExitCode(0)
+            ->expectsOutputToContain('status_is_draft');
+
+        $this->assertNull(
+            $this->documentByKey($company->id, 'rv:'.$pending->id),
+            'By default a pending receipt is a draft and posts nothing.'
+        );
+
+        $this->artisan('accounting:replay', [
+            '--company' => $company->id,
+            '--class' => 'receipt',
+            '--receipt-statuses' => 'approved,pending',
+        ])
+            ->assertExitCode(0)
+            ->expectsOutputToContain('Receipt posting statuses OVERRIDDEN for this run');
+
+        $this->assertNotNull(
+            $this->documentByKey($company->id, 'rv:'.$pending->id),
+            'With the explicit override the same row posts.'
+        );
+
+        // And the override was scoped to the process: the live vocabulary is untouched.
+        $this->assertSame(['approved'], config('accounting.receipt.posting_statuses'));
+    }
+
     // ────────────────────────────────────────────────────────────────────────────────────────
     // 4. The keys are the production feeders' keys
     // ────────────────────────────────────────────────────────────────────────────────────────

@@ -64,7 +64,8 @@ class AccountingReplay extends Command
         {--from= : Only documents dated on/after this date (Y-m-d)}
         {--to= : Only documents dated on/before this date (Y-m-d)}
         {--dry-run : Post inside a transaction and roll it back — reports exactly what a real run would do, writes nothing}
-        {--limit= : Cap the rows walked per class (smoke-testing a big backfill)}';
+        {--limit= : Cap the rows walked per class (smoke-testing a big backfill)}
+        {--receipt-statuses= : FOR THIS RUN ONLY, the invoice_receipts statuses the receipt class treats as posting (e.g. approved,pending). Overrides config(accounting.receipt.posting_statuses); never persisted, never changes live behaviour}';
 
     protected $description = 'Replay historical documents through the posting engine under each feeder\'s own idempotency key (cutover backfill).';
 
@@ -104,6 +105,33 @@ class AccountingReplay extends Command
             return self::FAILURE;
         }
 
+        // ── --receipt-statuses, and why it exists ──────────────────────────────────────────
+        // On the City Travelers data 104 of the 109 `invoice_receipts` rows sit at `pending`, and
+        // W2-2's configured vocabulary correctly says a pending voucher has no ledger footprint --
+        // that IS the W5.R lifecycle. But CT-A1 CT-F12 names those same 104 rows as a DEFECT
+        // ("104 of 109 unposted ... posting on approve was never wired"): the money was received
+        // and the approval path did not exist to record it. Both readings are defensible and only
+        // the owner can settle which applies to a given row.
+        //
+        // So the command will not silently decide. The default is the live vocabulary (pending
+        // does not post, and the run reports `status_is_draft` with an exact count); an operator
+        // who has decided those receipts are real passes them explicitly on the command line,
+        // where the decision is visible in the shell history and echoed in the run header. This
+        // never writes to config and never changes live behaviour -- it is scoped to the process.
+        $receiptStatusesBefore = config('accounting.receipt.posting_statuses');
+
+        if ($this->option('receipt-statuses') !== null) {
+            $statuses = array_values(array_filter(array_map(
+                static fn ($s) => strtolower(trim((string) $s)),
+                explode(',', (string) $this->option('receipt-statuses'))
+            )));
+
+            config(['accounting.receipt.posting_statuses' => $statuses]);
+
+            $this->warn('Receipt posting statuses OVERRIDDEN for this run: '.implode(', ', $statuses));
+            $this->warn('  (the config file is untouched, and the value is restored when this run ends.)');
+        }
+
         $from = $this->option('from') ? Carbon::parse((string) $this->option('from')) : null;
         $to = $this->option('to') ? Carbon::parse((string) $this->option('to')) : null;
         $limit = $this->option('limit') !== null ? (int) $this->option('limit') : null;
@@ -135,6 +163,12 @@ class AccountingReplay extends Command
             if ($openedAt !== null && DB::transactionLevel() >= $openedAt) {
                 DB::rollBack($openedAt - 1);
             }
+
+            // Restored whether the run succeeded or threw, so the override cannot leak out of this
+            // command into a long-lived process (a queue worker driving it through Artisan::call,
+            // or a test suite). The claim "this never changes live behaviour" has to hold in
+            // process, not only because the CLI happens to exit afterwards.
+            config(['accounting.receipt.posting_statuses' => $receiptStatusesBefore]);
         }
 
         $this->printReport($report, $dryRun);

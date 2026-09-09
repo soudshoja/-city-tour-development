@@ -134,17 +134,18 @@ final class TaskIssuancePayableService
 
         $amount = round((float) ($task->total ?? 0), 3);
 
-        if ($amount <= (float) config('accounting.engine.balance_tolerance', 0.0005)) {
-            Log::debug('accounting.supplier_payable.skipped', array_merge($context, ['reason' => 'zero_supplier_cost']));
+        // CT-A3 wave 2 (W2-1): the two remaining skip reasons -- 'zero_supplier_cost' and
+        // 'already_invoiced' (the owner's "if the task auto-invoices in the same transaction,
+        // post straight to COGS": its cost is already on the sale document's own
+        // SERVICE_COST / SERVICE_PAYABLE pair, so accruing here would double the payable) -- are
+        // decided by {@see self::amountSkipReason()}, the ONE implementation
+        // {@see self::reasonFor()} also consults. Before wave 2 they were inline here and
+        // `accounting:replay` had to re-derive them to report why a task did not accrue; two
+        // copies of a decision this delicate is exactly how a report and a ledger drift apart.
+        $amountReason = $this->amountSkipReason($task, $companyId, $amount);
 
-            return null;
-        }
-
-        // The task auto-invoiced in the same flow: its cost is already on the sale document's own
-        // SERVICE_COST / SERVICE_PAYABLE pair, so accruing here would double the payable. This is
-        // the owner's "if the task auto-invoices in the same transaction, post straight to COGS".
-        if ($this->hasPostedSaleDocument($task, $companyId)) {
-            Log::debug('accounting.supplier_payable.skipped', array_merge($context, ['reason' => 'already_invoiced']));
+        if ($amountReason !== null) {
+            Log::debug('accounting.supplier_payable.skipped', array_merge($context, ['reason' => $amountReason]));
 
             return null;
         }
@@ -256,6 +257,63 @@ final class TaskIssuancePayableService
         ]);
 
         return $posted;
+    }
+
+    /**
+     * CT-A3 wave 2 (W2-1). Why this task would, or would not, accrue right now -- WITHOUT posting
+     * anything. One of:
+     *
+     *   `engine_off` | `reversing_status` | `no_supplier_on_task` | `supplier_payable_hold` |
+     *   `trigger_manual` | `status_not_committed` | `no_voucher_raised` | `zero_supplier_cost` |
+     *   `already_invoiced` | `due`
+     *
+     * The first seven come straight from {@see SupplierPayableRule::decide()}; the last three are
+     * this service's own. {@see self::postIfDue()} consults the SAME two helpers, so a report
+     * built on this method can never disagree with what the feeder actually did -- which is the
+     * whole point: `accounting:replay --class=issuance` prints its NOT_DUE breakdown from here,
+     * and on the City Travelers data that breakdown IS the R-CT3 ruling ("not hold or some
+     * supplier confirmed") made auditable.
+     */
+    public function reasonFor(Task $task): string
+    {
+        $companyId = (int) $task->company_id;
+
+        if ($companyId <= 0 || ! $this->seam->isEnabledFor($companyId)) {
+            return 'engine_off';
+        }
+
+        $supplier = $task->supplier_id ? Supplier::find($task->supplier_id) : null;
+        $decision = $this->rule->decide($task, $supplier);
+
+        if ($decision->shouldReverse) {
+            return 'reversing_status';
+        }
+
+        if (! $decision->shouldPost) {
+            return $decision->reason;
+        }
+
+        $amount = round((float) ($task->total ?? 0), 3);
+
+        return $this->amountSkipReason($task, $companyId, $amount) ?? 'due';
+    }
+
+    /**
+     * The two amount/lifecycle skips that survive a positive {@see SupplierPayableRule} verdict,
+     * or null when neither applies. Extracted (CT-A3 wave 2) so {@see self::postIfDue()} and
+     * {@see self::reasonFor()} share one implementation rather than two that can drift.
+     */
+    private function amountSkipReason(Task $task, int $companyId, float $amount): ?string
+    {
+        if ($amount <= (float) config('accounting.engine.balance_tolerance', 0.0005)) {
+            return 'zero_supplier_cost';
+        }
+
+        if ($this->hasPostedSaleDocument($task, $companyId)) {
+            return 'already_invoiced';
+        }
+
+        return null;
     }
 
     /**

@@ -48,6 +48,11 @@
                     <label for="account_id" class="font-medium text-sm mb-1">Filter by Account:</label>
                     <select name="account_id" id="account_id"
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
+                        {{-- CT-A7-1 (R-CT9): the default. A null $accountId means "no per-account
+                             filter", so the totals span every payable leaf the engine posts to,
+                             including a leaf a payee nomination moved a payable onto. --}}
+                        <option value="all" {{ $accountId ? '' : 'selected' }}>All payable &amp; receivable accounts
+                        </option>
                         @foreach ($allAccounts as $account)
                             <option value="{{ $account->id }}" {{ $accountId == $account->id ? 'selected' : '' }}>
                                 {{ ucfirst($account->name) }}

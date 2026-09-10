@@ -259,6 +259,62 @@ final class TaskPayablePositionResolver
     }
 
     /**
+     * CT-A7-1 (owner ruling **R-CT9**) — the COMPANY-WIDE shape of {@see self::readNomination()}'s
+     * per-task question: every DISTINCT account an R-CT8 payee nomination has actually posted a
+     * supplier payable onto (or off) for this company, derived from the POSTED DOCUMENT FAMILY.
+     *
+     * R-CT9, verbatim (PLAN.md §0.2):
+     *
+     * > "Reports must show a payable at its CURRENT position. Where a payee nomination has moved a
+     * >  supplier payable to a payee leaf (R-CT8), the AR/AP, creditors and statement screens must
+     * >  include that leaf alongside control+party, so a reassigned payable is never invisible."
+     *
+     * ── Why the document family, and not an AP subtree walk ─────────────────────────────────────
+     * {@see self::apSubtreeIds()} would answer a superset of this question, and CT-A7 deliberately
+     * does NOT use it for the report layer: it re-admits exactly the structural tree-walking the
+     * CT-A6-1 no-name-lookup ratchet exists to prevent (it anchors on an account literally NAMED
+     * 'Accounts Payable'), and it is unbounded by what the engine did — a chart with 132 AP
+     * accounts would put all 132 on every payables screen whether or not one KWD ever moved there.
+     * This method is bounded by the posted reassignment documents themselves: the set is exactly
+     * "leaves the engine's own R-CT8 feeder touched", which is the population R3-9 measured
+     * (1,642 documents / KWD 234,153.262 on the replayed City Travelers ledger).
+     *
+     * ── Why BOTH legs, not only the credit (destination) leg ────────────────────────────────────
+     * A reassignment posts `Dr <every leaf still carrying the payable> / Cr <the nominated payee>`
+     * ({@see SupplierReassignDraftBuilder}). The credit leg alone answers "where did it go"; the
+     * debit legs answer "where has it been", and a superseded payee leaf (an A → B → A → B
+     * sequence, which the feeder's own idempotency key explicitly supports) can still carry
+     * residue from a path this ruling has not reached. Including both makes the set a strict
+     * superset of "current position" and can never hide money; a leaf the payable has fully left
+     * simply contributes 0.000 and costs one extra id in a `whereIn`.
+     *
+     * Soft-deleted and non-`posted` documents are excluded on the same reasoning
+     * {@see self::readNomination()} gives: a reversed reassignment is no longer a nomination.
+     *
+     * @return list<int>
+     */
+    public function nominatedPayeeAccountIdsForCompany(int $companyId): array
+    {
+        if ($companyId <= 0) {
+            return [];
+        }
+
+        return DB::table('journal_entries as je')
+            ->join('transactions as t', 't.id', '=', 'je.transaction_id')
+            ->where('t.company_id', $companyId)
+            ->whereNull('t.deleted_at')
+            ->where('t.posting_status', 'posted')
+            ->where('t.idempotency_key', 'like', 'task:%:supplier-reassign:%')
+            ->whereNull('je.deleted_at')
+            ->distinct()
+            ->orderBy('je.account_id')
+            ->pluck('je.account_id')
+            ->map(fn ($id) => (int) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
      * Every account under the company's `Accounts Payable` (2100) group, walked structurally.
      *
      * `accounts.is_group` is deliberately not consulted — CT-A1 §1.4 measured it wrong on 613

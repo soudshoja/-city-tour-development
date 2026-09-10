@@ -857,10 +857,22 @@ class ReportController extends Controller
         $receivableAccounts = Account::withoutGlobalScopes()->whereIn('id', $receivableAccountIds)->get();
         $allAccounts = $payableAccounts->merge($receivableAccounts);
 
-        // Default to first account if none selected
-        if (empty($accountId) || $accountId === 'all') {
-            $firstAccount = $allAccounts->first();
-            $accountId = $firstAccount ? $firstAccount->id : null;
+        // CT-A7-1 (owner ruling R-CT9). This used to collapse BOTH "nothing selected" and an
+        // explicit "all" to `$allAccounts->first()` — so the screen's default view showed exactly
+        // ONE payable leaf, and there was no way to ask for the rest at once. On a chart where a
+        // payee nomination has moved payables onto leaves of their own (R-CT8) that default IS the
+        // "a reassigned payable is invisible" defect: the money is inside `$payableAccountIds`
+        // now, but the screen filtered it back down to one id before it could be summed.
+        //
+        // 'all' now means what it says — no per-account filter, so the payable/receivable totals
+        // span every leaf `LedgerSource::payableAccountIds()`/`receivableAccountIds()` resolved —
+        // and it is the default. A specific `account_id` still narrows to that one leaf, unchanged.
+        if (empty($accountId)) {
+            $accountId = 'all';
+        }
+
+        if ($accountId === 'all') {
+            $accountId = null;
         }
 
         $payableQuery = JournalEntry::whereIn('account_id', $payableAccountIds)

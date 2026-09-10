@@ -1108,6 +1108,37 @@ class ArchitectureTest extends TestCase
     /**
      * @return string[] "path:line" for every violation found.
      */
+    /**
+     * CT-A5a — the ONE sanctioned use of `journal_entries.created_at` as a filter, and why it is
+     * not the defect BUG-C4 names.
+     *
+     * BUG-C4 is about PERIODIZATION: bucketing an entry into an accounting period by when its row
+     * happened to be inserted rather than by the date it is posted on. `accounting:dedupe-cutover`
+     * does the opposite — it asks "which rows ARRIVED inside this cutover window", which is a
+     * wall-clock question about the deployment, not an accounting-period question about the
+     * document. Using `posting_date` there would be wrong twice over: every legacy row this
+     * command looks for has `posting_date IS NULL` by definition (that is how it is recognised as
+     * legacy at all), and CT-D1 §0.4i measured the arriving documents carrying BACKDATED
+     * `transaction_date` values — 2026-05-14 and 2026-06-19 on rows written on 2026-09-10 — so a
+     * period-dated window could not bound the cutover even if the column existed.
+     *
+     * Kept as a single named file rather than a general "arrival window" pattern: this is the only
+     * command in the tree that has a legitimate reason to ask the question, and the exemption must
+     * shrink, never grow, exactly like ALLOW_LISTED_RAW_WRITER_FILES above.
+     *
+     * @var array<int, string> paths relative to `app/`, forward slashes
+     */
+    private const SANCTIONED_ARRIVAL_WINDOW_FILES = [
+        'Console/Commands/AccountingDedupeCutover.php',
+    ];
+
+    private function isSanctionedArrivalWindowFilter(string $realPath): bool
+    {
+        $relative = str_replace('\\', '/', substr($realPath, strlen(base_path('app')) + 1));
+
+        return in_array($relative, self::SANCTIONED_ARRIVAL_WINDOW_FILES, true);
+    }
+
     private function findJournalEntryCreatedAtPeriodFilters(): array
     {
         $appDir = base_path('app');
@@ -1148,9 +1179,15 @@ class ArchitectureTest extends TestCase
                 $windowStart = max(0, $lineNumber - self::JOURNAL_ENTRY_CREATED_AT_CONTEXT_WINDOW_LINES);
                 $window = implode('', array_slice($lines, $windowStart, $lineNumber - $windowStart + 1));
 
-                if (preg_match($journalEntryContextPattern, $window) === 1) {
-                    $violations[] = $realPath.':'.($lineNumber + 1).': '.trim($lineContent);
+                if (preg_match($journalEntryContextPattern, $window) !== 1) {
+                    continue;
                 }
+
+                if ($this->isSanctionedArrivalWindowFilter($realPath)) {
+                    continue;
+                }
+
+                $violations[] = $realPath.':'.($lineNumber + 1).': '.trim($lineContent);
             }
         }
 

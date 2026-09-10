@@ -21,6 +21,7 @@ use App\Models\Task;
 use App\Models\TaskStatusEvent;
 use App\Models\Transaction;
 use App\Models\User;
+use App\Services\Accounting\AccountingLog;
 use App\Services\Accounting\DocumentDraft;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PostedDocument;
@@ -313,6 +314,36 @@ class TaskStatusService
      *     behaviour change this method did not introduce).
      * Every other status (`void`, `refund`, `confirmed`, `on hold`, etc.) is UNCHANGED -- still a
      * plain pass-through to `processTaskFinancial()`.
+     *
+     * ── CT-A5a (one document, one posting) ─────────────────────────────────────────────────────
+     * ...with the ONE exception this lane adds: the pass-through above is now ENGINE-OFF ONLY.
+     * Every `if ($engineOn && ...)` branch below returns, so the tail call was only ever reached
+     * with the engine ON by a status that has no branch of its own -- and for those the tail call
+     * is a straight second posting of a money event the engine has already carried:
+     *
+     *   - `refund` / `refund_void` reach `TaskController::processTaskFinancial()`'s own switch,
+     *     which posts a raw legacy set through `processRefundTask()`
+     *     (`TaskController.php:2569`, `:2599`) or `processVoidTask()` ->
+     *     `voidTask()` (`:2975`) / `ReverseUnpaidVoidedTask()` (`:5334`) -- none of them behind
+     *     {@see PostingSeam}, all of them writing `journal_entries` rows with a NULL
+     *     `posting_date` and no idempotency key, i.e. exactly the rows a replay cannot see and
+     *     will therefore post AGAIN from the engine side.
+     *   - The accrual half of both events is ALREADY carried, on the ON path, by
+     *     {@see TaskIssuancePayableService::postIfDue()} at the top of this method, which reverses
+     *     a task's issuance accrual on `void`/`cancelled`/`refund`.
+     *   - The document half of a refund is carried by
+     *     {@see \App\Services\Accounting\RefundPostingService::post()}, driven by the `Refund`
+     *     document rather than by a task status.
+     *   - `refund_void` (RFNX -- the void OF a refund, {@see \App\Services\AirFileParser}) has NO
+     *     engine feeder at all. It is therefore suppressed as a NAMED no-op rather than allowed to
+     *     post a legacy set: leaving it on would trade a missing posting for a double one, and a
+     *     double posting is the harder of the two to detect (CT-D1 §0.4i measured KWD 1,065.000 of
+     *     revenue standing on the dev ledger twice). Recorded for the owner as an open feeder gap.
+     *
+     * Every suppression is logged to `accounting.legacy_fallthrough_suppressed` and written to the
+     * durable audit log ({@see AccountingLog::eventDurable()}) with the reason and the covering
+     * feeder named, so an operator can see exactly which real-world events took no legacy posting
+     * and why.
      */
     public function dispatchFinancial(Task $task): void
     {
@@ -409,8 +440,64 @@ class TaskStatusService
             return;
         }
 
+        // CT-A5a: the legacy dispatcher is the ENGINE-OFF path, and only that. See this method's
+        // own docblock for why every status that still reaches this line with the engine ON is a
+        // double posting rather than a missing one.
+        if ($engineOn) {
+            $this->suppressLegacyFallThrough($task, $status);
+
+            return;
+        }
+
         app(TaskController::class)->processTaskFinancial($task);
     }
+
+    /**
+     * CT-A5a — the named no-op the ON path takes instead of `TaskController::
+     * processTaskFinancial()`. Never silent: one WARNING log line plus one durable audit row per
+     * suppressed event, each naming the covering feeder (or naming the gap when there is none).
+     *
+     * `eventDurable()` rather than `event()` deliberately: this runs inside whatever transaction
+     * the caller opened (a task status change is normally wrapped in one), and CT-A3 R3 §3.4
+     * recorded that an ordinary `AccountingLog` row does not survive a rollback of its own
+     * enclosing transaction. A suppression must be visible even when the surrounding status change
+     * is later rolled back -- otherwise the one case an operator most needs to see (an event that
+     * posted nothing at all) is the one case that leaves no trace.
+     */
+    private function suppressLegacyFallThrough(Task $task, string $status): void
+    {
+        $coveredBy = self::LEGACY_FALLTHROUGH_COVERAGE[$status] ?? null;
+
+        $context = [
+            'task_id' => (int) $task->id,
+            'company_id' => (int) $task->company_id,
+            'status' => $status,
+            'covered_by' => $coveredBy ?? 'NONE',
+            'reason' => $coveredBy !== null
+                ? 'engine feeder already carries this event; the legacy dispatcher would post it a second time'
+                : 'no engine feeder exists for this status; suppressed rather than allowed to post a legacy set the replay cannot see',
+        ];
+
+        Log::warning('accounting.legacy_fallthrough_suppressed', $context);
+
+        AccountingLog::eventDurable('legacy_fallthrough_suppressed', $context);
+    }
+
+    /**
+     * Which engine feeder covers each status that would otherwise fall through to the legacy
+     * dispatcher with the engine ON. A status ABSENT from this map is a genuine feeder gap and is
+     * logged as `covered_by=NONE` -- see {@see self::suppressLegacyFallThrough()}.
+     *
+     * `refund_void` is deliberately absent. It is the only task status this build reaches with no
+     * engine document of any kind behind it, and naming it here with a fake covering feeder would
+     * hide exactly the fact the owner has to rule on.
+     *
+     * @var array<string, string>
+     */
+    private const LEGACY_FALLTHROUGH_COVERAGE = [
+        'refund' => 'TaskIssuancePayableService::postIfDue() (accrual reversal) + RefundPostingService::post() (the refund document)',
+        'cancelled' => 'TaskIssuancePayableService::postIfDue() (accrual reversal)',
+    ];
 
     /**
      * W6.I "Importer contract" item 1 (w6-brief.md; Accounting Gap/22-plan-amendments.md §16.1).

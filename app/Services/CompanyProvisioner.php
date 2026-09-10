@@ -8,9 +8,11 @@ use App\Models\CompanyGdsPcc;
 use App\Models\CompanyInvite;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\Accounting\PurposeHealthService;
 use App\Support\CompanyRegistrationData;
 use App\Support\Entitlements\ApplyCompanyModulePreset;
 use Database\Seeders\CoaSeeder;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
@@ -71,6 +73,11 @@ class CompanyProvisioner
             $this->activateSuppliers($company, $data);
             $this->createStorageDirectories($company);
             $this->createGatewayCharges($company, $data);
+
+            // CT-A5a (§0.5, raised by the travelerp TE-1 port). MUST run here and nowhere
+            // earlier: see mapAccountingPurposes()'s own docblock.
+            $this->mapAccountingPurposes($company);
+
             $this->finalize($company, $invite);
 
             Log::info('Company provisioned', ['company_id' => $company->id, 'name' => $company->name]);
@@ -185,7 +192,7 @@ class CompanyProvisioner
         foreach (self::ROLE_NAMES as $roleName) {
             $role = Role::firstOrCreate(
                 ['name' => $roleName, 'guard_name' => 'web', 'company_id' => $company->id],
-                ['description' => ucfirst($roleName) . ' role for ' . $company->name]
+                ['description' => ucfirst($roleName).' role for '.$company->name]
             );
 
             // Copy permission grants from the template company's same-named role.
@@ -212,16 +219,17 @@ class CompanyProvisioner
         // way" with no owner user linked (user_id null, or a dangling id). Skip the
         // owner role sync rather than fataling on User::find(null)->syncRoles().
         $owner = $company->user_id ? User::find($company->user_id) : null;
-        if (!$owner) {
+        if (! $owner) {
             Log::warning('CompanyProvisioner: no owner user for company, skipping owner role sync', [
                 'company_id' => $company->id, 'user_id' => $company->user_id,
             ]);
+
             return;
         }
 
         // Additive + idempotent: never syncRoles (that DETACHES every other role
         // the user holds, which is destructive on a --repair rerun).
-        if ($companyRole && !$owner->hasRole($companyRole)) {
+        if ($companyRole && ! $owner->hasRole($companyRole)) {
             $owner->assignRole($companyRole);
         }
     }
@@ -234,7 +242,7 @@ class CompanyProvisioner
     private function createMainBranch(Company $company): void
     {
         $branch = \App\Models\Branch::firstOrCreate(
-            ['company_id' => $company->id, 'name' => $company->name . ' - Main Branch'],
+            ['company_id' => $company->id, 'name' => $company->name.' - Main Branch'],
             [
                 'email' => $company->email,
                 'phone' => $company->phone,
@@ -261,7 +269,7 @@ class CompanyProvisioner
             ->where('name', 'like', '%Receivable%')->where('company_id', $company->id)
             ->orderBy('level')->first();
 
-        if (!$asset || !$receivable) {
+        if (! $asset || ! $receivable) {
             throw new \Exception('Assets / Receivable group accounts missing — COA must be seeded first.');
         }
 
@@ -283,7 +291,7 @@ class CompanyProvisioner
                 'parent_id' => $receivable->id,
                 'branch_id' => $branch->id,
                 'reference_id' => $branch->id,
-                'code' => 'BRN-' . rand(1000000, 9999999),
+                'code' => 'BRN-'.rand(1000000, 9999999),
             ]);
         } finally {
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
@@ -369,7 +377,7 @@ class CompanyProvisioner
     {
         foreach ($data->supplierIds as $supplierId) {
             $supplier = \App\Models\Supplier::find($supplierId);
-            if (!$supplier) {
+            if (! $supplier) {
                 continue;
             }
             $this->supplierActivation->activate($supplier, $company);
@@ -378,7 +386,7 @@ class CompanyProvisioner
             // body is guarded by `if ($supplierId)`) — it seeds per (company,
             // supplier) pair, same as app/Console/Commands/updateTaskRuleSeeder.php.
             // updateOrCreate-keyed, so safe to call again on a re-activation.
-            (new \Database\Seeders\TaskRuleSeeder())->run($company->id, $supplier->id);
+            (new \Database\Seeders\TaskRuleSeeder)->run($company->id, $supplier->id);
         }
     }
 
@@ -391,7 +399,7 @@ class CompanyProvisioner
             $supplierSlug = strtolower(preg_replace('/\s+/', '_', $supplier->name));
             foreach (['files_unprocessed', 'files_processed', 'files_error'] as $dir) {
                 $path = storage_path("app/{$companySlug}/{$supplierSlug}/{$dir}");
-                if (!is_dir($path)) {
+                if (! is_dir($path)) {
                     mkdir($path, 0755, true);
                 }
             }
@@ -438,6 +446,99 @@ class CompanyProvisioner
                 ]);
             }
         }
+    }
+
+    /**
+     * CT-A5a (`.planning/phases/citytravelers-accounting-audit/PLAN.md` §0.5) — the onboarding
+     * defect, closed.
+     *
+     * ── What was wrong ───────────────────────────────────────────────────────────────────────
+     * `provision()` seeded a CHART (`seedChartOfAccounts()` -> `CoaSeeder::run()`) and **zero
+     * purpose mappings**. This class never referenced `SystemAccountsSeeder`,
+     * `accounting:ensure-system-leaves`, `accounting:coa-linkage` or the `system_accounts` table
+     * at all. Every engine action a new company then took resolved a purpose that was not there —
+     * `UnmappedPurposeException` on its first sale. The fingerprint is visible on the dev database
+     * today: company 3 carries 38 `system_accounts` rows written 2026-09-05 pointing at account
+     * ids 1702–1739, none of which ever existed (CT-D1 §0.4i) — a company provisioned with no
+     * purpose mapper and then hand-patched by pointing purposes at ids somebody expected to be
+     * minted.
+     *
+     * ── Why HERE, and not next to `seedChartOfAccounts()` ────────────────────────────────────
+     * Because supplier activation CHANGES THE SHAPE OF THE CHART. On a bare chart
+     * `Suppliers (Flights)` is a leaf; `activateSuppliers()` (step 9) mints children under the
+     * supplier pools, and a mapping written at step 3 would then name a GROUP. `AccountResolver`
+     * refuses a non-leaf by design, so the mapping would resolve on the day it was written and
+     * stop resolving minutes later. TE-1 measured exactly that on travelerp's onboarding E2E:
+     * *"system_accounts row #42 maps purpose_code=SERVICE_PAYABLE to accounts.id=51
+     * (Suppliers (Flights)), which is not a leaf account."* It is the same G1 shape CT-A4 spent a
+     * whole lane repairing on company 1's real chart, arriving by a different road.
+     *
+     * `createGatewayCharges()` is the other chart-shaping step (it is what decides which gateway
+     * instruments a company has), so this runs after that too — mapping LAST is the rule, not
+     * "mapping after suppliers" specifically.
+     *
+     * ── Why `accounting:coa-linkage` and not `SystemAccountsSeeder` ──────────────────────────
+     * §0.5 states it as the rule: it is the only entry point that both maps every purpose AND
+     * repairs the chart shape supplier activation has just created (it delegates the named-leaf
+     * and remap work to `accounting:ensure-system-leaves` and adds what that cannot do).
+     * `--sweep-dangling` is deliberately NOT passed: a company created seconds ago cannot have
+     * dangling rows of its own, and sweeping is a cross-tenant write this method has no business
+     * performing. If the command REFUSES because some OTHER tenant has dangling rows, that
+     * refusal is correct and surfaces here as a failed provision — CT-A3 R3 §3.4 proved that
+     * minting accounts while a dangling row exists can hand another tenant's mapping a live
+     * pointer, so provisioning through that hazard is not something to do quietly.
+     *
+     * ── Fails loudly ─────────────────────────────────────────────────────────────────────────
+     * After the mapping, every engine purpose is asserted to resolve. A blocking gap throws, which
+     * rolls back the whole `DB::transaction()` in `provision()`. A half-provisioned company that
+     * looks finished and then throws `UnmappedPurposeException` at its first sale is strictly
+     * worse than a registration that fails with a sentence saying which purposes are missing.
+     *
+     * @throws \RuntimeException when the chart cannot carry the engine after the repair
+     */
+    private function mapAccountingPurposes(Company $company): void
+    {
+        $exit = Artisan::call('accounting:coa-linkage', [
+            '--company' => $company->id,
+            '--apply' => true,
+        ]);
+
+        $health = app(PurposeHealthService::class)->inspect((int) $company->id);
+
+        if ($exit !== 0 || $health['blocking'] > 0) {
+            $names = array_merge(
+                array_map(
+                    fn (array $n) => $n['purpose'].($n['service_type'] !== null ? '/'.$n['service_type'] : '').' (non-leaf: #'.$n['account_id'].' '.$n['account_name'].', '.$n['child_count'].' children)',
+                    $health['non_leaf']
+                ),
+                array_map(
+                    fn (array $u) => $u['purpose'].($u['service_type'] !== null ? '/'.$u['service_type'] : '').' ('.$u['exception'].')',
+                    array_values(array_filter($health['unresolved'], fn (array $u) => ! $u['deliberate']))
+                )
+            );
+
+            Log::error('CompanyProvisioner: accounting purpose mapping incomplete', [
+                'company_id' => $company->id,
+                'coa_linkage_exit' => $exit,
+                'blocking' => $health['blocking'],
+                'purposes' => $names,
+            ]);
+
+            throw new \RuntimeException(sprintf(
+                'Company %d cannot be provisioned: the posting engine has %d unresolvable purpose(s) after the chart repair (accounting:coa-linkage exited %d). %s',
+                $company->id,
+                $health['blocking'],
+                $exit,
+                $names === [] ? '' : 'Unresolvable: '.implode('; ', array_slice($names, 0, 12)).(count($names) > 12 ? ' …' : '')
+            ));
+        }
+
+        Log::info('CompanyProvisioner: accounting purposes mapped', [
+            'company_id' => $company->id,
+            'resolved' => $health['resolved'],
+            'of' => $health['total'],
+            'deliberate_gaps' => count(array_filter($health['unresolved'], fn (array $u) => $u['deliberate'])),
+        ]);
     }
 
     private function finalize(Company $company, ?CompanyInvite $invite): void

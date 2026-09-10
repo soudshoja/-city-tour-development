@@ -38,10 +38,12 @@ use Illuminate\Support\Facades\DB;
  *   excludes whole `doc_type='YEC'` documents, which is correct for a bounded period but would
  *   silently drop a year-end close's real, balance-affecting sweep from a balance-sheet figure
  *   spanning across it.
- * - **Current-period net profit, from the fiscal year start (calendar year — the same basis
- *   {@see \App\Services\Accounting\YearEndCloseService} closes on) to $asOf**, shown as one
- *   synthetic Equity line — without it, Equity would be short by exactly the Income/Expense
- *   leaves' un-swept net for any year `YearEndCloseService` has not yet closed.
+ * - **Un-closed-period net profit, from the day after the LAST year-end close on or before $asOf
+ *   (else the beginning of the ledger) to $asOf**, shown as one synthetic Equity line — without
+ *   it, Equity would be short by exactly the Income/Expense leaves' un-swept net for every period
+ *   `YearEndCloseService` has not yet closed. CT-A56 R3-6 corrected this from the ported
+ *   calendar-year window, which silently omitted every prior UNCLOSED year — and this ledger has
+ *   no year-end close at all. See {@see self::unclosedPeriodStart()}.
  * - **Grouped by immediate parent, with subtotals** — same shape as
  *   {@see TrialBalanceService::groupByRootCategory()} one level deeper: it groups by root, this
  *   groups by the leaf's immediate parent, so multi-account sections ("Current Assets" / "Fixed
@@ -130,8 +132,7 @@ final class BalanceSheetService
             $totals[$rootName] += $balance;
         }
 
-        $fiscalYearStart = Carbon::create($asOf->year, 1, 1)->startOfDay();
-        $netProfit = $this->netProfit($companyId, $fiscalYearStart, $asOf);
+        $netProfit = $this->netProfit($companyId, $this->unclosedPeriodStart($companyId, $asOf), $asOf);
 
         // Synthetic Equity line — no real account backs it, so it is never linkable to the
         // general ledger the way every other row on this screen is.
@@ -191,6 +192,52 @@ final class BalanceSheetService
      * docblock for why. Inherits that method's YEC exclusion and {@see LedgerSource} restriction
      * automatically.
      */
+    /**
+     * CT-A56 R3-6 — the day after the LAST year-end close on or before $asOf, else the beginning
+     * of this company's ledger.
+     *
+     * The ported version used `Carbon::create($asOf->year, 1, 1)` — the calendar-year start — which
+     * is only correct when every year before $asOf's has actually been CLOSED. A `doc_type='YEC'`
+     * document is what moves a year's Income/Expense net into Retained Earnings, and
+     * {@see TrialBalanceService::getOpeningBalances()} (which produces every real line on this
+     * report) deliberately includes YEC lines, so a closed year IS already represented in the
+     * Equity section. An UNCLOSED one is not — Income/Expenses roots are excluded from the listing
+     * altogether — and it is not in a calendar-year-scoped profit line either. It is therefore
+     * represented nowhere, and the sheet fails to foot by exactly that amount.
+     *
+     * The City Travelers ledger has never had a year-end close (CT-A1; the replay posts INV/RV/PV/
+     * JV/CRN/DBN/OJV/REV and never a YEC) and spans several years, so on the real chart this was
+     * not an edge case — it was every render. Independent verification R3 measured it on a two-year
+     * fixture: assets 400.000 vs liabilities+equity 100.000, difference 300.000, exactly the prior
+     * year's unswept profit.
+     *
+     * Starting from the day after the newest YEC keeps the two halves disjoint: the YEC's own
+     * Retained-Earnings line is inside `getOpeningBalances()`, and everything posted after it is
+     * inside this profit line. Neither double-counts the other.
+     */
+    private function unclosedPeriodStart(int $companyId, Carbon $asOf): Carbon
+    {
+        $lastClose = DB::table('transactions')
+            ->where('company_id', $companyId)
+            ->where('doc_type', 'YEC')
+            ->whereNull('deleted_at')
+            ->where(DB::raw('COALESCE(posting_date, transaction_date)'), '<=', $asOf)
+            ->max(DB::raw('COALESCE(posting_date, transaction_date)'));
+
+        if ($lastClose !== null) {
+            return Carbon::parse((string) $lastClose)->addDay()->startOfDay();
+        }
+
+        $earliest = DB::table('journal_entries')
+            ->where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->min(DB::raw('COALESCE(posting_date, transaction_date)'));
+
+        return $earliest !== null
+            ? Carbon::parse((string) $earliest)->startOfDay()
+            : Carbon::create($asOf->year, 1, 1)->startOfDay();
+    }
+
     private function netProfit(int $companyId, Carbon $from, Carbon $to): float
     {
         $grouped = $this->trialBalance()->generate($companyId, $from, $to, ['show_zero' => true])['grouped'];

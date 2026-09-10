@@ -38,6 +38,37 @@ use Illuminate\Support\Facades\DB;
  *     can — only {@see \App\Services\Accounting\PostingService::post()} ever sets `doc_type`,
  *     unconditionally, for every document it writes, feeder-supplied idempotency key or not.
  *
+ * ── CT-A56 R3-1: and the ONE row shape `doc_type` alone gets WRONG ─────────────────────────────
+ * The paragraph above used to end "only {@see PostingService::post()} ever sets `doc_type`". That
+ * is false, and independent verification R3 measured the consequence rather than arguing it. The
+ * SEAM's own **engine-OFF** writers — `BankPaymentController::writeLegacyTransaction()` and
+ * `ReceiptVoucherController::writeLegacyTransaction()`, built by CT-A3 waves 1/2 for OFF/ON parity
+ * — `Transaction::forceCreate()` a header carrying `doc_type`, `sub_type`, `doc_year`,
+ * `posting_status='posted'`, `posted_at` and `idempotency_key`. Everything the engine header
+ * carries EXCEPT `posting_date`. Under a `doc_type`-only split, every payment voucher and receipt
+ * voucher an engine-OFF company posts is classified ENGINE, and therefore
+ * `whereNotExists`-ed out of that company's OWN trial balance, general ledger, balance sheet and
+ * both AR/AP screens: money on the ledger, absent from every report. Companies 2 and 3 on the
+ * City Travelers dev site are in exactly that state today, and so is EVERY company between a code
+ * deploy and its gate flip — the sequence CT-D1 §0.4i itself used.
+ *
+ * The discriminator is therefore the CONJUNCTION `doc_type IS NOT NULL AND posting_date IS NOT
+ * NULL`, which is right for all four row shapes this schema actually holds:
+ *
+ *   | row                                   | doc_type | transactions.posting_date | verdict |
+ *   |---------------------------------------|----------|---------------------------|---------|
+ *   | pre-engine legacy (before the P2.5.B migration) | NULL | backfilled, NOT NULL | legacy |
+ *   | engine ({@see PostingService::post()}) | set      | always set (never null)   | engine |
+ *   | engine-OFF seam writer                | set      | NULL                      | legacy |
+ *   | any other post-migration raw writer    | NULL     | NULL                      | legacy |
+ *
+ * `posting_date` alone is NOT enough either, and that is why this is a conjunction rather than a
+ * replacement: migration `2026_08_30_120000_p25b_add_posting_date_to_journal_entries_and_
+ * transactions` BACKFILLS the column on every row that existed when it ran, so a pre-engine legacy
+ * row carries a non-null `posting_date` too. CT-A5a's ratchet oracle (`journal_entries.posting_date
+ * IS NULL` == a legacy write) is unaffected by that: it only ever looks at rows written DURING a
+ * test, after the migration.
+ *
  * `doc_type` is nullable and additive-only (migration `2026_08_24_120004_add_document_columns_
  * to_transactions_table`, "Existing rows = posted (legacy code always fully commits today)" —
  * i.e. every pre-existing row is legacy by construction, and every row `PostingService::post()`
@@ -85,7 +116,10 @@ final class LedgerSource
             $sub->selectRaw('1')
                 ->from('transactions as ls_t')
                 ->whereColumn('ls_t.id', $journalEntriesTransactionIdColumn)
-                ->whereNotNull('ls_t.doc_type');
+                ->whereNotNull('ls_t.doc_type')
+                // CT-A56 R3-1 — see the class docblock's "and the ONE row shape doc_type alone
+                // gets wrong" section. `doc_type` alone is not sufficient.
+                ->whereNotNull('ls_t.posting_date');
         };
     }
 
@@ -121,9 +155,27 @@ final class LedgerSource
      */
     public function restrictJoinedTransactions($query, int $companyId, string $docTypeColumn)
     {
+        $postingDateColumn = $this->siblingColumn($docTypeColumn, 'posting_date');
+
+        // CT-A56 R3-1: engine == BOTH columns set; legacy == either one missing. Expressed as the
+        // exact complement of the engine test so no row can fall through both branches.
         return $this->engineOn($companyId)
-            ? $query->whereNotNull($docTypeColumn)
-            : $query->whereNull($docTypeColumn);
+            ? $query->whereNotNull($docTypeColumn)->whereNotNull($postingDateColumn)
+            : $query->where(function ($q) use ($docTypeColumn, $postingDateColumn) {
+                $q->whereNull($docTypeColumn)->orWhereNull($postingDateColumn);
+            });
+    }
+
+    /**
+     * `'t.doc_type'` -> `'t.posting_date'`; `'doc_type'` -> `'posting_date'`. Keeps
+     * {@see self::restrictJoinedTransactions()}'s existing one-column signature (and therefore
+     * every existing call site) while letting it police two columns.
+     */
+    private function siblingColumn(string $qualifiedColumn, string $column): string
+    {
+        $dot = strrpos($qualifiedColumn, '.');
+
+        return $dot === false ? $column : substr($qualifiedColumn, 0, $dot + 1).$column;
     }
 
     /**

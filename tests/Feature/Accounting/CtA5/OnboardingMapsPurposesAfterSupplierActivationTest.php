@@ -217,21 +217,44 @@ class OnboardingMapsPurposesAfterSupplierActivationTest extends AccountingTestCa
             'the fixture is wrong: the supplier pool already has children before activation'
         );
 
-        // Now activate a supplier, which is what step 9 does — it mints a child under the pool the
-        // mapping above already names.
-        app(\App\Services\SupplierActivationService::class)->activate(
-            Supplier::factory()->create(['name' => 'CtA5 Late Supplier']),
-            $company
-        );
+        // Now reshape the chart the way step 9 does — mint a child under the pool the mapping
+        // above already names.
+        //
+        // CT-A56 R3-7 RE-DERIVATION (this test's own instruction, followed rather than deleted).
+        // This block used to call SupplierActivationService::activate(). It cannot any more, and
+        // the reason is a FIX, not a weakening: `activate()` now re-runs the purpose mapper after
+        // it reshapes the chart, precisely because R3 found the reverse of this test's hazard —
+        // an activation AFTER provisioning re-created the non-leaf mapping with nothing watching
+        // (the provisioning-time assertion runs once, at provisioning time). So `activate()` no
+        // longer LEAVES a non-leaf mapping behind, and asserting that it does would now be
+        // asserting the absence of that fix.
+        //
+        // What this test exists to pin is unchanged and still true: a mapping made while the chart
+        // is still changing shape ends up naming a GROUP. The raw mint below is the chart reshape
+        // itself, stripped of the repair that now follows it inside activate() — the ordering
+        // constraint in `provision()` remains load-bearing for exactly this reason, and
+        // `PurposeHealthService` still reports it as NON-LEAF, which is what the assertion checks.
+        Account::query()->create([
+            'name' => 'CtA5 Late Supplier',
+            'level' => 4,
+            'actual_balance' => 0,
+            'budget_balance' => 0,
+            'variance' => 0,
+            'company_id' => $company->id,
+            'parent_id' => $before->id,
+            'root_id' => $before->root_id,
+            'code' => (string) (((int) $before->code) + 1),
+        ]);
 
         $health = app(PurposeHealthService::class)->inspect((int) $company->id);
 
         $this->assertNotSame(
             [],
             $health['non_leaf'],
-            'supplier activation did not turn any mapped purpose into a non-leaf — if this is genuinely '
-                .'true of the current chart shape, the ordering constraint in CompanyProvisioner has '
-                .'stopped being load-bearing and this test must be re-derived, not deleted'
+            'reshaping the chart under an already-mapped supplier pool did not turn any mapped purpose '
+                .'into a non-leaf — if this is genuinely true of the current chart shape, the ordering '
+                .'constraint in CompanyProvisioner has stopped being load-bearing and this test must be '
+                .'re-derived, not deleted'
         );
 
         $purposes = array_column($health['non_leaf'], 'purpose');

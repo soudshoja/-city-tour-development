@@ -68,6 +68,19 @@ use Throwable;
  * created_at" CT-D1 §0.4i could not explain. Choose `--from` from when the SOURCE system's writes
  * stopped being covered by your rollback point, not from your deploy clock.
  *
+ * **CT-A56 R3-4 — and that caveat is the reason `--from` is now the SECOND-choice boundary.** The
+ * paragraph above tells an operator to "choose --from from when the SOURCE system's writes stopped
+ * being covered by your rollback point". On the City Travelers dev site there is no such instant to
+ * choose: the four invoices this command was written for (2061-2064) carry `created_at` 03:34-03:58
+ * UTC, and the gate was flipped at 06:40 UTC, so ANY `--from` taken from the deploy clock excludes
+ * exactly the rows it was meant to include. Independent verification R3 reproduced this on a
+ * fixture: a mirrored row stamped three hours before the cutover clock reports `dual_posted=0`.
+ *
+ * Use **`--after-journal-entry-id`** instead. `journal_entries.id` is assigned by the SOURCE system
+ * in arrival order and the mirror preserves it, so "id greater than the highest id in my rollback
+ * dump" is exactly "arrived after my rollback point" — the question `--from` was trying and failing
+ * to ask. `--from` is kept for a database with no mirror in front of it, and the two compose.
+ *
  * Measured on that dev database, read-only, 2026-09-10: bounding at the start of the cutover day
  * finds **37 legacy transactions / 167 rows / KWD 19,535.794 of debits** already dual-posted —
  * not the 4 invoices §0.4i counted, because the mirror keeps delivering LIVE's legacy postings
@@ -79,10 +92,12 @@ class AccountingDedupeCutover extends Command
 {
     protected $signature = 'accounting:dedupe-cutover
                             {--company= : Company id to process (required)}
-                            {--from= : Only consider legacy rows created at or after this timestamp (required)}
-                            {--to= : Optional upper bound on the same column}
+                            {--from= : Only consider legacy rows created at or after this timestamp. See --after-journal-entry-id, which is the boundary you almost certainly want instead}
+                            {--after-journal-entry-id= : Preferred boundary — only consider legacy journal_entries whose id is GREATER than this. Ids are assigned by the SOURCE system in arrival order and are preserved by the mirror, so unlike created_at they actually bound "arrived after my rollback point"}
+                            {--to= : Optional upper bound on --from\'s own column}
                             {--dry-run : Report what would be reversed and write nothing (the default whenever --apply is absent)}
-                            {--apply : Actually post the reversing documents}';
+                            {--apply : Actually post the reversing documents}
+                            {--force-legacy-reversal : Required with --apply. See the LEDGER_SOURCE_ACTIVE refusal — a reversal posted through the engine does NOT net against a legacy row any report still reads}';
 
     protected $description = 'CT-A5a — reverse the LEGACY half of any document that carries both a legacy and an engine posting after a cutover timestamp. Never deletes; records a before-image; refuses an unbalanced or unpostable legacy set by name.';
 
@@ -105,6 +120,9 @@ class AccountingDedupeCutover extends Command
         $from = (string) $this->option('from');
         $to = $this->option('to') !== null ? (string) $this->option('to') : null;
         $apply = (bool) $this->option('apply');
+        $afterId = $this->option('after-journal-entry-id') !== null
+            ? (int) $this->option('after-journal-entry-id')
+            : null;
 
         if ($companyId <= 0) {
             $this->error('--company is required and must be a positive company id.');
@@ -112,17 +130,52 @@ class AccountingDedupeCutover extends Command
             return self::FAILURE;
         }
 
-        if ($from === '') {
-            $this->error('--from is required: this command only ever looks at a bounded cutover window, never at all of history.');
+        if ($from === '' && $afterId === null) {
+            $this->error(
+                'A boundary is required: this command only ever looks at a bounded cutover window, '.
+                'never at all of history. Prefer --after-journal-entry-id (see its own help text and '.
+                'the class docblock); --from is accepted but bounds on created_at, which a mirror '.
+                'preserves from the SOURCE system and which therefore does NOT mean "arrived here after".'
+            );
 
             return self::FAILURE;
         }
 
         try {
-            $fromAt = Carbon::parse($from);
+            $fromAt = $from !== '' ? Carbon::parse($from) : null;
             $toAt = $to !== null ? Carbon::parse($to) : null;
         } catch (Throwable $e) {
             $this->error('--from/--to must parse as timestamps: '.$e->getMessage());
+
+            return self::FAILURE;
+        }
+
+        // ── CT-A56 R3-2, the refusal that has to come before anything is posted ────────────────
+        // The reversing document below is posted through PostingService::post(). It therefore
+        // carries doc_type='REV' AND a posting_date, which makes it — by LedgerSource's own
+        // discriminator — an ENGINE row. The rows it reverses are LEGACY rows, which an engine-mode
+        // report never reads. So on every report LedgerSource restricts (trial balance, general
+        // ledger, balance sheet, both AR/AP screens, creditors), applying this command does not
+        // remove a double count: it subtracts the engine document's own money and leaves the
+        // legacy row exactly where it was. Independent verification R3 measured it on a fixture —
+        // engine-mode revenue went from 100.000 to 0.000 on one --apply.
+        //
+        // The command still has a legitimate use — a company reporting on the LEGACY side, or a
+        // screen this codebase has not yet routed through LedgerSource (the deferred-revenue
+        // schedule and the settlements reports, per CT-A6 §5) — so this is a named refusal an
+        // owner can override, not a deletion. It is NOT a flag to pass to get past an error.
+        if ($apply && ! $this->option('force-legacy-reversal')) {
+            $this->error(
+                'REFUSED: LEDGER_SOURCE_ACTIVE. Every report this codebase restricts through '
+                .'App\Services\Accounting\LedgerSource already reads ONE ledger source, so the dual '
+                .'posting you are about to "fix" is not double-counted on any of them. The reversal '
+                .'this command posts goes through PostingService and is itself an ENGINE row, so on '
+                .'an engine-ON company it nets against the ENGINE document and removes real money '
+                .'from the trial balance, P&L, balance sheet and AR/AP. Re-run with --dry-run to see '
+                .'the scope, and pass --force-legacy-reversal only if the owner has ruled that the '
+                .'LEGACY ledger itself must be corrected (an engine-OFF read, or one of the reports '
+                .'not yet routed through LedgerSource).'
+            );
 
             return self::FAILURE;
         }
@@ -137,19 +190,20 @@ class AccountingDedupeCutover extends Command
         }
 
         $this->line(sprintf(
-            'accounting:dedupe-cutover — company %d, window %s .. %s, mode %s',
+            'accounting:dedupe-cutover — company %d, window %s .. %s%s, mode %s',
             $companyId,
-            $fromAt->toDateTimeString(),
+            $fromAt?->toDateTimeString() ?? 'id-bounded',
             $toAt?->toDateTimeString() ?? 'now',
+            $afterId !== null ? sprintf(' (journal_entries.id > %d)', $afterId) : '',
             $apply ? 'APPLY' : 'DRY RUN'
         ));
 
-        $legacyTxIds = $this->dualPostedLegacyTransactionIds($companyId, $fromAt, $toAt);
+        [$legacyTxIds, $coveredKeys] = $this->dualPostedLegacyTransactionIds($companyId, $fromAt, $toAt, $afterId);
 
         $this->line(sprintf('  legacy transactions carrying a dual posting: %d', count($legacyTxIds)));
 
         foreach ($legacyTxIds as $legacyTxId) {
-            $this->processOne($companyId, $legacyTxId, $apply, $posting);
+            $this->processOne($companyId, $legacyTxId, $apply, $posting, $coveredKeys);
         }
 
         $this->newLine();
@@ -189,18 +243,35 @@ class AccountingDedupeCutover extends Command
      * clever join: the three keys are independent, a line may carry more than one of them, and the
      * union is what "this document was posted twice" means.
      *
-     * @return array<int, int>
+     * CT-A56 R3-3: also returns, per key shape, the set of key VALUES the engine actually covers —
+     * {@see self::processOne()} needs it, because detection here is per document KEY while the
+     * reversal there is per legacy TRANSACTION, and one legacy header routinely carries several
+     * documents (a multi-detail invoice) of which the replay may have covered only some. CT-D1
+     * measured 10 outright replay refusals and 5,835 issuance skips, so a partially covered legacy
+     * header is the normal case, not a contrived one.
+     *
+     * @return array{0: array<int, int>, 1: array<string, array<int, int|string>>}
      */
-    private function dualPostedLegacyTransactionIds(int $companyId, Carbon $fromAt, ?Carbon $toAt): array
+    private function dualPostedLegacyTransactionIds(int $companyId, ?Carbon $fromAt, ?Carbon $toAt, ?int $afterId = null): array
     {
         $ids = [];
+        $covered = [];
 
         foreach (['invoice_detail_id', 'invoice_id', 'task_id'] as $key) {
+            $covered[$key] = [];
+
             $legacy = DB::table('journal_entries')
                 ->where('company_id', $companyId)
                 ->whereNull('posting_date')
-                ->whereNotNull($key)
-                ->where('created_at', '>=', $fromAt);
+                ->whereNotNull($key);
+
+            if ($afterId !== null) {
+                $legacy->where('id', '>', $afterId);
+            }
+
+            if ($fromAt !== null) {
+                $legacy->where('created_at', '>=', $fromAt);
+            }
 
             if ($toAt !== null) {
                 $legacy->where('created_at', '<=', $toAt);
@@ -233,6 +304,8 @@ class AccountingDedupeCutover extends Command
                 continue;
             }
 
+            $covered[$key] = $enginePosted;
+
             foreach ($rows as $row) {
                 if (in_array($row->{$key}, $enginePosted, false) && $row->transaction_id !== null) {
                     $ids[(int) $row->transaction_id] = true;
@@ -243,10 +316,13 @@ class AccountingDedupeCutover extends Command
         $out = array_keys($ids);
         sort($out);
 
-        return $out;
+        return [$out, $covered];
     }
 
-    private function processOne(int $companyId, int $legacyTxId, bool $apply, PostingService $posting): void
+    /**
+     * @param  array<string, array<int, int|string>>  $coveredKeys
+     */
+    private function processOne(int $companyId, int $legacyTxId, bool $apply, PostingService $posting, array $coveredKeys = []): void
     {
         $lines = DB::table('journal_entries')
             ->where('transaction_id', $legacyTxId)
@@ -255,6 +331,43 @@ class AccountingDedupeCutover extends Command
             ->get();
 
         if ($lines->isEmpty()) {
+            return;
+        }
+
+        // ── CT-A56 R3-3 ───────────────────────────────────────────────────────────────────────
+        // Detection above is per document KEY; this reversal is per legacy TRANSACTION. If ANY
+        // line on this header names a document the engine did not cover, reversing the header
+        // whole takes that document's only posting off the ledger with nothing standing in its
+        // place. Refuse by name instead — same principle as UNBALANCED_LEGACY_SET: a partial
+        // reversal would need this command to decide which half of a balanced legacy set is real.
+        $uncovered = [];
+
+        foreach ($lines as $line) {
+            foreach (['invoice_detail_id', 'invoice_id', 'task_id'] as $key) {
+                $value = $line->{$key} ?? null;
+
+                if ($value === null) {
+                    continue;
+                }
+
+                if (! in_array($value, $coveredKeys[$key] ?? [], false)) {
+                    $uncovered[] = $key.'='.$value;
+                }
+            }
+        }
+
+        if ($uncovered !== []) {
+            $this->refused[] = [
+                'transaction_id' => $legacyTxId,
+                'reason' => 'PARTIAL_ENGINE_COVERAGE',
+                'detail' => sprintf(
+                    'this legacy transaction also carries document(s) the engine never posted (%s) — '
+                        .'reversing the header whole would delete their only posting. Replay those '
+                        .'documents first, or split the header by hand.',
+                    implode(', ', array_values(array_unique($uncovered)))
+                ),
+            ];
+
             return;
         }
 

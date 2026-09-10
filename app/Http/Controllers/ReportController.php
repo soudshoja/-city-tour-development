@@ -3581,6 +3581,17 @@ class ReportController extends Controller
         $totals = JournalEntry::whereIn('account_id', $accountIds)
             ->where('company_id', $companyId)
             ->selectRaw('COALESCE(SUM(debit), 0) as total_debit, COALESCE(SUM(credit), 0) as total_credit')
+            // CT-A56 R3-5. These four sums are the DASHBOARD tiles (payableSupplier /
+            // totalReceivable / totalBank / gatewayReceivable, via getDashboardStats()). CT-A6-1
+            // allow-listed this method for its hardcoded-name lookup and, in doing so, left the
+            // more expensive half unexamined: it had no LedgerSource restriction at all, so on an
+            // engine-ON company it summed the engine document AND its legacy twin. On the City
+            // Travelers dev site every replayed document has a mirrored legacy twin (CT-A5a §1.3:
+            // 2,081 dual-posted transactions unbounded), so these tiles read roughly double while
+            // the trial balance immediately below them reads the engine figure. The NAME lookup
+            // above stays allow-listed and unfixed — that is the tracked, shrink-only gap; this is
+            // the money.
+            ->tap(fn ($q) => app(LedgerSource::class)->restrict($q, $companyId, 'transaction_id'))
             ->first();
 
         return $creditPositive

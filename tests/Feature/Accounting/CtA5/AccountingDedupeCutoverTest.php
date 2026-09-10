@@ -175,12 +175,20 @@ class AccountingDedupeCutoverTest extends AccountingTestCase
         return $txId;
     }
 
+    /**
+     * CT-A56 R3-2: `--apply` now requires `--force-legacy-reversal`. Every case in this file is
+     * about what the command DOES once an operator has deliberately asked for a legacy-side
+     * reversal, so the flag belongs in this shared helper; the refusal itself is covered by
+     * {@see self::test_apply_refuses_without_the_force_flag()} below and by
+     * `Tests\Feature\Accounting\CtA56R3\DedupeCutoverProbeTest`.
+     */
     private function dedupe(bool $apply): int
     {
         return Artisan::call('accounting:dedupe-cutover', array_filter([
             '--company' => $this->company->id,
             '--from' => $this->windowStart->toDateTimeString(),
             '--apply' => $apply ?: null,
+            '--force-legacy-reversal' => $apply ?: null,
             '--dry-run' => $apply ? null : true,
         ]));
     }
@@ -192,6 +200,7 @@ class AccountingDedupeCutoverTest extends AccountingTestCase
             '--company' => $this->company->id,
             '--from' => $this->windowStart->toDateTimeString(),
             '--apply' => $apply ?: null,
+            '--force-legacy-reversal' => $apply ?: null,
             '--dry-run' => $apply ? null : true,
         ]));
     }
@@ -348,6 +357,7 @@ class AccountingDedupeCutoverTest extends AccountingTestCase
             '--company' => $this->company->id,
             '--from' => Carbon::create(2026, 6, 16)->toDateTimeString(),
             '--apply' => true,
+            '--force-legacy-reversal' => true,
         ]);
 
         $this->assertSame(0, $exit);
@@ -356,9 +366,40 @@ class AccountingDedupeCutoverTest extends AccountingTestCase
 
     public function test_the_command_refuses_without_a_window(): void
     {
-        $this->artisan('accounting:dedupe-cutover', ['--company' => $this->company->id, '--apply' => true])
+        $this->artisan('accounting:dedupe-cutover', [
+            '--company' => $this->company->id,
+            '--apply' => true,
+            '--force-legacy-reversal' => true,
+        ])
             ->assertExitCode(1)
-            ->expectsOutputToContain('--from is required')
+            ->expectsOutputToContain('A boundary is required')
             ->run();
+    }
+
+    /**
+     * CT-A56 R3-2 — `--apply` without `--force-legacy-reversal` is refused by name and writes
+     * nothing. See `AccountingDedupeCutover`'s own LEDGER_SOURCE_ACTIVE block for why: the
+     * reversal this command posts is itself an ENGINE row, so on a company whose reports are
+     * restricted through `LedgerSource` it nets against the ENGINE document rather than against
+     * the legacy rows it names.
+     */
+    public function test_apply_refuses_without_the_force_flag(): void
+    {
+        $this->postEngineDocument();
+        $legacyTxId = $this->writeLegacySet(100.0, 100.0);
+
+        $this->artisan('accounting:dedupe-cutover', [
+            '--company' => $this->company->id,
+            '--from' => $this->windowStart->toDateTimeString(),
+            '--apply' => true,
+        ])
+            ->assertExitCode(1)
+            ->expectsOutputToContain('LEDGER_SOURCE_ACTIVE')
+            ->run();
+
+        $this->assertNull(
+            $this->reversalOf($legacyTxId),
+            'the refusal still posted a reversing document'
+        );
     }
 }

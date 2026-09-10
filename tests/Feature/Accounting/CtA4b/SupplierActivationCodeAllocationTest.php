@@ -113,10 +113,25 @@ class SupplierActivationCodeAllocationTest extends AccountingTestCase
     /**
      * Coordinator finding, folded into this lane: the same "minting a child turns a mapped leaf
      * into a non-leaf" defect CoaLinkage::verifyPurposes() now catches as blocking, one call site
-     * over. Supplier activation is routine/user-facing, so it logs rather than refuses — this
-     * proves the log line actually fires instead of the drift going unnoticed.
+     * over. Supplier activation is routine/user-facing, so it logs rather than refuses.
+     *
+     * CT-D2b — RE-DERIVED, not deleted, on the merged CT-D2 head. This case originally asserted
+     * that `activate()` emits a WARNING, UNCONDITIONALLY, before the mint. PR #15 (R3-7) lands on
+     * the same head and repairs exactly that mapping ten lines later in the same call, so on the
+     * union every successful activation warned about a breakage that no longer existed by the time
+     * the call returned — and a real, unrepaired mapping became indistinguishable from that noise.
+     *
+     * The coordinator's resolution keeps #14's detection in full and makes it the POST-repair
+     * assertion, at ERROR, emitted only when the repair did not clear the mapping. So the property
+     * this case now pins is the invariant that survives both PRs and is stronger than either:
+     *
+     *   EXACTLY ONE of {silently repaired, one ERROR naming it} holds — never both, never neither —
+     *   and a WARNING is never emitted for this event again.
+     *
+     * The two halves are each driven deterministically, with their own fixtures and their own
+     * mutation proofs, in `Tests\Feature\Accounting\CtD2b\SupplierActivationPurposeRepairTest`.
      */
-    public function test_activating_a_supplier_under_a_purpose_mapped_group_logs_a_warning(): void
+    public function test_activating_a_supplier_under_a_purpose_mapped_group_emits_one_signal_and_only_if_the_repair_failed(): void
     {
         Log::spy();
 
@@ -142,12 +157,34 @@ class SupplierActivationCodeAllocationTest extends AccountingTestCase
 
         app(\App\Services\SupplierActivationService::class)->activate($supplier, $company->fresh());
 
-        Log::shouldHaveReceived('warning')
-            ->once()
-            ->withArgs(function (string $message, array $context) use ($flightsPool) {
-                return $message === 'accounting.supplier_activation.non_leaf_purpose_mapping'
-                    && $context['group_account_id'] === $flightsPool->id
-                    && in_array('PAYABLE_CONTROL', $context['purposes_now_pointing_at_a_non_leaf'], true);
-            });
+        $event = 'accounting.supplier_activation.non_leaf_purpose_mapping';
+
+        // The activation really did reshape the chart — otherwise nothing below means anything.
+        $childCount = Account::withoutGlobalScopes()->where('parent_id', $flightsPool->id)->count();
+        $this->assertGreaterThan(0, $childCount, 'The activation minted no child under the mapped pool.');
+
+        // Is the planted mapping STILL sitting on the account this activation turned into a group?
+        $stillMapped = DB::table('system_accounts')
+            ->where('company_id', $company->id)
+            ->where('account_id', $flightsPool->id)
+            ->exists();
+
+        if ($stillMapped) {
+            Log::shouldHaveReceived('error')
+                ->once()
+                ->withArgs(function (string $message, array $context) use ($event, $flightsPool) {
+                    return $message === $event
+                        && in_array('PAYABLE_CONTROL', $context['purposes_now_pointing_at_a_non_leaf'], true)
+                        && collect($context['groups_this_activation_minted_under'])
+                            ->contains(fn (string $g) => str_contains($g, '#'.$flightsPool->id));
+                });
+        } else {
+            // Repaired. The correct amount of operator noise for a successful activation is none.
+            Log::shouldNotHaveReceived('error', [$event, \Mockery::any()]);
+        }
+
+        // Never a WARNING for this event again: that was #14's unconditional pre-repair signal, and
+        // it is what the CT-D2b resolution removed.
+        Log::shouldNotHaveReceived('warning', [$event, \Mockery::any()]);
     }
 }

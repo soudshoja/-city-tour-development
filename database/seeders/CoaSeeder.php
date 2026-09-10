@@ -156,7 +156,14 @@ class CoaSeeder extends Seeder
             ['code' => '2127', 'name' => 'Suppliers (Esim)', 'level' => 3, 'parent' => 'Accounts Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2128', 'name' => 'Suppliers (Event)', 'level' => 3, 'parent' => 'Accounts Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2129', 'name' => 'Suppliers (Lounge)', 'level' => 3, 'parent' => 'Accounts Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
-            ['code' => '2130', 'name' => 'Suppliers (Ferry)', 'level' => 3, 'parent' => 'Accounts Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            // CT-A4b fix: was '2130', the same code as the sibling 'Suppliers (Hotels)' row above —
+            // the exact duplicate CT-A4 §1.6 and CT-A5a §5.5 named as "the known, explicitly
+            // deferred CoaSeeder duplicate-code bug." '2131' is the next free code in this family
+            // (2120-2130 are all taken by the other eleven Suppliers pools; verified free against
+            // every other literal code in this file). The tolerated-pair exception this forced in
+            // tests/Support/AccountingInvariants.php::assertNoDuplicateAccountCodes() is removed in
+            // the same change — a freshly seeded chart now has zero duplicate codes, full stop.
+            ['code' => '2131', 'name' => 'Suppliers (Ferry)', 'level' => 3, 'parent' => 'Accounts Payable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2200', 'name' => 'Accrued Expenses', 'level' => 2, 'parent' => 'Liabilities', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2210', 'name' => 'Commissions (Agents)', 'level' => 3, 'parent' => 'Accrued Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '2220', 'name' => 'Expenses (General)', 'level' => 3, 'parent' => 'Accrued Expenses', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
@@ -232,12 +239,10 @@ class CoaSeeder extends Seeder
             // above. Numbered following the SAME convention the sibling Cost family below already
             // uses one leaf family over (Flights Cost=5110, Hotels Cost=5120, the other ten =
             // 5111-5119 then 5121 for Ferry, spilling PAST Hotels' own 5120 slot rather than
-            // wrapping back onto it) — NOT the Suppliers/Payable family's convention two leaf
-            // families over, which wraps Ferry (2130) back onto Hotels' own code and is the
-            // known, explicitly deferred CoaSeeder duplicate-code bug (see
-            // SystemAccountsSeeder::mapByCode()'s own docblock and
-            // AccountingInvariants::assertNoDuplicateAccountCodes()'s tolerated-pair comment) —
-            // deliberately not repeated here.
+            // wrapping back onto it) — NOT the Suppliers/Payable family's OLD convention two leaf
+            // families over, which used to wrap Ferry (2130) back onto Hotels' own code (CT-A4b
+            // fix: Ferry's Suppliers pool is now 2131, its own free slot in that family — see that
+            // account's own entry below) — deliberately not repeated here.
             ['code' => '4111', 'name' => 'Visa Booking Revenue', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '4112', 'name' => 'Insurance Booking Revenue', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],
             ['code' => '4113', 'name' => 'Tour Booking Revenue', 'level' => 3, 'parent' => 'Direct Income', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['PROFIT_LOSS']],

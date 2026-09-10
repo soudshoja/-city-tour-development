@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Exceptions\Accounting\NonLeafAccountException;
 use App\Models\Account;
 use App\Models\CoaLinkageChange;
 use App\Models\CoaLinkageFinding;
@@ -1679,15 +1680,57 @@ class CoaLinkage extends Command
     {
         $ok = 0;
         $bad = 0;
+        $nonLeaf = 0;
 
         foreach ($this->requiredPurposes() as [$purposeCode, $serviceType]) {
+            $label = $serviceType === null ? $purposeCode : "{$purposeCode}/{$serviceType}";
+
             try {
                 $resolver->resolve($purposeCode, $companyId, $serviceType);
                 $ok++;
+            } catch (NonLeafAccountException $e) {
+                // FOUND BY THE COORDINATOR, NOT BY A TEST — same defect family as the duplicate
+                // codes this lane exists for, one purpose-mapping step over: minting a sibling
+                // leaf under an account (e.g. 'Knet'/'uPayment' under '1300 Payment Gateway')
+                // turns that PARENT into a group. If another purpose (e.g.
+                // GATEWAY_CLEARING_HESABE) was already mapped directly onto the parent itself —
+                // legitimately, from BEFORE it grew any children — that mapping is now silently
+                // broken: `AccountResolver::resolve()` throws NonLeafAccountException on it, and
+                // engine posting refuses every hesabe/myfatoorah/tap payment.
+                //
+                // `deliberateGapFor()`'s NON_BLOCKING_PURPOSE_PREFIXES (GATEWAY_CLEARING_ / _FEE_
+                // EXPENSE_) exists for a DIFFERENT gap — "no leaf was ever configured for a
+                // gateway this company does not use," which is a legitimate, owner-triaged ruling.
+                // A NonLeafAccountException is not that gap: the purpose WAS mapped, this run's
+                // OWN minting broke the target, and there is nothing for an owner to "rule" on —
+                // it is a defect this run introduced. So a NonLeafAccountException is ALWAYS
+                // blocking, regardless of which purpose-code prefix it belongs to: this exits
+                // --apply non-zero and stops the run from silently reporting success while a
+                // gateway is left unpostable, and it does so BEFORE this command claims the
+                // company's purposes are healthy (the summary line below counts it explicitly, so
+                // "0 purposes map to a non-leaf" is a real, checkable assertion, not a subset of
+                // "N unresolved" that a deliberate-gap purpose could hide inside).
+                $bad++;
+                $nonLeaf++;
+                $this->blockingRemains = true;
+
+                $findings[] = [
+                    'code' => 'NON_LEAF_PURPOSE_MAPPING',
+                    'subject_type' => 'purpose',
+                    'subject_id' => null,
+                    'severity' => CoaLinkageFinding::SEVERITY_BLOCKING,
+                    'summary' => "purpose {$label} maps to a non-leaf account",
+                    'details' => [
+                        'purpose_code' => $purposeCode,
+                        'service_type' => $serviceType,
+                        'exception' => class_basename($e),
+                        'message' => $e->getMessage(),
+                        'deliberate' => false,
+                    ],
+                ];
             } catch (Throwable $e) {
                 $bad++;
 
-                $label = $serviceType === null ? $purposeCode : "{$purposeCode}/{$serviceType}";
                 [$deliberate, $severity] = $this->deliberateGapFor($purposeCode);
 
                 if ($severity === CoaLinkageFinding::SEVERITY_BLOCKING) {
@@ -1714,7 +1757,13 @@ class CoaLinkage extends Command
         $total = $ok + $bad;
         $style = $bad === 0 ? 'info' : 'warn';
 
-        $this->{$style}(sprintf('  purposes: %d of %d resolve (%d unresolved)', $ok, $total, $bad));
+        $this->{$style}(sprintf(
+            '  purposes: %d of %d resolve (%d unresolved, %d mapped to a non-leaf)',
+            $ok,
+            $total,
+            $bad,
+            $nonLeaf
+        ));
     }
 
     /**

@@ -1846,16 +1846,13 @@ class TaskController extends Controller
         if (!$currencySpecificAccount) {
             Log::info('Creating new currency-specific account: ' . $accountName);
 
-            // Get the next available code
-            $code = 2151;
-            $lastChildAccount = Account::where('company_id', $task->company_id)
-                ->where('parent_id', $supplierPayableAccount->id)
-                ->orderBy('code', 'desc')
-                ->first();
-
-            if ($lastChildAccount) {
-                $code = $lastChildAccount->code + 1;
-            }
+            // CT-A4b fix: was a hardcoded '2151' default plus `orderBy('code','desc')->first()`
+            // (lexicographic on a varchar column) then "+1" with no collision check — the exact
+            // per-supplier-payable-leaf minting bug CT-A4 §1.6 measured as "code 2151, 50 accounts".
+            // Routed through the single AccountCodeGenerator allocator instead (see
+            // SupplierActivationService's own CT-A4b fix for the full rationale).
+            $codeGenerator = app(\App\Services\Accounting\AccountCodeGenerator::class);
+            $code = $codeGenerator->generate($supplierPayableAccount, $task->company_id);
 
             try {
                 $currencySpecificAccount = Account::create([
@@ -1864,7 +1861,7 @@ class TaskController extends Controller
                     'company_id' => $task->company_id,
                     'branch_id' => $branchId,
                     'root_id' => $supplierPayableAccount->root_id,
-                    'code' => $code,
+                    'code' => $code ?? 'PENDING',
                     'account_type' => 'liability',
                     'report_type' => 'balance sheet',
                     'level' => $supplierPayableAccount->level + 1,
@@ -1875,6 +1872,12 @@ class TaskController extends Controller
                     'variance' => 0.00,
                     'currency' => $currency,
                 ]);
+
+                if ($code === null) {
+                    // BUG-H1 row-id fallback: no numeric sibling to extend from under this parent.
+                    $currencySpecificAccount->code = $codeGenerator->fallbackCode($currencySpecificAccount);
+                    $currencySpecificAccount->save();
+                }
 
                 Log::info('Created currency-specific account: ' . $accountName, [
                     'account_id' => $currencySpecificAccount->id,
@@ -2017,16 +2020,11 @@ class TaskController extends Controller
 
             if (!$issuedByAccount) {
                 Log::info('Creating new issued by account for: ' . $companyIssuedBy . ' (was null: ' . (is_null($task->issued_by) ? 'yes' : 'no') . ')');
-                $code = 2151;
-                $lastIssuedByAccount = Account::where('company_id', $task->company_id)
-                    ->where('root_id', $liabilities->id)
-                    ->where('parent_id', $supplierPayable->id)
-                    ->orderBy('code', 'desc')
-                    ->first();
-
-                if ($lastIssuedByAccount) {
-                    $code = $lastIssuedByAccount->code + 1;
-                }
+                // CT-A4b fix: was hardcoded '2151' + `orderBy('code','desc')` (lexicographic) +
+                // "+1" with no collision check — see getOrCreateCurrencySpecificAccount()'s own
+                // CT-A4b fix comment above for the full rationale. Same allocator, same fallback.
+                $codeGenerator = app(\App\Services\Accounting\AccountCodeGenerator::class);
+                $code = $codeGenerator->generate($supplierPayable, $task->company_id);
 
                 try {
                     $issuedByAccount = Account::create([
@@ -2035,7 +2033,7 @@ class TaskController extends Controller
                         'company_id' => $task->company_id,
                         'branch_id' => $branchId,
                         'root_id' => $liabilities->id,
-                        'code' => $code,
+                        'code' => $code ?? 'PENDING',
                         'account_type' => 'liability',
                         'report_type' => 'balance sheet',
                         'level' => $supplierPayable->level + 1,
@@ -2046,6 +2044,11 @@ class TaskController extends Controller
                         'variance' => 0.00,
                         'currency' => 'KWD',
                     ]);
+
+                    if ($code === null) {
+                        $issuedByAccount->code = $codeGenerator->fallbackCode($issuedByAccount);
+                        $issuedByAccount->save();
+                    }
 
                     Log::info('New issued by account created for task: ' . $task->reference, [
                         'issuedByAccount' => $issuedByAccount,
@@ -2446,16 +2449,11 @@ class TaskController extends Controller
 
             if (!$issuedByAccount) {
                 Log::info('Refund - Creating new issued by account for: ' . $companyIssuedBy . ' (was null: ' . (is_null($task->issued_by) ? 'yes' : 'no') . ')');
-                $code = 2151;
-                $lastIssuedByAccount = Account::where('company_id', $task->company_id)
-                    ->where('root_id', $liabilities->id)
-                    ->where('parent_id', $supplierPayable->id)
-                    ->orderBy('code', 'desc')
-                    ->first();
-
-                if ($lastIssuedByAccount) {
-                    $code = $lastIssuedByAccount->code + 1;
-                }
+                // CT-A4b fix: was hardcoded '2151' + `orderBy('code','desc')` (lexicographic) +
+                // "+1" with no collision check — see getOrCreateCurrencySpecificAccount()'s own
+                // CT-A4b fix comment above for the full rationale. Same allocator, same fallback.
+                $codeGenerator = app(\App\Services\Accounting\AccountCodeGenerator::class);
+                $code = $codeGenerator->generate($supplierPayable, $task->company_id);
 
                 try {
                     $issuedByAccount = Account::create([
@@ -2464,7 +2462,7 @@ class TaskController extends Controller
                         'company_id' => $task->company_id,
                         'branch_id' => $branchId,
                         'root_id' => $liabilities->id,
-                        'code' => $code,
+                        'code' => $code ?? 'PENDING',
                         'account_type' => 'liability',
                         'report_type' => 'balance sheet',
                         'level' => $supplierPayable->level + 1,
@@ -2475,6 +2473,11 @@ class TaskController extends Controller
                         'variance' => 0.00,
                         'currency' => 'KWD',
                     ]);
+
+                    if ($code === null) {
+                        $issuedByAccount->code = $codeGenerator->fallbackCode($issuedByAccount);
+                        $issuedByAccount->save();
+                    }
 
                     Log::info('Refund - New issued by account created for task: ' . $task->reference, [
                         'issuedByAccount' => $issuedByAccount,

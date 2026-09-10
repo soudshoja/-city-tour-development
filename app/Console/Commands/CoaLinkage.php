@@ -82,7 +82,7 @@ class CoaLinkage extends Command
                             {--dry-run : Report the full change list without writing anything (the default whenever --apply is absent)}
                             {--apply : Actually write the changes}
                             {--allow-move : Permit relocating an account that carries journal activity; without it every move is refused and reported}
-                            {--rollback= : Undo one previous --apply run by its run id, restoring every report_type / is_group / account_type_id this command changed}';
+                            {--rollback= : Undo one previous --apply run by its run id in full — removes the leaves it minted (refusing any that now carry journal activity) and the purpose mappings it created, and restores every column it changed}';
 
     protected $description = 'CT-A4 — verify and repair chart-of-accounts linkage: mint the control leaves a used chart needs, map every engine purpose code, backfill account_type_id/report_type/is_group, and record every duplicate, unused leaf and cross-company row as a flag-only finding.';
 
@@ -254,8 +254,24 @@ class CoaLinkage extends Command
     /** CT-A3 R2-5: one id per --apply INVOCATION, echoed for --rollback. */
     private string $runId = '';
 
-    /** @var array<int, array{company_id:int, subject_id:int, column_name:string, before:?string, after:?string}> */
+    /** @var array<int, array{company_id:int, subject_table:string, subject_id:int, column_name:string, before:?string, after:?string}> */
     private array $columnChanges = [];
+
+    /**
+     * CT-A3 R3-2 — the per-company row inventory taken BEFORE any repair runs, so the end of the
+     * run can diff it and record what was CREATED as well as what was edited. Keyed by company id;
+     * `accounts` is an id set, `system_accounts` is id => the three columns that identify a mapping.
+     *
+     * A diff rather than instrumenting every mint site, deliberately: the leaves come from
+     * `AccountService::createSystemLeaf()` and from a DELEGATED `accounting:ensure-system-leaves`
+     * invocation, and the purpose mappings from `SystemAccountsSeeder` running inside it. Reaching
+     * into three other classes to have each report what it wrote is how the pre-R3 rollback came to
+     * cover only the changes this file happened to make itself — the diff cannot miss a writer it
+     * has never heard of.
+     *
+     * @var array<int, array{accounts: array<int, true>, system_accounts: array<int, array{purpose_code: string, service_type: ?string, account_id: int}>}>
+     */
+    private array $preRunRows = [];
 
     /** CT-A3 R2-5: set when any BLOCKING finding survives the repair — drives the exit code. */
     private bool $blockingRemains = false;
@@ -345,16 +361,42 @@ class CoaLinkage extends Command
     }
 
     /**
-     * CT-A3 R2-5 (verify-R1 D14) — undo one previous `--apply` run, exactly.
+     * CT-A3 R2-5 (verify-R1 D14), made a **FULL** undo by CT-A3 R3-2 (verify-R2 finding **V1**).
      *
-     * Restores every `report_type` / `is_group` / `account_type_id` that run changed, to the value
-     * that was there BEFORE it — never to a value re-derived from the rules, which would just be
-     * the repair again. Rows already rolled back are skipped, so a second `--rollback` of the same
-     * run is a no-op rather than a re-application of stale before-values.
+     * ── What V1 found ───────────────────────────────────────────────────────────────────────────
+     * This command printed, verbatim, *"Undo this run in full: php artisan accounting:coa-linkage
+     * --rollback={runId}"*, and undid three `accounts` columns. Measured on a fixture chart damaged
+     * into the shape CT-A4 found on the real one: 3 leaves minted by `--apply`, **3 still present
+     * after `--rollback`**; 63 purpose mappings before, **65 after** (the 2 the run created
+     * survived). The money half was genuinely closed — reported profit was restorable — but the
+     * residue was *"a chart state nobody chose: purposes still resolve to the leaves the run minted,
+     * while `report_type` is back at its pre-repair value, so the engine goes on posting cost of
+     * sales to leaves the P&L has just been told to drop."* Before `--apply` that combination was
+     * unreachable; after `--apply` + `--rollback` it was the default.
+     *
+     * ── What a full undo is, and the order it has to happen in ──────────────────────────────────
+     *   1. **`system_accounts`** — delete the purpose mappings the run CREATED, restore the
+     *      `account_id` of any it RE-POINTED, re-insert any it deleted. First, because a mapping
+     *      referencing a leaf that step 2 is about to delete has to go before the leaf does.
+     *   2. **minted leaves** — delete the accounts the run created, but **only when they carry no
+     *      journal activity and no children**. A leaf that has been posted to since the repair is
+     *      REFUSED and NAMED: deleting it would destroy ledger rows, and soft-deleting it would
+     *      leave the same "chart state nobody chose" one level down. This is the one thing a
+     *      rollback genuinely cannot undo, and it is reported rather than glossed.
+     *   3. **columns** — `report_type` / `is_group` / `account_type_id` / `parent_id` / `level`
+     *      back to the value that was there BEFORE the run; never to a value re-derived from the
+     *      rules, which would just be the repair again. Rows belonging to an account step 2 deleted
+     *      are marked rolled back without a write: the account is gone, so its columns are too.
+     *
+     * Rows already rolled back are skipped, so a second `--rollback` of the same run is a no-op
+     * rather than a re-application of stale before-values.
      *
      * Refuses when the current value no longer matches what the run WROTE: something else has
      * changed that account since, and silently overwriting it would make this command a second
      * source of unexplained column edits. Those rows are named and left alone.
+     *
+     * The exit code means something: **non-zero when anything was refused**, so a runbook can gate
+     * on "the undo was complete" instead of on "the command ran".
      */
     private function rollbackRun(string $runId): int
     {
@@ -372,10 +414,133 @@ class CoaLinkage extends Command
         }
 
         $restored = 0;
+        $mappingsRemoved = 0;
+        $mappingsRestored = 0;
+        $leavesRemoved = 0;
         $skipped = [];
+        $refusedLeaves = [];
 
-        DB::transaction(function () use ($rows, &$restored, &$skipped) {
+        DB::transaction(function () use ($rows, &$restored, &$mappingsRemoved, &$mappingsRestored, &$leavesRemoved, &$skipped, &$refusedLeaves) {
+            $deletedAccountIds = [];
+
+            // ── Phase 1 — system_accounts ───────────────────────────────────────────────────────
             foreach ($rows as $row) {
+                if ($row->subject_table !== 'system_accounts') {
+                    continue;
+                }
+
+                if ($row->column_name === CoaLinkageChange::ROW_CREATED) {
+                    DB::table('system_accounts')->where('id', $row->subject_id)->delete();
+                    $this->markRolledBack((int) $row->id);
+                    $mappingsRemoved++;
+
+                    continue;
+                }
+
+                if ($row->column_name === CoaLinkageChange::ROW_DELETED) {
+                    /** @var array{purpose_code: string, service_type: ?string, account_id: int} $was */
+                    $was = json_decode((string) $row->before_value, true, 512, JSON_THROW_ON_ERROR);
+
+                    DB::table('system_accounts')->insert([
+                        'id' => $row->subject_id,
+                        'company_id' => $row->company_id,
+                        'purpose_code' => $was['purpose_code'],
+                        'service_type' => $was['service_type'],
+                        'account_id' => $was['account_id'],
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+
+                    $this->markRolledBack((int) $row->id);
+                    $mappingsRestored++;
+
+                    continue;
+                }
+
+                if ($row->column_name !== 'account_id') {
+                    $skipped[] = "system_accounts #{$row->subject_id}: column '{$row->column_name}' is not reversible";
+
+                    continue;
+                }
+
+                $current = DB::table('system_accounts')->where('id', $row->subject_id)->value('account_id');
+
+                if ((string) $current !== (string) $row->after_value) {
+                    $skipped[] = sprintf(
+                        'system_accounts #%d.account_id is now %s, not the %s this run wrote — left alone',
+                        $row->subject_id,
+                        $current === null ? 'GONE' : (string) $current,
+                        (string) $row->after_value
+                    );
+
+                    continue;
+                }
+
+                DB::table('system_accounts')->where('id', $row->subject_id)->update([
+                    'account_id' => (int) $row->before_value,
+                    'updated_at' => now(),
+                ]);
+
+                $this->markRolledBack((int) $row->id);
+                $mappingsRestored++;
+            }
+
+            // ── Phase 2 — the leaves the run minted ─────────────────────────────────────────────
+            foreach ($rows as $row) {
+                if ($row->subject_table !== 'accounts' || $row->column_name !== CoaLinkageChange::ROW_CREATED) {
+                    continue;
+                }
+
+                $account = DB::table('accounts')->where('id', $row->subject_id)->first();
+
+                if ($account === null) {
+                    // Already gone — somebody else removed it, which is the end state a rollback
+                    // wanted anyway.
+                    $this->markRolledBack((int) $row->id);
+                    $deletedAccountIds[(int) $row->subject_id] = true;
+
+                    continue;
+                }
+
+                $journalRows = $this->journalRowCount((int) $row->subject_id);
+                $children = DB::table('accounts')
+                    ->where('parent_id', $row->subject_id)
+                    ->whereNull('deleted_at')
+                    ->count();
+
+                if ($journalRows > 0 || $children > 0) {
+                    $refusedLeaves[] = sprintf(
+                        '#%d %s %s — %d journal row(s), %d child account(s): NOT removed',
+                        (int) $account->id,
+                        (string) ($account->code ?? '?'),
+                        (string) ($account->name ?? '?'),
+                        $journalRows,
+                        $children
+                    );
+
+                    continue;
+                }
+
+                DB::table('accounts')->where('id', $row->subject_id)->delete();
+                $this->markRolledBack((int) $row->id);
+                $deletedAccountIds[(int) $row->subject_id] = true;
+                $leavesRemoved++;
+            }
+
+            // ── Phase 3 — the columns ───────────────────────────────────────────────────────────
+            foreach ($rows as $row) {
+                if ($row->subject_table !== 'accounts' || $row->column_name === CoaLinkageChange::ROW_CREATED) {
+                    continue;
+                }
+
+                if (isset($deletedAccountIds[(int) $row->subject_id])) {
+                    // The account itself is gone, so its columns are restored by definition.
+                    $this->markRolledBack((int) $row->id);
+                    $restored++;
+
+                    continue;
+                }
+
                 if (! in_array($row->column_name, CoaLinkageChange::REVERSIBLE_COLUMNS, true)) {
                     $skipped[] = "account #{$row->subject_id}: column '{$row->column_name}' is not reversible";
 
@@ -401,32 +566,73 @@ class CoaLinkage extends Command
                     'updated_at' => now(),
                 ]);
 
-                DB::table('coa_linkage_changes')->where('id', $row->id)->update([
-                    'rolled_back_at' => now(),
-                    'updated_at' => now(),
-                ]);
+                $this->markRolledBack((int) $row->id);
 
                 $restored++;
             }
         });
 
-        $this->info("Rolled back run '{$runId}': {$restored} column value(s) restored.");
+        $this->info(sprintf(
+            "Rolled back run '%s': %d column value(s) restored, %d minted leaf/leaves removed, "
+            .'%d purpose mapping(s) removed, %d purpose mapping(s) restored.',
+            $runId,
+            $restored,
+            $leavesRemoved,
+            $mappingsRemoved,
+            $mappingsRestored
+        ));
+
+        foreach ($refusedLeaves as $line) {
+            $this->error('  REFUSED — minted leaf '.$line);
+        }
+
+        if ($refusedLeaves !== []) {
+            // The ids on their own line: an operator pasting them into a query is the next thing
+            // that happens after reading this, and the descriptive lines above are for reading,
+            // not for copying.
+            $this->line('  Refused account ids: '.implode(', ', array_map(
+                static fn (string $l): string => explode(' ', ltrim($l))[0],
+                $refusedLeaves
+            )));
+        }
 
         foreach ($skipped as $line) {
             $this->warn('  skipped — '.$line);
+        }
+
+        if ($refusedLeaves !== [] || $skipped !== []) {
+            $this->newLine();
+            $this->error('This undo was NOT complete. Everything listed above is still in place.');
+            $this->line('  A minted leaf that has been POSTED TO since the repair cannot be removed without');
+            $this->line('  destroying ledger rows. Re-point its purpose mapping by hand, or reverse the');
+            $this->line('  documents on it first and roll back again — this command will pick up where it stopped.');
+
+            return self::FAILURE;
         }
 
         return self::SUCCESS;
     }
 
     /** The stored before-image is a string; put it back at the column's own type (NULL stays NULL). */
+    /** CT-A3 R3-2 — one place that stamps a `coa_linkage_changes` row as undone. */
+    private function markRolledBack(int $changeId): void
+    {
+        DB::table('coa_linkage_changes')->where('id', $changeId)->update([
+            'rolled_back_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
     private function castBackTo(string $column, ?string $value): int|string|null
     {
         if ($value === null) {
             return null;
         }
 
-        return in_array($column, ['is_group', 'account_type_id'], true) ? (int) $value : $value;
+        // CT-A3 R3-2: `parent_id` and `level` joined the reversible set with `--allow-move`'s
+        // before-images, and both are integer columns — restoring them as strings works on MySQL
+        // and is a lie to every reader of this method.
+        return in_array($column, ['is_group', 'account_type_id', 'parent_id', 'level'], true) ? (int) $value : $value;
     }
 
     /** @return array<int, int> */
@@ -451,6 +657,10 @@ class CoaLinkage extends Command
     {
         $this->reportInventory($companyId);
 
+        // CT-A3 R3-2 (verify-R2 V1). Taken BEFORE anything is repaired; diffed by
+        // {@see self::recordRowDiff()} once every repair step has run.
+        $this->preRunRows[$companyId] = $this->snapshotRows($companyId);
+
         // ORDER MATTERS AND IS NOT ARBITRARY.
         //   1. The control leaf must exist BEFORE the seeder runs, or PAYABLE_CONTROL has
         //      nothing to map to and step 2 reports the same gap it just failed to fix.
@@ -473,6 +683,11 @@ class CoaLinkage extends Command
         //     and BEFORE verifyPurposes (so the verification reports the repaired state, which is
         //     the whole point of running it last). See REFUND_PAYOUT_PURPOSE's own docblock.
         $this->mapRefundPayoutInstrument($companyId, $resolver, $findings);
+
+        // 5c. CT-A3 R3-2 (verify-R2 V1). AFTER every writer, BEFORE the verification — so the
+        //     before-images cover the whole repair and the verification still reports the repaired
+        //     state. Records nothing on a dry run (nothing was created to record).
+        $this->recordRowDiff($companyId);
 
         $this->verifyPurposes($companyId, $resolver, $findings);
         $this->collectStructuralFindings($companyId, $findings);
@@ -629,6 +844,14 @@ class CoaLinkage extends Command
             if (! $this->apply) {
                 continue;
             }
+
+            // CT-A3 R3-2 (verify-R2 V1). Before-images for the move itself. Without these,
+            // `--rollback` restored the three classification columns and left every relocated
+            // account where the move put it — while the command's own output claimed a full undo.
+            // `level` is recorded alongside `parent_id` because the move writes both and restoring
+            // one without the other leaves the depth column contradicting the tree.
+            $this->recordColumnChange($companyId, (int) $child->id, 'parent_id', $child->parent_id, $pool->parent_id);
+            $this->recordColumnChange($companyId, (int) $child->id, 'level', $child->level, max(1, (int) $child->level - 1));
 
             DB::table('accounts')->where('id', $child->id)->update([
                 'parent_id' => $pool->parent_id,
@@ -1633,15 +1856,120 @@ class CoaLinkage extends Command
      * companies is ONE run to the operator who has to undo it, and because a dry run must be able
      * to compute exactly what it WOULD record without writing a row.
      */
-    private function recordColumnChange(int $companyId, int $accountId, string $column, mixed $before, mixed $after): void
+    private function recordColumnChange(int $companyId, int $accountId, string $column, mixed $before, mixed $after, string $subjectTable = 'accounts'): void
     {
         $this->columnChanges[] = [
             'company_id' => $companyId,
+            'subject_table' => $subjectTable,
             'subject_id' => $accountId,
             'column_name' => $column,
-            'before' => $before === null ? null : mb_substr((string) $before, 0, 64),
-            'after' => $after === null ? null : mb_substr((string) $after, 0, 64),
+            // CT-A3 R3-2: no `mb_substr(…, 0, 64)`. The two value columns are `text` as of
+            // 2026_09_10_000010 precisely so a before-image is never silently truncated — a
+            // truncated before-value is worse than no before-value, because `--rollback` would
+            // write it back believing it was the original.
+            'before' => $before === null ? null : (string) $before,
+            'after' => $after === null ? null : (string) $after,
         ];
+    }
+
+    /**
+     * CT-A3 R3-2 (verify-R2 finding **V1**) — the row inventory a full undo needs.
+     *
+     * @return array{accounts: array<int, true>, system_accounts: array<int, array{purpose_code: string, service_type: ?string, account_id: int}>}
+     */
+    private function snapshotRows(int $companyId): array
+    {
+        $accounts = [];
+
+        foreach (DB::table('accounts')->where('company_id', $companyId)->pluck('id') as $id) {
+            $accounts[(int) $id] = true;
+        }
+
+        $mappings = [];
+
+        foreach (DB::table('system_accounts')->where('company_id', $companyId)->get() as $row) {
+            $mappings[(int) $row->id] = [
+                'purpose_code' => (string) $row->purpose_code,
+                'service_type' => $row->service_type === null ? null : (string) $row->service_type,
+                'account_id' => (int) $row->account_id,
+            ];
+        }
+
+        return ['accounts' => $accounts, 'system_accounts' => $mappings];
+    }
+
+    /**
+     * CT-A3 R3-2 — diff the pre-run inventory against the repaired state and record, as
+     * before-images, every ROW this run created (and, defensively, deleted or re-pointed).
+     *
+     * `accounts` rows are matched on `deleted_at IS NULL` deliberately: a soft-deleted account was
+     * not "created by this run" in any sense a rollback can act on, and un-deleting one is a data
+     * repair, not an undo.
+     */
+    private function recordRowDiff(int $companyId): void
+    {
+        if (! $this->apply) {
+            return;
+        }
+
+        $before = $this->preRunRows[$companyId] ?? ['accounts' => [], 'system_accounts' => []];
+        $after = $this->snapshotRows($companyId);
+
+        foreach ($after['accounts'] as $id => $_) {
+            if (! isset($before['accounts'][$id])) {
+                $account = DB::table('accounts')->where('id', $id)->first();
+
+                $this->recordColumnChange(
+                    $companyId,
+                    (int) $id,
+                    CoaLinkageChange::ROW_CREATED,
+                    null,
+                    $account === null ? '' : trim(($account->code ?? '').' '.($account->name ?? '')),
+                );
+            }
+        }
+
+        foreach ($after['system_accounts'] as $id => $row) {
+            if (! isset($before['system_accounts'][$id])) {
+                $this->recordColumnChange(
+                    $companyId,
+                    (int) $id,
+                    CoaLinkageChange::ROW_CREATED,
+                    null,
+                    $row['purpose_code'].($row['service_type'] === null ? '' : '/'.$row['service_type']).' → account #'.$row['account_id'],
+                    'system_accounts',
+                );
+
+                continue;
+            }
+
+            if ($before['system_accounts'][$id]['account_id'] !== $row['account_id']) {
+                $this->recordColumnChange(
+                    $companyId,
+                    (int) $id,
+                    'account_id',
+                    $before['system_accounts'][$id]['account_id'],
+                    $row['account_id'],
+                    'system_accounts',
+                );
+            }
+        }
+
+        foreach ($before['system_accounts'] as $id => $row) {
+            if (! isset($after['system_accounts'][$id])) {
+                // Nothing in the repair path deletes a purpose mapping today (every write is an
+                // updateOrCreate/updateOrInsert). Recorded anyway so a future writer that DOES
+                // cannot make this rollback quietly partial again — the omission that was V1.
+                $this->recordColumnChange(
+                    $companyId,
+                    (int) $id,
+                    CoaLinkageChange::ROW_DELETED,
+                    json_encode($row, JSON_THROW_ON_ERROR),
+                    null,
+                    'system_accounts',
+                );
+            }
+        }
     }
 
     /**
@@ -1660,7 +1988,7 @@ class CoaLinkage extends Command
                 return [
                     'run_id' => $this->runId,
                     'company_id' => $c['company_id'],
-                    'subject_table' => 'accounts',
+                    'subject_table' => $c['subject_table'] ?? 'accounts',
                     'subject_id' => $c['subject_id'],
                     'column_name' => $c['column_name'],
                     'before_value' => $c['before'],
@@ -1672,13 +2000,29 @@ class CoaLinkage extends Command
             }, $chunk));
         }
 
+        $rowsCreated = count(array_filter(
+            $this->columnChanges,
+            static fn (array $c): bool => $c['column_name'] === CoaLinkageChange::ROW_CREATED
+        ));
+
         $this->newLine();
         $this->info(sprintf(
-            'RUN ID %s — %d column change(s) recorded with their before-values.',
+            'RUN ID %s — %d before-image(s) recorded (%d column change(s), %d row(s) created).',
             $this->runId,
-            count($this->columnChanges)
+            count($this->columnChanges),
+            count($this->columnChanges) - $rowsCreated,
+            $rowsCreated
         ));
+
+        // CT-A3 R3-2 (verify-R2 finding V1). This sentence used to say "Undo this run in full"
+        // while the undo covered three columns and left every minted leaf and every purpose mapping
+        // in place. It is now true — and it still says what the one genuine limit is, because a
+        // leaf that has been POSTED TO since the repair cannot be removed without destroying ledger
+        // rows, and an operator reading this line is the person who has to know that in advance.
         $this->line("  Undo this run in full:  php artisan accounting:coa-linkage --rollback={$this->runId}");
+        $this->line('  The undo removes the leaves this run minted and the purpose mappings it created,');
+        $this->line('  and restores every column it changed. A minted leaf that has been posted to by');
+        $this->line('  then is REFUSED and named, and the command exits non-zero so a runbook can gate on it.');
     }
 
     private function recordChange(int $companyId, string $action, string $subject, string $detail): void

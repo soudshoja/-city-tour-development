@@ -147,7 +147,7 @@ class Rv2Probe2Test extends AccountingTestCase
             ->where('idempotency_key', 'like', 'rv:'.$receipt->id.'%')
             ->orderBy('id')->pluck('idempotency_key')->all();
 
-        fwrite(STDERR, "\n[PROBE7 after edit] bank=".$this->netDebit($bank->id)." keys=".implode(',', $keys)."\n");
+        fwrite(STDERR, "\n[PROBE7 after edit] bank=".$this->netDebit($bank->id).' keys='.implode(',', $keys)."\n");
 
         $this->assertSame(150.0, $this->netDebit($bank->id), 'the edit of a REPLAYED, unlinked, NULL-company receipt must land the new amount');
         $this->assertContains('rv:'.$receipt->id.':rev1', $keys);
@@ -160,7 +160,7 @@ class Rv2Probe2Test extends AccountingTestCase
 
         $this->actingAs($admin)->delete(route('receipt-voucher.destroy', $receipt->id))->assertRedirect();
 
-        fwrite(STDERR, "[PROBE7 after destroy] bank=".$this->netDebit($bank->id)."\n");
+        fwrite(STDERR, '[PROBE7 after destroy] bank='.$this->netDebit($bank->id)."\n");
 
         $this->assertSame(0.0, $this->netDebit($bank->id), 'destroy must reverse the live document');
         $this->assertGreaterThan(
@@ -219,7 +219,7 @@ class Rv2Probe2Test extends AccountingTestCase
     // PROBE 9 — R2-5. Is `--rollback` actually "undo this run in full"?
     // ════════════════════════════════════════════════════════════════════════════════════════
 
-    public function test_probe9_rollback_is_a_partial_undo(): void
+    public function test_probe9_rollback_is_a_full_undo(): void
     {
         [$company] = $this->makeFixture();
 
@@ -239,10 +239,26 @@ class Rv2Probe2Test extends AccountingTestCase
             DB::table('accounts')->where('id', $missing->id)->delete();
         }
 
-        $accountsBefore = DB::table('accounts')->where('company_id', $company->id)
-            ->orderBy('id')->get(['id', 'code', 'name', 'report_type', 'is_group', 'account_type_id'])
+        // CT-A3 R3-2: a FULL snapshot, not the three columns the pre-R3 rollback happened to
+        // restore. `created_at` / `updated_at` are excluded and nothing else is: a rollback writes
+        // rows, so their timestamps move, and asserting on them would test the clock rather than
+        // the undo. Every column that says anything about the CHART is compared.
+        $snapshotAccounts = fn (): array => DB::table('accounts')->where('company_id', $company->id)
+            ->orderBy('id')->get()
+            ->map(function ($r): array {
+                $row = (array) $r;
+                unset($row['created_at'], $row['updated_at']);
+
+                return $row;
+            })->all();
+
+        $snapshotPurposes = fn (): array => DB::table('system_accounts')->where('company_id', $company->id)
+            ->orderBy('id')->get(['id', 'company_id', 'purpose_code', 'service_type', 'account_id'])
             ->map(fn ($r) => (array) $r)->all();
+
+        $accountsBefore = $snapshotAccounts();
         $accountIdsBefore = array_column($accountsBefore, 'id');
+        $systemAccountsBefore = $snapshotPurposes();
         $purposesBefore = SystemAccount::withoutGlobalScopes()->where('company_id', $company->id)
             ->orderBy('id')->pluck('account_id', 'purpose_code')->all();
 
@@ -256,15 +272,18 @@ class Rv2Probe2Test extends AccountingTestCase
         $accountIdsAfterApply = DB::table('accounts')->where('company_id', $company->id)->orderBy('id')->pluck('id')->all();
         $minted = array_values(array_diff($accountIdsAfterApply, $accountIdsBefore));
 
-        Artisan::call('accounting:coa-linkage', ['--rollback' => $runId]);
+        $mappingsMinted = count(array_diff(
+            array_column($snapshotPurposes(), 'id'),
+            array_column($systemAccountsBefore, 'id')
+        ));
+
+        $rollbackExit = Artisan::call('accounting:coa-linkage', ['--rollback' => $runId]);
         $rollbackOut = Artisan::output();
 
-        $accountsAfter = DB::table('accounts')->where('company_id', $company->id)
-            ->whereIn('id', $accountIdsBefore)
-            ->orderBy('id')->get(['id', 'code', 'name', 'report_type', 'is_group', 'account_type_id'])
-            ->map(fn ($r) => (array) $r)->all();
+        $accountsAfter = $snapshotAccounts();
+        $systemAccountsAfter = $snapshotPurposes();
 
-        $accountIdsAfterRollback = DB::table('accounts')->where('company_id', $company->id)->orderBy('id')->pluck('id')->all();
+        $accountIdsAfterRollback = array_column($accountsAfter, 'id');
         $stillMinted = array_values(array_intersect($minted, $accountIdsAfterRollback));
 
         $purposesAfter = SystemAccount::withoutGlobalScopes()->where('company_id', $company->id)
@@ -273,21 +292,125 @@ class Rv2Probe2Test extends AccountingTestCase
         $newPurposes = array_diff_key($purposesAfter, $purposesBefore);
 
         fwrite(STDERR, sprintf(
-            "\n[PROBE9] minted=%d stillMintedAfterRollback=%d purposesBefore=%d purposesAfterRollback=%d newPurposesSurviving=%d\n",
-            count($minted), count($stillMinted), count($purposesBefore), count($purposesAfter), count($newPurposes)
+            "\n[PROBE9] minted=%d stillMintedAfterRollback=%d mappingsMintedByApply=%d purposesBefore=%d purposesAfterRollback=%d newPurposesSurviving=%d exit=%d\n",
+            count($minted), count($stillMinted), $mappingsMinted, count($purposesBefore), count($purposesAfter), count($newPurposes), $rollbackExit
         ));
-        fwrite(STDERR, "[PROBE9] rollback said: ".trim(preg_replace('/\s+/', ' ', $rollbackOut))."\n");
-        fwrite(STDERR, "[PROBE9] apply claim line present: ".(str_contains($applyOut, 'Undo this run in full') ? 'YES' : 'no')."\n");
+        fwrite(STDERR, '[PROBE9] rollback said: '.trim(preg_replace('/\s+/', ' ', $rollbackOut))."\n");
+        fwrite(STDERR, '[PROBE9] apply claim line present: '.(str_contains($applyOut, 'Undo this run in full') ? 'YES' : 'no')."\n");
 
-        // The three columns ARE restored byte-identically on every pre-existing account.
-        $this->assertSame($accountsBefore, $accountsAfter, 'report_type / is_group / account_type_id must be byte-identical after --rollback');
+        // ── FINDING V1, INVERTED BY CT-A3 R3-2 ──────────────────────────────────────────────────
+        // The verify-R2 lane committed this as a RISK witness: `--rollback` restored three columns
+        // and printed "Undo this run in full", while 3 of 3 minted leaves and 2 created purpose
+        // mappings survived — leaving "a chart state nobody chose: purposes still resolve to the
+        // leaves the run minted, while report_type is back at its pre-repair value".
+        //
+        // The run must genuinely have had something to undo, or this case proves nothing.
+        $this->assertNotSame([], $minted, 'the apply run must have minted at least one leaf for this case to mean anything');
+        $this->assertGreaterThan(0, $mappingsMinted, 'and created at least one purpose mapping');
 
-        // …and this is the half the command's own "Undo this run in full" does NOT do. RECORDED,
-        // not asserted-away: --rollback restores three COLUMNS on pre-existing accounts and
-        // nothing else. Leaves the run minted survive, and so do the system_accounts purpose
-        // mappings it created — so a rolled-back chart is a HYBRID: purposes still resolve to the
-        // new leaves while report_type is back at its pre-repair (wrong) value.
-        $this->assertNotSame([], $stillMinted, 'FINDING V1: minted leaves survive --rollback');
-        $this->assertNotSame([], $newPurposes, 'FINDING V1: purpose mappings survive --rollback');
+        $this->assertSame([], $stillMinted, 'R3-2: every leaf the run minted is removed by --rollback');
+        $this->assertSame([], $newPurposes, 'R3-2: and every purpose mapping it created is removed too');
+
+        // The whole point: byte-identical, not "the three columns are byte-identical".
+        $this->assertSame($accountsBefore, $accountsAfter, 'R3-2: `accounts` is byte-identical after apply → rollback');
+        $this->assertSame($systemAccountsBefore, $systemAccountsAfter, 'R3-2: `system_accounts` is byte-identical after apply → rollback');
+
+        // A complete undo exits 0; an incomplete one exits non-zero and names what it refused.
+        $this->assertSame(0, $rollbackExit, 'a complete undo exits 0');
+        $this->assertStringNotContainsString('REFUSED', $rollbackOut);
+    }
+
+    /**
+     * CT-A3 R3-2 — the one thing a full undo genuinely cannot do, and must SAY it cannot do.
+     *
+     * A leaf the repair minted, POSTED TO since, cannot be removed without destroying ledger rows.
+     * The pre-R3 rollback removed nothing and said nothing; the R3 one removes what it can, REFUSES
+     * that leaf by name, and exits non-zero so a runbook can gate on "the undo was complete".
+     */
+    public function test_probe9b_rollback_refuses_a_minted_leaf_that_now_carries_journal_activity(): void
+    {
+        [$company] = $this->makeFixture();
+
+        $missing = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '5131')->first();
+
+        if ($missing !== null) {
+            SystemAccount::withoutGlobalScopes()->where('company_id', $company->id)->where('account_id', $missing->id)->delete();
+            DB::table('accounts')->where('id', $missing->id)->delete();
+        }
+
+        $accountIdsBefore = DB::table('accounts')->where('company_id', $company->id)->pluck('id')->all();
+
+        Artisan::call('accounting:coa-linkage', ['--company' => (string) $company->id, '--apply' => true]);
+
+        $runId = (string) DB::table('coa_linkage_changes')->where('company_id', $company->id)
+            ->orderByDesc('id')->value('run_id');
+
+        $minted = array_values(array_diff(
+            DB::table('accounts')->where('company_id', $company->id)->pluck('id')->all(),
+            $accountIdsBefore
+        ));
+
+        $this->assertNotSame([], $minted, 'the apply run must have minted a leaf for this case to mean anything');
+
+        // Post to one of the minted leaves — the state that makes the leaf undeletable.
+        $target = (int) $minted[0];
+
+        DB::table('journal_entries')->insert([
+            'company_id' => $company->id,
+            'account_id' => $target,
+            'name' => 'probe9b',
+            'description' => 'a posting that lands on a leaf the repair minted',
+            'transaction_date' => now(),
+            'amount' => 1.000,
+            'exchange_rate' => 1.000000,
+            'debit' => 1.000,
+            'credit' => 0.000,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // An EXPLICIT BufferedOutput, and `withoutMockingConsoleOutput()` first. Two independent
+        // reasons the obvious `Artisan::call()` + `Artisan::output()` reads back EMPTY here — both
+        // worth recording, because a test that silently asserts on an empty string asserts nothing:
+        //   1. a Laravel test mocks the console output by default, so command writes go to the mock
+        //      rather than to any buffer the caller passes;
+        //   2. this command delegates to `accounting:ensure-system-leaves` with its own output
+        //      handle, which replaces the console kernel's `lastOutput` — which is why the
+        //      informational dump in probe9 above reads blank.
+        $this->withoutMockingConsoleOutput();
+
+        $buffer = new \Symfony\Component\Console\Output\BufferedOutput;
+        $exit = Artisan::call('accounting:coa-linkage', ['--rollback' => $runId], $buffer);
+        $out = $buffer->fetch();
+
+        fwrite(STDERR, "\n[PROBE9b] exit={$exit} out=".trim(preg_replace('/\s+/', ' ', $out))."\n");
+
+        $this->assertSame(1, $exit, 'an incomplete undo must exit non-zero');
+        $this->assertStringContainsString('REFUSED', $out, 'and must name what it could not remove');
+        $this->assertStringContainsString('#'.$target, $out, 'by id');
+        $this->assertStringContainsString('This undo was NOT complete.', $out);
+
+        $this->assertTrue(
+            DB::table('accounts')->where('id', $target)->exists(),
+            'the posted-to leaf is left in place, not deleted out from under its ledger rows'
+        );
+
+        $this->assertSame(
+            1,
+            DB::table('coa_linkage_changes')
+                ->where('run_id', $runId)
+                ->where('subject_table', 'accounts')
+                ->where('column_name', \App\Models\CoaLinkageChange::ROW_CREATED)
+                ->where('subject_id', $target)
+                ->whereNull('rolled_back_at')
+                ->count(),
+            'the refused change stays un-rolled-back, so a second --rollback picks up where this one stopped'
+        );
+
+        // Scaffolding removed before AccountingTestCase's per-test invariants run: the row above is
+        // deliberately a bare `journal_entries` insert with no `transaction_id`, which is exactly
+        // the shape the orphaned-line invariant exists to catch. It is here to make the account
+        // undeletable, not to model a real posting.
+        DB::table('journal_entries')->where('account_id', $target)->where('name', 'probe9b')->delete();
     }
 }

@@ -235,9 +235,16 @@ class Rv2ProbeTest extends AccountingTestCase
 
     /**
      * OVER-CREDIT. The live sale is 100; the refund detail asks to credit the client 500.
-     * R2-1 logs `partial_credit_requested` and does not enforce. The question this asks is what
-     * reaches the LEDGER: if the client is credited 500 against 100 of reversed revenue, the
-     * agency has given away 400 with a balanced trial balance.
+     *
+     * ── FINDING V3, INVERTED BY CT-A3 R3-3 ──────────────────────────────────────────────────────
+     * As committed by the verify-R2 lane this measured the unbounded behaviour: revenue correctly
+     * reversed by exactly the live 100, `RECEIVABLE_CONTROL` at **+500.000** and `CLIENT_ADVANCE`
+     * at **−500.000**. The client's NET position was zero, so the trial balance was right and no
+     * aggregate check could see it — while AR ageing, the client statement and the credit-limit
+     * check each read one leaf without the other.
+     *
+     * R3-3 makes the default REFUSE, tagged to owner ruling **R-CT6** (the clamp question). The
+     * ledger must be untouched afterwards: a refusal that half-posted would be worse than the gap.
      */
     public function test_probe2_a_refund_that_credits_more_than_the_sale(): void
     {
@@ -247,26 +254,37 @@ class Rv2ProbeTest extends AccountingTestCase
             $this->saleDraft($company, $agent, $client, $supplier, $task, $invoice, $detail, 100.0, 60.0, 'invoice-detail:'.$detail->id.':sale')
         );
 
+        $revBefore = $this->netForPurpose($company->id, 'SERVICE_REVENUE', 'flight');
+        $arBefore = $this->netForPurpose($company->id, 'RECEIVABLE_CONTROL');
+
         $refund = $this->makeRefund($company, $agent, $invoice, $task, $client, [
             'original_invoice_price' => 500.000,
             'total_refund_to_client' => 500.000,
         ]);
 
-        app(RefundPostingService::class)->post($refund, null);
+        $refused = null;
+
+        try {
+            app(RefundPostingService::class)->post($refund, null);
+        } catch (\App\Exceptions\Accounting\RefundExceedsOutstandingException $e) {
+            $refused = $e;
+        }
 
         $ar = $this->netForPurpose($company->id, 'RECEIVABLE_CONTROL');
         $rev = $this->netForPurpose($company->id, 'SERVICE_REVENUE', 'flight');
         $advance = $this->netForPurpose($company->id, 'CLIENT_ADVANCE');
 
-        fwrite(STDERR, "\n[PROBE2 over-credit] AR={$ar} REV={$rev} CLIENT_ADVANCE={$advance}\n");
+        fwrite(STDERR, "\n[PROBE2 over-credit] refused=".($refused !== null ? 'yes' : 'NO')." AR={$ar} REV={$rev} CLIENT_ADVANCE={$advance}\n");
 
-        // MEASURED: the disposition is a pure reclass, so the CLIENT'S NET position (AR + advance)
-        // is still 0 — no P&L loss. What IS wrong is that BOTH control leaves are inflated by the
-        // over-credit (400 here), which is what AR ageing, the client statement and any process
-        // that reads one leaf without the other will report.
-        $this->assertSame(0.0, round($ar + $advance, 3), "the client NET position must be zero");
-        $this->assertSame(500.0, $ar, 'AR control inflated to the credited figure, not the sale');
-        $this->assertSame(-500.0, $advance, 'CLIENT_ADVANCE credited the whole requested figure');
+        $this->assertNotNull($refused, 'R3-3: a credit of 500 against an outstanding sell of 100 must be REFUSED by name');
+        $this->assertSame(500.0, $refused->requestedCredit);
+        $this->assertSame(100.0, $refused->outstandingSell);
+
+        // The ledger is exactly where it was: the refusal is raised BEFORE the credit note reverses
+        // anything, so nothing is half-posted.
+        $this->assertSame($revBefore, $rev, 'the sale is untouched');
+        $this->assertSame($arBefore, $ar, 'the receivable is untouched');
+        $this->assertSame(0.0, $advance, 'and nothing was credited to the client advance');
     }
 
     /**
@@ -302,7 +320,7 @@ class Rv2ProbeTest extends AccountingTestCase
             $refused = true;
         }
 
-        fwrite(STDERR, "[PROBE3] second half refund refused=".($refused ? 'yes' : 'NO')."\n");
+        fwrite(STDERR, '[PROBE3] second half refund refused='.($refused ? 'yes' : 'NO')."\n");
         $this->assertTrue($refused, 'the second half refund must refuse — the first already reversed the whole sale');
     }
 
@@ -367,7 +385,7 @@ class Rv2ProbeTest extends AccountingTestCase
             ->pluck('idempotency_key')
             ->all();
 
-        fwrite(STDERR, "\n[PROBE4] keys=".implode(',', $keys)." bank=".$this->netDebit($bank->id)." clients=".$this->netDebit($clientsLeaf->id)." invoice.status={$invoice->status}\n");
+        fwrite(STDERR, "\n[PROBE4] keys=".implode(',', $keys).' bank='.$this->netDebit($bank->id).' clients='.$this->netDebit($clientsLeaf->id)." invoice.status={$invoice->status}\n");
 
         $this->assertSame(120.0, $this->netDebit($bank->id), 'the bank must carry the FINAL amount after three edits');
         $this->assertSame(-120.0, $this->netDebit($clientsLeaf->id));

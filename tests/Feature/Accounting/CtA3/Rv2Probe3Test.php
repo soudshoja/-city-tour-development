@@ -188,9 +188,9 @@ class Rv2Probe3Test extends AccountingTestCase
         $endPenalty = $this->netForPurpose($company->id, 'PENALTY_COST_EXPENSE');
 
         fwrite(STDERR, sprintf(
-            "
+            '
 [PROBE10] after loss: 1430=%s loss=%s pay=%s | after confirm(keeps 40): 1430=%s loss=%s pay=%s penalty=%s
-",
+',
             $loss1430, $lossLeaf, $pay1, $end1430, $endLoss, $endPay, $endPenalty
         ));
 
@@ -221,7 +221,7 @@ class Rv2Probe3Test extends AccountingTestCase
         $response = app(\App\Http\Controllers\TaskController::class)
             ->updateJournalPaymentMethod($task->fresh(), (int) $payee->id);
 
-        fwrite(STDERR, "\n[PROBE11 reassign] status=".$response->getStatusCode()." body=".$response->getContent()."\n");
+        fwrite(STDERR, "\n[PROBE11 reassign] status=".$response->getStatusCode().' body='.$response->getContent()."\n");
 
         $payableAfterReassign = $this->netForPurpose($company->id, 'SERVICE_PAYABLE', 'flight');
         $payeeAfterReassign = $this->netDebit($payee->id);
@@ -243,14 +243,22 @@ class Rv2Probe3Test extends AccountingTestCase
 
         $this->assertSame(0.0, $end1430, 'the accrual asset must end relieved');
 
-        // FINDING V2 — MEASURED. The AP GROUP nets to zero (so the trial balance foots and no
-        // aggregate check can see it), but each LEAF is individually wrong by the full task cost:
-        // the refund reverses the accrual DOCUMENT, which posts back to the purpose-resolved
-        // control leaf, while the money was moved to the nominated payee by the who-to-pay
-        // reassignment and is left there.
-        $this->assertSame(0.0, round($endPayableControl + $endPayee, 3), 'the AP GROUP still nets to zero');
-        $this->assertSame(100.0, $endPayableControl, 'FINDING V2: the AP control leaf is left in DEBIT by the task cost');
-        $this->assertSame(-100.0, $endPayee, 'FINDING V2: the nominated payee is still owed for a refunded booking');
+        // ── FINDING V2, INVERTED BY CT-A3 R3-1 (owner ruling R-CT8) ─────────────────────────────
+        // This case was committed by the verify-R2 lane as a DEFECT WITNESS: it asserted the
+        // measured wrong behaviour — control +100.000 DEBIT, payee −100.000 — and was labelled to
+        // be INVERTED, not deleted, when the ruling landed. R-CT8 landed:
+        //
+        //   "A payee nomination (who-to-pay reassignment) persists until explicitly changed. Every
+        //    later posting on that task — refund reversal, cancellation/void reversal, cancellation
+        //    fee, and the invoice-time reclassification 1430→COGS — follows the supplier payable to
+        //    wherever it CURRENTLY sits (party + leaf), never back to the purpose-resolved control."
+        //
+        // The refund's accrual reversal now debits the NOMINATED PAYEE, so both leaves land on
+        // zero. The AP group still nets to zero — it always did, which is why no aggregate check in
+        // either wave report could see the defect — but now each LEAF is right as well.
+        $this->assertSame(0.0, round($endPayableControl + $endPayee, 3), 'the AP GROUP nets to zero');
+        $this->assertSame(0.0, $endPayableControl, 'R-CT8: the AP control leaf is flat — the refund never posted back to it');
+        $this->assertSame(0.0, $endPayee, 'R-CT8: the nominated payee is no longer owed for a refunded booking');
     }
 
     // ════════════════════════════════════════════════════════════════════════════════════════
@@ -291,17 +299,28 @@ class Rv2Probe3Test extends AccountingTestCase
         $ar = $this->netForPurpose($company->id, 'RECEIVABLE_CONTROL');
 
         fwrite(STDERR, sprintf(
-            "
+            '
 [PROBE13 invoiced] payable control=%s payee leaf=%s cogs=%s 1430=%s revenue=%s AR=%s
-",
+',
             $control, $payeeLeaf, $cogs, $unbilled, $rev, $ar
         ));
 
-        // FINDING V2 (invoiced half) — MEASURED. The AP group is left CREDIT by the full supplier
-        // cost with NO matching cost in the P&L, permanently: nothing later clears the nominated
-        // payee leaf, and an AP payment run reading it pays for a refunded booking.
-        $this->assertSame(-100.0, round($control + $payeeLeaf, 3), 'FINDING V2: AP left owing the full cost after a full refund');
-        $this->assertSame(0.0, $cogs, 'and no cost stands against it');
+        // ── FINDING V2, invoiced half, INVERTED BY CT-A3 R3-1 (owner ruling R-CT8) ──────────────
+        // The committed witness asserted the measured wrong end state: the ledger carrying KWD 100
+        // of accounts payable to the nominated payee with no cost, no revenue and no asset behind
+        // it, PERMANENTLY — the shape an AP payment run pays out and an income-statement review
+        // never sees. Two independently reasonable halves lost the money: the sale's payable leg
+        // resolved by PURPOSE (back to the control) while the CRN's supplier credit MEASURED the
+        // control, found it already at zero, and correctly concluded there was nothing to relieve.
+        //
+        // Under R-CT8 both halves follow the nomination: the sale credits the payee, the credit
+        // note debits it back, and the supplier credit measures the leaf the money is actually on.
+        $this->assertSame(0.0, round($control + $payeeLeaf, 3), 'R-CT8: AP owes nothing after a full refund');
+        $this->assertSame(0.0, $payeeLeaf, 'R-CT8: the nominated payee leaf is relieved, not left owed');
+        $this->assertSame(0.0, $control, 'R-CT8: and nothing landed back on the purpose-resolved control');
+        $this->assertSame(0.0, $cogs, 'no cost stands against it');
+        $this->assertSame(0.0, $unbilled, 'the accrual asset is relieved');
+        $this->assertSame(0.0, $rev, 'and the revenue is reversed in full');
     }
 
     // ════════════════════════════════════════════════════════════════════════════════════════

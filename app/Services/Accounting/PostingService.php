@@ -513,6 +513,10 @@ final class PostingService
         private SequenceService $sequences,
         private PeriodGuard $periods,
         private Money $money,
+        // CT-A3 R3 (owner ruling R-CT8). Consulted by exactly one method — targetAccountId() — and
+        // only for a SERVICE_PAYABLE line that names a task. See that method for why the ruling is
+        // implemented at this seam rather than once per feeder.
+        private TaskPayablePositionResolver $payablePositions,
     ) {
         // Sourced from config/accounting.php (built alongside this class against the same
         // contract) so the tolerance/decimals/base-currency live in exactly one place; the
@@ -1531,15 +1535,32 @@ final class PostingService
      * @throws NonCanonicalJournalLineException when an original line's debit/credit shape isn't
      *                                          the canonical "exactly one strictly positive, neither negative" this method's
      *                                          side-inference requires (P1 fix round, HIGH finding).
+     *
+     * ── $redirect: CT-A3 R3, owner ruling R-CT8 ─────────────────────────────────────────────────
+     * A reversal is rebuilt from the ORIGINAL document's own posted lines, by explicit account id —
+     * which is right for every reversal except one: a supplier accrual whose payable has since been
+     * moved by the who-to-pay screen. Reversing that verbatim debits the leaf the accrual credited
+     * (the purpose-resolved control) while the money sits on the nominated payee, which is finding
+     * V2 of VERIFY-CT-A3-STACK-R2 — a payable control account left in DEBIT and a nominated payee
+     * still owed for a booking that no longer exists, with the AP GROUP netting to zero so no
+     * aggregate check can see it. {@see TaskPayablePositionResolver::redirectFor()} builds the
+     * redirect and returns NULL for a task with no standing nomination, so a null $redirect leaves
+     * this method byte-for-byte what it was.
+     *
+     * A redirected reversal deliberately does NOT net its original document to zero leaf by leaf —
+     * that is the whole point, the position moved between the two documents — but it stays exactly
+     * balanced, and the REV-of-REV that an un-void performs reverses the redirected lines as
+     * posted, so the nomination survives a void/un-void cycle without any further special case.
      */
     public function reverse(
         Transaction $posted,
         \DateTimeInterface $reversalDate,
         ?int $userId,
         bool $force = false,
-        ?string $idempotencyKey = null
+        ?string $idempotencyKey = null,
+        ?TaskPayableRedirect $redirect = null
     ): PostedDocument {
-        return DB::transaction(function () use ($posted, $reversalDate, $userId, $force, $idempotencyKey) {
+        return DB::transaction(function () use ($posted, $reversalDate, $userId, $force, $idempotencyKey, $redirect) {
             // P1 FIX ROUND (HIGH soft-delete finding): withoutGlobalScopes() drops
             // SoftDeletingScope along with every other scope — exclude deleted_at explicitly so a
             // soft-deleted transaction cannot be reversed as if it were live.
@@ -1690,9 +1711,30 @@ final class PostingService
                     $lineExchangeRate = 1.0;
                 }
 
+                // CT-A3 R3 / R-CT8: follow the payable to where it currently sits. `applies()` is
+                // false for a line already on the destination, so a second void after an un-void —
+                // whose REV lines are ALREADY on the nominated leaf — is untouched by construction
+                // rather than by a special case.
+                $originalAccountId = (int) $original->account_id;
+                $targetAccountId = $redirect !== null && $redirect->applies($originalAccountId)
+                    ? $redirect->toAccountId
+                    : $originalAccountId;
+
+                if ($targetAccountId !== $originalAccountId) {
+                    Log::info('accounting.payable_position.reversal_followed_nomination', [
+                        'company_id' => (int) $posted->company_id,
+                        'transaction_id' => (int) $posted->id,
+                        'journal_entry_id' => (int) $original->id,
+                        'task_id' => $original->task_id,
+                        'original_account_id' => $originalAccountId,
+                        'nominated_account_id' => $targetAccountId,
+                        'ruling' => 'R-CT8',
+                    ]);
+                }
+
                 $swappedLines[] = new LineDraft(
                     purposeCode: '', // explicit accountId path is always used for reversals
-                    accountId: (int) $original->account_id,
+                    accountId: $targetAccountId,
                     side: $debitIsPositive ? 'credit' : 'debit',
                     amount: $magnitude,
                     currency: $lineCurrency,
@@ -2234,7 +2276,46 @@ final class PostingService
             return $line->accountId;
         }
 
-        return $this->accounts->resolve($line->purposeCode, $companyId, $line->serviceType)->id;
+        $resolved = (int) $this->accounts->resolve($line->purposeCode, $companyId, $line->serviceType)->id;
+
+        // ── CT-A3 R3 — owner ruling R-CT8, the ONE seam ─────────────────────────────────────────
+        // "A payee nomination (who-to-pay reassignment) persists until explicitly changed. Every
+        //  later posting on that task … follows the supplier payable to wherever it CURRENTLY sits
+        //  (party + leaf), never back to the purpose-resolved control."
+        //
+        // Every supplier-payable leg in this codebase is built the same way — purposeCode
+        // 'SERVICE_PAYABLE', serviceType {type}, taskId set — by five different builders:
+        // SaleDraftBuilder (the invoice-time reclassification), TaskIssuancePayableService (the
+        // accrual and the retained penalty), RefundPostingService (the supplier credit),
+        // SupplierChargeLineBuilder (the void cancellation fee) and the replay sources. Applying
+        // the ruling HERE rather than once per builder is deliberate: VERIFY-CT-A3-STACK-R2 §2
+        // proved the failure mode is *a feeder that does not know about another feeder*, and five
+        // separate edits would leave the sixth builder — the one written next month — free to
+        // reproduce V2 exactly. A builder cannot opt out, and cannot forget.
+        //
+        // Inert for a task that was never reassigned (nominatedAccountId() returns null on a single
+        // indexed lookup), which is why the 25 pre-existing test files are unaffected. Lines that
+        // name no task are untouched: a company- or invoice-level payable has no "current position"
+        // to follow, and R-CT7 (a nomination made BEFORE issuance) stays open and unaffected —
+        // a reassignment can only post when there is already a position to move.
+        if ($line->purposeCode === 'SERVICE_PAYABLE' && $line->taskId !== null) {
+            $nominated = $this->payablePositions->nominatedAccountId((int) $line->taskId, $companyId);
+
+            if ($nominated !== null && $nominated !== $resolved) {
+                Log::info('accounting.payable_position.followed_nomination', [
+                    'company_id' => $companyId,
+                    'task_id' => (int) $line->taskId,
+                    'line_index' => $index,
+                    'purpose_account_id' => $resolved,
+                    'nominated_account_id' => $nominated,
+                    'ruling' => 'R-CT8',
+                ]);
+
+                return $nominated;
+            }
+        }
+
+        return $resolved;
     }
 
     /**

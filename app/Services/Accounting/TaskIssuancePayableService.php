@@ -84,6 +84,8 @@ final class TaskIssuancePayableService
         private readonly SupplierPayableRule $rule,
         private readonly PostingService $posting,
         private readonly PostingSeam $seam,
+        // CT-A3 R3, owner ruling R-CT8 — see {@see self::reverseForTask()}.
+        private readonly TaskPayablePositionResolver $positions,
     ) {}
 
     public static function idempotencyKeyFor(int $taskId): string
@@ -614,6 +616,19 @@ final class TaskIssuancePayableService
      * Reverses this task's accrual when one exists — on a cancel/void/refund, and on the sale
      * document that finally bills the task (the "reclassify to COGS on invoice" half of the
      * ruling). A no-op when nothing was ever accrued, so every caller can invoke it blindly.
+     *
+     * ── CT-A3 R3 — owner ruling R-CT8, and the fix for VERIFY-CT-A3-STACK-R2's finding V2 ────────
+     * This method is the settlement every refund, void and invoice funnels through, and it reverses
+     * the ACCRUAL DOCUMENT — which credited the purpose-resolved `SERVICE_PAYABLE`/{type} control
+     * leaf. When the who-to-pay screen has since moved that payable onto a nominated payee, the
+     * plain reversal debits the control (leaving a payable control account in DEBIT by the full
+     * supplier cost) and leaves the payee still owed for a booking that no longer exists. The AP
+     * GROUP nets to zero, so the trial balance foots and every aggregate in the wave reports stays
+     * exactly as reported — which is why neither R1 nor R2 could see it.
+     *
+     * {@see TaskPayablePositionResolver::redirectFor()} answers "where does this task's payable
+     * currently sit?" and returns NULL for a task that was never reassigned, in which case
+     * `reverse()` behaves exactly as before.
      */
     public function reverseForTask(Task $task): void
     {
@@ -636,13 +651,18 @@ final class TaskIssuancePayableService
             return;
         }
 
-        $this->posting->reverse($tip, Carbon::now(), Auth::id());
+        $redirect = $this->positions->redirectFor((int) $task->id, $companyId);
+
+        $this->posting->reverse($tip, Carbon::now(), Auth::id(), false, null, $redirect);
 
         Log::info('accounting.supplier_payable.reversed', [
             'task_id' => $task->id,
             'company_id' => $companyId,
             'transaction_id' => $tip->id,
             'task_status' => strtolower(trim((string) $task->status)),
+            // R-CT8: null when the task carries no standing payee nomination, which is the
+            // pre-R3 behaviour and the case for every task that was never reassigned.
+            'payable_followed_to_account_id' => $redirect?->toAccountId,
         ]);
     }
 

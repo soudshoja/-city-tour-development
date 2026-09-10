@@ -6,7 +6,6 @@ namespace App\Services\Accounting;
 
 use App\Models\Account;
 use App\Models\Task;
-use Illuminate\Support\Facades\DB;
 
 /**
  * CT-A3 E3 — CT-F39: the "Update For Whom to Pay" flow had **no engine feeder at all**.
@@ -130,84 +129,19 @@ final class SupplierReassignDraftBuilder
      * `accounts.actual_balance` or `journal_entries.balance`, both of which CT-A1 §4.1 proved
      * unusable (Σ|drift| KWD 6,277,563.301 across 200 of 207 posted accounts).
      *
+     * ── CT-A3 R3 ────────────────────────────────────────────────────────────────────────────────
+     * The query and the Accounts Payable subtree walk that used to live here (and its
+     * `descendantIds()` helper) MOVED to {@see TaskPayablePositionResolver}, which R3 makes the one
+     * answer to "where does this task's payable sit?" for the settlement paths as well as for this
+     * builder. Two copies of that walk is exactly how a reassignment and a refund come to disagree
+     * about which leaves are payables — finding V2's shape, one level down. Per the owner's
+     * stale-code rule the duplicate is removed, not left alongside.
+     *
      * @return array<int, array{account_id: int, net_credit: float, party_ref: ?int, party_name: ?string}>
      */
     private function openPayablePositions(Task $task, int $companyId, int $destinationAccountId, float $tolerance): array
     {
-        $apGroupId = Account::query()
-            ->withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->where('name', 'Accounts Payable')
-            ->value('id');
-
-        if ($apGroupId === null) {
-            return [];
-        }
-
-        $subtreeIds = $this->descendantIds((int) $apGroupId, $companyId);
-
-        if ($subtreeIds === []) {
-            return [];
-        }
-
-        $rows = DB::table('journal_entries as je')
-            ->selectRaw('je.account_id, SUM(je.credit) - SUM(je.debit) as net_credit')
-            ->selectRaw('MAX(je.type_reference_id) as party_ref')
-            ->selectRaw('MAX(je.name) as party_name')
-            ->where('je.company_id', $companyId)
-            ->where('je.task_id', $task->id)
-            ->whereNull('je.deleted_at')
-            ->whereIn('je.account_id', $subtreeIds)
-            ->where('je.account_id', '!=', $destinationAccountId)
-            ->groupBy('je.account_id')
-            ->havingRaw('SUM(je.credit) - SUM(je.debit) > ?', [$tolerance])
-            ->orderBy('je.account_id')
-            ->get();
-
-        return $rows->map(fn ($r) => [
-            'account_id' => (int) $r->account_id,
-            'net_credit' => (float) $r->net_credit,
-            'party_ref' => $r->party_ref !== null ? (int) $r->party_ref : null,
-            'party_name' => $r->party_name !== null ? (string) $r->party_name : null,
-        ])->all();
-    }
-
-    /**
-     * Every descendant of a group, walked structurally. `accounts.is_group` is deliberately not
-     * consulted — CT-A1 §1.4 measured it wrong on 613 accounts (566 flagged as groups with no
-     * children, 47 flagged as leaves that have children), the same reason
-     * {@see AccountResolver::isLeaf()} derives leaf-ness from the children rather than the flag.
-     *
-     * @return int[]
-     */
-    private function descendantIds(int $groupId, int $companyId): array
-    {
-        $all = [];
-        $frontier = [$groupId];
-
-        // Bounded by the chart's real depth (5 levels on this COA); the guard exists only so a
-        // cyclic parent_id — which no constraint prevents — cannot spin forever.
-        for ($depth = 0; $depth < 12 && $frontier !== []; $depth++) {
-            $children = Account::query()
-                ->withoutGlobalScopes()
-                ->where('company_id', $companyId)
-                ->whereNull('deleted_at')
-                ->whereIn('parent_id', $frontier)
-                ->pluck('id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
-
-            $children = array_values(array_diff($children, $all));
-
-            if ($children === []) {
-                break;
-            }
-
-            $all = array_merge($all, $children);
-            $frontier = $children;
-        }
-
-        return $all;
+        return app(TaskPayablePositionResolver::class)
+            ->openPositions((int) $task->id, $companyId, $destinationAccountId, $tolerance);
     }
 }

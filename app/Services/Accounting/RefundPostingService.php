@@ -367,6 +367,33 @@ final class RefundPostingService
                 'partial_credit_requested' => abs($outstandingSell - $creditedSell) > 0.0005,
             ]);
 
+            // ── (2b) CT-A3 R3-3 — VERIFY-CT-A3-STACK-R2 §3.2 finding V3 ──────────────────────
+            // The figure above was computed and logged and nothing acted on it in EITHER
+            // direction. `credited < outstanding` is the deferred partial-credit ruling and stays
+            // deferred. `credited > outstanding` is not a ruling — it is an unbounded operator
+            // entry: `RefundController::store()` validated the amount as bare
+            // ['required','numeric'], and a live sale of 100 credited 500 left RECEIVABLE_CONTROL
+            // at +500.000 against CLIENT_ADVANCE at −500.000, the client's NET position still
+            // zero, and therefore invisible to the trial balance and to every aggregate check the
+            // wave reports run. AR ageing, the client statement and the credit-limit check all
+            // read one leaf without the other.
+            //
+            // Default REFUSE, tagged R-CT6 (the clamp question). Refusing is the reversible
+            // choice; an over-credit that posts is money already on the ledger. See
+            // {@see \App\Exceptions\Accounting\RefundExceedsOutstandingException}.
+            $overCredit = round($creditedSell - $outstandingSell, 3);
+
+            if ($overCredit > (float) config('accounting.engine.balance_tolerance', 0.0005)) {
+                $this->refuseCreditExceedsOutstanding(
+                    $refund,
+                    $detail,
+                    $companyId,
+                    (int) $invoiceDetail->id,
+                    $creditedSell,
+                    $outstandingSell
+                );
+            }
+
             $first = null;
 
             foreach ($liveSales as $index => $saleTransaction) {
@@ -926,6 +953,14 @@ final class RefundPostingService
      * triggers, so the refusal is findable afterwards rather than only visible to whoever was
      * watching the screen.
      *
+     * CT-A3 R4 — that second half is now TRUE. It was not when this docblock was written:
+     * `CT-A3-R3-2026-09-10.md` §4.1 measured the row being rolled back with everything else,
+     * because {@see self::post()} wraps the whole composition in one `DB::transaction()` and this
+     * row was written through the same connection. It now goes through
+     * {@see AccountingLog::eventDurable()} — the independent `accounting_audit` handle
+     * {@see \App\Models\IdempotencyKeyRejection} already uses for exactly this reason — so the
+     * INSERT commits on its own connection and the rollback cannot reach it.
+     *
      * @return never
      */
     private function refuseNothingOutstanding(
@@ -946,7 +981,7 @@ final class RefundPostingService
             'reason' => $reason,
         ]);
 
-        AccountingLog::event('refund_crn_refused', [
+        AccountingLog::eventDurable('refund_crn_refused', [
             'refund_id' => $refund->id,
             'refund_detail_id' => $detail->id,
             'company_id' => $companyId,
@@ -960,6 +995,90 @@ final class RefundPostingService
             $detail->task_id !== null ? (int) $detail->task_id : null,
             $reversedSaleDocuments,
             $reason
+        );
+    }
+
+    /**
+     * CT-A3 R3-3 — refuse a credit note for more than its sale is still carrying, LOUDLY: a named
+     * exception the replay command can bucket by class, and an audit row that survives the rollback
+     * the throw triggers, so the refusal is findable afterwards rather than only visible to whoever
+     * was watching the screen. Same shape as {@see self::refuseNothingOutstanding()}, deliberately —
+     * including CT-A3 R4's durable audit connection, and for the same measured reason.
+     *
+     * @return never
+     */
+    private function refuseCreditExceedsOutstanding(
+        Refund $refund,
+        RefundDetail $detail,
+        int $companyId,
+        int $invoiceDetailId,
+        float $requestedCredit,
+        float $outstandingSell
+    ): void {
+        Log::warning('accounting.refund_crn.credit_exceeds_outstanding', [
+            'refund_id' => $refund->id,
+            'refund_detail_id' => $detail->id,
+            'company_id' => $companyId,
+            'invoice_detail_id' => $invoiceDetailId,
+            'task_id' => $detail->task_id,
+            'requested_credit' => $requestedCredit,
+            'outstanding_sell' => $outstandingSell,
+            'over_credit' => round($requestedCredit - $outstandingSell, 3),
+            'ruling' => 'R-CT6 default: refuse, do not clamp',
+        ]);
+
+        AccountingLog::eventDurable('refund_crn_refused', [
+            'refund_id' => $refund->id,
+            'refund_detail_id' => $detail->id,
+            'company_id' => $companyId,
+            'invoice_detail_id' => $invoiceDetailId,
+            'reason' => 'credit_exceeds_outstanding',
+            'requested_credit' => $requestedCredit,
+            'outstanding_sell' => $outstandingSell,
+        ]);
+
+        throw new \App\Exceptions\Accounting\RefundExceedsOutstandingException(
+            (int) $detail->id,
+            $invoiceDetailId,
+            $requestedCredit,
+            $outstandingSell,
+            $detail->task_id !== null ? (int) $detail->task_id : null
+        );
+    }
+
+    /**
+     * CT-A3 R3-3 — the READ half of the same rule, for the CONTROLLER boundary.
+     *
+     * The outstanding sell a credit note raised against this task would be measured against, or
+     * NULL when there is nothing to measure (the task was never invoiced, or no sale document was
+     * ever posted for its invoice detail). NULL means "this boundary cannot bound it" — the service
+     * still applies its own rule, so a null here can never turn into a silent pass.
+     *
+     * Public, and computed by the SAME `saleFamilyFor()` + `sellCarriedBy()` pair the credit note
+     * itself uses. A second implementation of "what is outstanding" living in the controller is how
+     * a screen and a ledger come to disagree about whether an amount is legal, which is the whole
+     * shape of finding V3.
+     */
+    public function outstandingSellForTask(Task $task, int $companyId): ?float
+    {
+        $invoiceDetail = $task->invoiceDetail;
+
+        if ($invoiceDetail === null) {
+            return null;
+        }
+
+        $liveSales = $this->saleFamilyFor($companyId, 'invoice-detail:'.$invoiceDetail->id.':sale')
+            ->where('posting_status', 'posted')
+            ->values();
+
+        if ($liveSales->isEmpty()) {
+            return null;
+        }
+
+        return $this->sellCarriedBy(
+            $companyId,
+            $liveSales->pluck('id')->map(static fn ($id) => (int) $id)->all(),
+            (int) $invoiceDetail->id
         );
     }
 
@@ -999,6 +1118,24 @@ final class RefundPostingService
             ]);
 
             return 0.0;
+        }
+
+        // ── CT-A3 R3 — owner ruling R-CT8, the READ half of finding V2 ──────────────────────────
+        // R2-1's own principle is "measure the CURRENT posted position, not the one the document
+        // was born on". That was applied to the sale (the credit note reverses whatever is live)
+        // and not to the payable — so on a task whose payee had been reassigned this method read
+        // the purpose-resolved CONTROL leaf, found 0.000 because the reassignment had already
+        // moved the money off it, and postSupplierCreditForDetail() correctly concluded there was
+        // nothing to relieve. That is the second half of the invoiced V2 case: the ledger kept the
+        // full supplier cost owed to the nominated payee with no cost, no revenue and no asset
+        // behind it, permanently.
+        //
+        // {@see TaskPayablePositionResolver::netPayableForTask()} sums the nominated leaf AND this
+        // purpose-resolved control when the two differ; on a task that was never reassigned they
+        // are the same account and the figure is identical to the pre-R3 one.
+        if ($purposeCode === 'SERVICE_PAYABLE') {
+            return app(TaskPayablePositionResolver::class)
+                ->netPayableForTask((int) $task->id, $companyId, (int) $account->id);
         }
 
         return (float) (DB::table('journal_entries')

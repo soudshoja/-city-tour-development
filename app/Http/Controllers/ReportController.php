@@ -32,6 +32,11 @@ use Exception;
 use Illuminate\Support\Str;
 use App\Services\TrialBalanceService;
 use App\Services\Accounting\DeferredRevenueScheduleReport;
+use App\Services\Accounting\AccountResolver;
+use App\Services\Accounting\LedgerSource;
+use App\Services\Accounting\GeneralLedgerService;
+use App\Services\Accounting\BalanceSheetService;
+use App\Exceptions\Accounting\UnmappedPurposeException;
 
 class ReportController extends Controller
 {
@@ -824,25 +829,32 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $accountPayable = Account::where('name', 'Accounts Payable')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A6-1: resolved through system_accounts purposes (AccountResolver), never a
+        // hardcoded account-name / parent-chain lookup — the exact defect CT-D1B found on this
+        // screen, which lands on whatever leaf a company happened to name that way instead of
+        // the leaf the engine actually posts PAYABLE_CONTROL/RECEIVABLE_CONTROL to.
+        $resolver = app(AccountResolver::class);
+        $ledgerSource = app(LedgerSource::class);
 
-        if (!$accountPayable) {
-            return redirect()->back()->with('error', 'Accounts Payable account not found.');
+        try {
+            $accountPayable = $resolver->resolve('PAYABLE_CONTROL', $companyId);
+            $payableAccountIds = $ledgerSource->payableAccountIds($companyId, $resolver);
+        } catch (UnmappedPurposeException $e) {
+            return redirect()->back()->with('error', 'Accounts Payable control account is not configured for this company.');
         }
 
-        $receivableAccount = Account::where('name', 'Accounts Receivable')
-            ->where('company_id', $companyId)
-            ->first();
-
-        if (!$receivableAccount) {
-            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
+        try {
+            $receivableAccount = $resolver->resolve('RECEIVABLE_CONTROL', $companyId);
+            $receivableAccountIds = $ledgerSource->receivableAccountIds($companyId, $resolver);
+        } catch (UnmappedPurposeException $e) {
+            return redirect()->back()->with('error', 'Accounts Receivable control account is not configured for this company.');
         }
 
-        // Preload all leaf accounts
-        $payableAccounts = $this->getLeafAccountsUnderParent($accountPayable->id);
-        $receivableAccounts = $this->getLeafAccountsUnderParent($receivableAccount->id);
+        // Every payable/receivable leaf this company actually posts to (control + any
+        // per-service leaves) for the "account" filter dropdown — resolved via purposes above,
+        // never by walking Account::where('parent_id', ...) under a hardcoded-name parent.
+        $payableAccounts = Account::withoutGlobalScopes()->whereIn('id', $payableAccountIds)->get();
+        $receivableAccounts = Account::withoutGlobalScopes()->whereIn('id', $receivableAccountIds)->get();
         $allAccounts = $payableAccounts->merge($receivableAccounts);
 
         // Default to first account if none selected
@@ -851,15 +863,17 @@ class ReportController extends Controller
             $accountId = $firstAccount ? $firstAccount->id : null;
         }
 
-        $payableQuery = JournalEntry::whereIn('account_id', $payableAccounts->pluck('id'))
+        $payableQuery = JournalEntry::whereIn('account_id', $payableAccountIds)
             ->where('company_id', $companyId)
             ->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc');
+        $ledgerSource->restrict($payableQuery, $companyId, 'transaction_id');
 
-        $receivableQuery = JournalEntry::whereIn('account_id', $receivableAccounts->pluck('id'))
+        $receivableQuery = JournalEntry::whereIn('account_id', $receivableAccountIds)
             ->where('company_id', $companyId)
             ->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc');
+        $ledgerSource->restrict($receivableQuery, $companyId, 'transaction_id');
 
         // Apply account filter
         if ($accountId) {
@@ -873,12 +887,17 @@ class ReportController extends Controller
         }
 
         if ($supplierId) {
-            $supplier = Supplier::find($supplierId);
-            if ($supplier) {
-                $payableQuery->where('name', $supplier->name);
-                $receivableQuery->where('name', $supplier->name);
-            }
+            // CT-A6-1 ratchet fix: filter by the line's own PARTY reference
+            // (type_reference_id — the same column TaskPayablePositionResolver,
+            // SupplierLedgerStatementSource and AccountingController::filterLedgers() already key
+            // a party on), never by matching journal_entries.name (free text) against
+            // Supplier::name — two suppliers sharing a display name, or a renamed supplier,
+            // silently mismatched under the old lookup.
+            $payableQuery->where('type_reference_id', $supplierId);
+            $receivableQuery->where('type_reference_id', $supplierId);
         }
+
+        $transitionBanner = $ledgerSource->transitionBanner($companyId);
 
         if ($startDate == null && $endDate !== null) {
             $payableQuery->where('transaction_date', '<=', $endDate);
@@ -949,6 +968,7 @@ class ReportController extends Controller
             'receivableAccount' => $receivableAccount,
             'accountId' => $accountId,
             'allAccounts' => $allAccounts,
+            'transitionBanner' => $transitionBanner,
         ]);
     }
 
@@ -1688,44 +1708,31 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $liabilitiesAccount = Account::where('name', 'Liabilities')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A6-1: resolved through the PAYABLE_CONTROL purpose (AccountResolver), never the
+        // Liabilities -> Accounts Payable -> Creditors hardcoded-name parent-chain walk CT-D1B
+        // found here — a chain that lands on whatever a company happened to NAME those three
+        // accounts, not on the leaf the engine actually posts SERVICE_PAYABLE/PAYABLE_CONTROL to.
+        $resolver = app(AccountResolver::class);
+        $ledgerSource = app(LedgerSource::class);
 
-        if (!$liabilitiesAccount) {
-            Log::info('Liabilities account not found for company ID: ' . $companyId);
+        try {
+            $creditorsAccount = $resolver->resolve('PAYABLE_CONTROL', $companyId);
+            $payableAccountIds = $ledgerSource->payableAccountIds($companyId, $resolver);
+        } catch (UnmappedPurposeException $e) {
+            Log::info('PAYABLE_CONTROL purpose not mapped for company ID: ' . $companyId);
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
 
-        $payableAccounts = Account::where('name', 'Accounts Payable')
-            ->where('company_id', $companyId)
-            ->where('parent_id', $liabilitiesAccount->id)
-            ->first();
-
-        if (!$payableAccounts) {
-            Log::info('Accounts Payable account not found under Liabilities for company ID: ' . $companyId);
-            return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
-        }
-
-        $creditorsAccount = Account::where('name', 'Creditors')
-            ->where('company_id', $companyId)
-            ->where('parent_id', $payableAccounts->id)
-            ->where('root_id', $liabilitiesAccount->id)
-            ->first();
-
-        if (!$creditorsAccount) {
-            Log::info('Creditors account not found under Accounts Payable for company ID: ' . $companyId);
-            return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
-        }
-
-        $childOfCreditors = Account::where('parent_id', $creditorsAccount->id)
-            ->where('company_id', $companyId)
-            ->get();
+        // Every payable leaf this company posts to (control + any per-service leaves) — replaces
+        // the old "children of the hardcoded Creditors account" list with the purpose-resolved
+        // set, so a per-service leaf (e.g. a rail/esim payable) still shows up here even when it
+        // was never physically parented under a "Creditors" node.
+        $childOfCreditors = Account::withoutGlobalScopes()->whereIn('id', $payableAccountIds)->get();
 
         $accountForReport = null;
 
         if ($accountId) {
-            $accountForReport = Account::find($accountId);
+            $accountForReport = Account::withoutGlobalScopes()->where('company_id', $companyId)->find($accountId);
         } elseif ($childOfCreditors->isNotEmpty()) {
             $accountForReport = $childOfCreditors->first();
         } else {
@@ -1740,6 +1747,7 @@ class ReportController extends Controller
 
         $journalQuery = JournalEntry::where('account_id', $accountForReport->id)
             ->where('company_id', $companyId);
+        $ledgerSource->restrict($journalQuery, $companyId, 'transaction_id');
 
         if ($startDate) {
             $journalQuery->whereDate('transaction_date', '>=', $startDate);
@@ -1752,6 +1760,8 @@ class ReportController extends Controller
         $journalEntries = $journalQuery->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc')
             ->get();
+
+        $transitionBanner = $ledgerSource->transitionBanner($companyId);
 
         $balance = 0.0;
 
@@ -1824,6 +1834,7 @@ class ReportController extends Controller
         foreach ($childOfCreditors as $creditor) {
             $creditorQuery = JournalEntry::where('account_id', $creditor->id)
                 ->where('company_id', $companyId);
+            $ledgerSource->restrict($creditorQuery, $companyId, 'transaction_id');
 
             if ($startDate) {
                 $creditorQuery->whereDate('transaction_date', '>=', $startDate);
@@ -1860,7 +1871,8 @@ class ReportController extends Controller
             'supplierGroups' => $supplierGroups,
             'groupBySupplier' => $groupBySupplier,
             'startDate' => $startDate,
-            'endDate' => $endDate
+            'endDate' => $endDate,
+            'transitionBanner' => $transitionBanner,
         ]);
     }
 
@@ -1899,47 +1911,31 @@ class ReportController extends Controller
             $reportType = 'all';
         }
 
-        // Get account structure
-        $liabilitiesAccount = Account::where('name', 'Liabilities')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A6-1: same PAYABLE_CONTROL purpose resolution as creditors() above — see that
+        // method's own comment for why the old hardcoded Liabilities/Accounts Payable/Creditors
+        // name chain is gone.
+        $resolver = app(AccountResolver::class);
+        $ledgerSource = app(LedgerSource::class);
 
-        if (!$liabilitiesAccount) {
+        try {
+            $creditorsAccount = $resolver->resolve('PAYABLE_CONTROL', $companyId);
+            $payableAccountIds = $ledgerSource->payableAccountIds($companyId, $resolver);
+        } catch (UnmappedPurposeException $e) {
             return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
         }
 
-        $payableAccounts = Account::where('name', 'Accounts Payable')
-            ->where('company_id', $companyId)
-            ->where('parent_id', $liabilitiesAccount->id)
-            ->first();
+        $childOfCreditors = Account::withoutGlobalScopes()->whereIn('id', $payableAccountIds)->get();
 
-        if (!$payableAccounts) {
-            return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
-        }
-
-        $creditorsAccount = Account::where('name', 'Creditors')
-            ->where('company_id', $companyId)
-            ->where('parent_id', $payableAccounts->id)
-            ->where('root_id', $liabilitiesAccount->id)
-            ->first();
-
-        if (!$creditorsAccount) {
-            return redirect()->back()->with('error', 'This page cannot be accessed at the moment. Please contact support.');
-        }
-
-        $childOfCreditors = Account::where('parent_id', $creditorsAccount->id)
-            ->where('company_id', $companyId)
-            ->get();
-
-        $accountForReport = $childOfCreditors->first();
+        $accountForReport = $childOfCreditors->first() ?? $creditorsAccount;
 
         if ($accountId) {
-            $accountForReport = Account::find($accountId);
+            $accountForReport = Account::withoutGlobalScopes()->where('company_id', $companyId)->find($accountId) ?? $accountForReport;
         }
 
         // Get journal entries
         $journalQuery = JournalEntry::where('account_id', $accountForReport->id)
             ->where('company_id', $companyId);
+        $ledgerSource->restrict($journalQuery, $companyId, 'transaction_id');
 
         if ($startDate) {
             $journalQuery->whereDate('transaction_date', '>=', $startDate);
@@ -4091,6 +4087,10 @@ class ReportController extends Controller
             Carbon::parse($dateTo)
         );
 
+        // CT-A6-2: same transition banner every other engine/legacy-source-restricted report
+        // shows — engine on, legacy rows still remain company-wide.
+        $transitionBanner = app(LedgerSource::class)->transitionBanner($companyId);
+
         return view('reports.trial-balance', [
             'trialBalance' => $trialBalance,
             'company' => $company,
@@ -4100,6 +4100,7 @@ class ReportController extends Controller
             'branchId' => $branchId,
             'showZero' => $showZero,
             'unbalancedTransactions' => $unbalancedTransactions,
+            'transitionBanner' => $transitionBanner,
             'filters' => [
                 'branch_id' => $branchId,
                 'show_zero' => $showZero,

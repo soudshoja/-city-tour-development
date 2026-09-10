@@ -1383,4 +1383,271 @@ class ArchitectureTest extends TestCase
 
         return ['unlisted' => $unlisted, 'stale' => $stale];
     }
+
+    /**
+     * CT-A6-1 ratchet (CT-D1B "the AR/AP 'unpaid report' and creditors() resolve accounts by
+     * HARDCODED NAME / parent chain and land on different leaves than the engine posts to"): no
+     * controller may resolve an `accounts` row by `Account::where('name', ...)` (or the
+     * equivalent `->where('name', ...)` chained off an Account query) ever again. Every real
+     * posting target is reached through {@see \App\Services\Accounting\AccountResolver}'s
+     * purpose-code mapping instead — the same fix R7.3/BUG-H6 already made mandatory for the
+     * posting engine itself, extended here to the read side CT-D1B found still doing it.
+     *
+     * Scoped to `app/Http/Controllers/ReportController.php` ONLY — the report-layer surface
+     * CT-A6's own charter names ("AR/AP screens ... unpaid report, creditors(), settlements, any
+     * screen that resolves accounts by name or parent chain"), and the only controller this lane
+     * audited line-by-line to build an accurate, individually-justified allow-list for. A repo-
+     * wide sweep (`grep -rn "Account::where('name'" app/Http/Controllers`) turns up DOZENS more
+     * hits in `AccountingController.php` alone (`filterLedgers()`, `chartOfAccounts()`, and others
+     * — 'LIKE'-name matches included) plus further hits elsewhere — a pre-existing, much larger
+     * gap that is its own remediation lane, not something CT-A6-1 can respectably allow-list
+     * one-by-one without having reviewed each site's actual behaviour. Widening this ratchet to
+     * the whole controller tree belongs to that future lane, at which point every newly-audited
+     * file either gets fixed or gets its own individually-justified allow-list entries here —
+     * exactly the discipline already applied to `ReportController.php` below. Narrowing the scan
+     * root is therefore the honest choice over a false sense of coverage from a blanket allow-list
+     * built by pattern-matching alone.
+     *
+     * Two-sided, same shape as every other ratchet in this file: a hit in a method NOT on
+     * {@see self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS} fails the build (new regression, or an
+     * already-fixed method lost its fix); an allow-listed method with NO hit also fails (stale
+     * entry -- shrink the list, per the ratchet's own "shrink-only" mandate). The allow-list holds
+     * TEN pre-existing `ReportController` methods CT-A6 did not reach
+     * (`paidaccountsPayableReceivableReport`, `accountsReconciliationReport`, `getAccounts`,
+     * `getPayableSupplier`, `getReceivable`, `getTotalBank`, `getGatewayReceivable`, `show`,
+     * `rangeSalesSuppliers`, `getAccountBalance`) -- CT-A6-1 fixed
+     * `unpaidaccountsPayableReceivableReport()`, `creditors()` and `creditorsPdf()` (the three
+     * this lane's own scope named), and tracked the rest here — found by actually running this
+     * scan against the real file, not by inspection alone — rather than silently leaving them
+     * undetectable by this ratchet.
+     */
+    private const ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS = [
+        // Payable/Receivable "paid" counterpart of the report CT-A6-1 fixed (unpaid). Same
+        // Account::where('name', 'Accounts Payable'|'Accounts Receivable') shape; not migrated
+        // this lane because CT-A6's own scope named only the UNPAID screen. Next to fix.
+        'ReportController::paidaccountsPayableReceivableReport',
+        // A reconciliation report walking the same hardcoded-name chain. Not named in CT-A6's
+        // scope; tracked here so a future lane closing it can simply delete this line.
+        'ReportController::accountsReconciliationReport',
+        // An account-picker endpoint resolving 'Accounts Payable' by name to build its options.
+        'ReportController::getAccounts',
+        'ReportController::getPayableSupplier',
+        // Six more pre-existing hardcoded-name lookups this lane's own scan (scoped to
+        // ReportController.php — see this rule's class docblock) surfaced beyond the four above.
+        // None were named in CT-A6's brief; tracked here rather than left undetectable.
+        'ReportController::getReceivable', // Account::where('name', 'Accounts Receivable')
+        'ReportController::getTotalBank', // Account::where('name', 'Bank Accounts')
+        'ReportController::getGatewayReceivable', // Account::where('name', 'Payment Gateway')
+        'ReportController::show', // Account::where('name', 'clients')
+        'ReportController::rangeSalesSuppliers', // Liabilities -> Accounts Payable -> 'supplier' LIKE chain
+        // A general-purpose private helper taking $accountName as a caller-supplied parameter —
+        // every call site names its own hardcoded string, so fixing this one method requires
+        // migrating all of its callers to pass a purpose code instead; out of this lane's scope.
+        'ReportController::getAccountBalance',
+    ];
+
+    public function test_no_report_controller_resolves_account_by_hardcoded_name(): void
+    {
+        $result = $this->scanForAccountNameLookupsInControllers();
+
+        $message = '';
+
+        if (! empty($result['unlisted'])) {
+            $message .= "Controller method(s) found resolving an account by Account::where('name', ...) "
+                .'NOT on the allow-list (CT-D1B: this lands on whatever a company happened to NAME an '
+                .'account, not on the leaf AccountResolver purpose codes actually resolve to) -- route '
+                .'through App\\Services\\Accounting\\AccountResolver::resolve()/resolveAnchor() instead, '
+                .'or if this is a deliberately-reviewed pre-existing gap, add it to '
+                ."ArchitectureTest::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS with a note:\n"
+                .implode("\n", $result['unlisted'])."\n";
+        }
+
+        if (! empty($result['stale'])) {
+            $message .= 'Allow-listed account-name-lookup method(s) with NO hit found (fixed -- shrink '
+                ."the list; remove from ArchitectureTest::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS):\n"
+                .implode("\n", $result['stale']);
+        }
+
+        $this->assertTrue(empty($result['unlisted']) && empty($result['stale']), $message);
+    }
+
+    /**
+     * Mutation proof (same construction as
+     * {@see self::test_the_raw_writer_ratchet_actually_bites_a_synthetic_violation()}): a synthetic
+     * controller tree with (a) an unlisted violation, (b) a method shaped exactly like a real
+     * allow-listed entry (proving the scanner recognizes the allow-list format), and (c) a clean
+     * method with no name lookup at all. Asserts the scanner reports exactly the unlisted one as a
+     * violation and nothing as stale, given the allow-list contains a method this synthetic tree
+     * does NOT define (so the "stale" side of the assertion is exercised too, by pointing the
+     * allow-list check at the real production allow-list against ONLY this synthetic root -- every
+     * real entry is therefore reported "stale" here by construction, which this test accounts for
+     * rather than treating as a scanner defect).
+     */
+    public function test_the_account_name_lookup_ratchet_actually_bites_a_synthetic_violation(): void
+    {
+        $root = sys_get_temp_dir().'/arch-account-name-lookup-ratchet-mutation-'.uniqid();
+        $controllersDir = $root.'/Controllers';
+        mkdir($controllersDir, 0777, true);
+
+        // (a) The real, unlisted violation this ratchet must catch.
+        file_put_contents($controllersDir.'/RogueController.php', <<<'PHP'
+            <?php
+            class RogueController
+            {
+                public function totallyNewLookup(Request $request)
+                {
+                    $account = Account::where('name', 'Accounts Payable')->first();
+                    return $account;
+                }
+            }
+            PHP);
+
+        // (b) Shaped exactly like a real allow-listed entry (ReportController::getAccounts) --
+        // proves the scanner matches allow-list entries by "Class::method", not merely by filename.
+        file_put_contents($controllersDir.'/ReportController.php', <<<'PHP'
+            <?php
+            class ReportController
+            {
+                public function getAccounts(Request $request)
+                {
+                    $account = Account::where('name', 'Accounts Payable')->first();
+                    return $account;
+                }
+            }
+            PHP);
+
+        // (c) Clean -- resolves via AccountResolver, no name lookup at all.
+        file_put_contents($controllersDir.'/CleanController.php', <<<'PHP'
+            <?php
+            class CleanController
+            {
+                public function fine(Request $request)
+                {
+                    $account = app(AccountResolver::class)->resolve('PAYABLE_CONTROL', $this->companyId());
+                    return $account;
+                }
+            }
+            PHP);
+
+        try {
+            $result = $this->scanForAccountNameLookupsInControllers($controllersDir);
+
+            // Each entry is "<realpath>:<line>: Class::method" -- matched by substring rather than
+            // split on ':', since a Windows absolute path (`C:\...`) already contains a colon of
+            // its own and would make a naive split land on the wrong piece.
+            $foundRogueHit = array_filter(
+                $result['unlisted'],
+                fn (string $hit) => str_contains($hit, 'RogueController::totallyNewLookup')
+            );
+
+            $this->assertNotEmpty(
+                $foundRogueHit,
+                'The synthetic unlisted violation was not detected -- the scanner regressed.'
+            );
+
+            $this->assertCount(
+                1,
+                $result['unlisted'],
+                "Expected exactly one unlisted violation (RogueController::totallyNewLookup); got:\n"
+                    .implode("\n", $result['unlisted'])
+            );
+
+            // Every REAL production allow-list entry is "stale" against this synthetic root except
+            // ReportController::getAccounts, which fixture (b) above deliberately reproduces --
+            // proving the allow-list match is method-scoped, not merely file-scoped.
+            $expectedStale = array_values(array_diff(
+                self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS,
+                ['ReportController::getAccounts']
+            ));
+            sort($expectedStale);
+            $actualStale = $result['stale'];
+            sort($actualStale);
+
+            $this->assertSame($expectedStale, $actualStale);
+        } finally {
+            array_map('unlink', glob($controllersDir.'/*.php'));
+            rmdir($controllersDir);
+            rmdir($root);
+        }
+    }
+
+    /**
+     * @param  ?string  $rootOverride  When given, a DIRECTORY to walk instead of the real,
+     *                                 production `ReportController.php` — used only by
+     *                                 {@see self::test_the_account_name_lookup_ratchet_actually_bites_a_synthetic_violation()}
+     *                                 to point the scan at a synthetic tree.
+     * @return array{unlisted: string[], stale: string[]}
+     */
+    private function scanForAccountNameLookupsInControllers(?string $rootOverride = null): array
+    {
+        $lookupPattern = '/(?:\\\\?Account::where|->where)\s*\(\s*[\'"]name[\'"]\s*,/';
+        $methodPattern = '/function\s+([A-Za-z0-9_]+)\s*\(/';
+        $classPattern = '/\bclass\s+([A-Za-z0-9_]+)/';
+
+        $files = [];
+
+        if ($rootOverride !== null) {
+            if (! is_dir($rootOverride)) {
+                return ['unlisted' => [], 'stale' => self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS];
+            }
+
+            $iterator = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator($rootOverride, FilesystemIterator::SKIP_DOTS)
+            );
+
+            foreach ($iterator as $file) {
+                if ($file->isFile() && strtolower($file->getExtension()) === 'php') {
+                    $files[] = $file->getRealPath();
+                }
+            }
+        } else {
+            // Production target: ReportController.php only — see this rule's own class docblock
+            // for why the scan is not widened to the rest of app/Http/Controllers yet.
+            $reportController = base_path('app/Http/Controllers/ReportController.php');
+
+            if (is_file($reportController)) {
+                $files[] = $reportController;
+            }
+        }
+
+        $unlisted = [];
+        $hitAllowListed = [];
+
+        foreach ($files as $realPath) {
+            $lines = file($realPath);
+
+            if ($lines === false) {
+                continue;
+            }
+
+            $className = null;
+            $currentMethod = null;
+
+            foreach ($lines as $lineNumber => $lineContent) {
+                if (preg_match($classPattern, $lineContent, $m) === 1) {
+                    $className = $m[1];
+                }
+
+                if (preg_match($methodPattern, $lineContent, $m) === 1) {
+                    $currentMethod = $m[1];
+                }
+
+                if (preg_match($lookupPattern, $lineContent) !== 1) {
+                    continue;
+                }
+
+                $key = ($className ?? basename($realPath)).'::'.($currentMethod ?? 'UNKNOWN');
+
+                if (in_array($key, self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS, true)) {
+                    $hitAllowListed[$key] = true;
+                } else {
+                    $unlisted[] = $realPath.':'.($lineNumber + 1).': '.$key;
+                }
+            }
+        }
+
+        $stale = array_values(array_diff(self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS, array_keys($hitAllowListed)));
+
+        return ['unlisted' => $unlisted, 'stale' => $stale];
+    }
 }

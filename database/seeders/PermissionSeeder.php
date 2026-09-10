@@ -97,6 +97,10 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'view profit loss', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'view settlement', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'view creditors', 'group' => 'report']);
+        // CT-A6-5: general ledger / balance sheet screens (GeneralLedgerController /
+        // BalanceSheetController), gated by ReportPolicy::viewGeneralLedger()/viewBalanceSheet().
+        Permission::firstOrCreate(['name' => 'view general ledger', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'view balance sheet', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'view daily sales', 'group' => 'report']);
         Permission::firstOrCreate(['name' => 'view payment method groups', 'group' => 'charges']);
         Permission::firstOrCreate(['name' => 'manage payment method groups', 'group' => 'charges']);
@@ -115,6 +119,11 @@ class PermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'manage agent loss', 'group' => 'setting']);
         Permission::firstOrCreate(['name' => 'view notification', 'group' => 'setting']);
         Permission::firstOrCreate(['name' => 'manage notification', 'group' => 'setting']);
+        // CT-A6-5: gates ReportController::generalLedger()/balanceSheet() via ReportPolicy's
+        // viewGeneralLedger()/viewBalanceSheet() abilities — same 'report' group and naming
+        // convention as the other report permissions above ('view profit loss', 'view creditors').
+        Permission::firstOrCreate(['name' => 'view general ledger', 'group' => 'report']);
+        Permission::firstOrCreate(['name' => 'view balance sheet', 'group' => 'report']);
 
         // soud amendment (CreditPolicy::create() gate fix, W7.K): this seeder only ever
         // creates Permission rows -- role-to-permission grants for every other permission it
@@ -131,6 +140,22 @@ class PermissionSeeder extends Seeder
             Role::whereIn('name', ['admin', 'company'])->get()->each(
                 fn (Role $role) => $role->hasPermissionTo($createCredit) ? null : $role->givePermissionTo($createCredit)
             );
+        }
+
+        // CT-A6-5 ("seeded to the company/admin roles"): same fallback rule as 'create credit'
+        // above — no existing 'admin'/'company'-named Role row anywhere in this codebase already
+        // holds 'view general ledger' or 'view balance sheet' to mirror (both are new with this
+        // lane), so grant them directly to every role literally named 'admin' or 'company'
+        // (global and per-company rows alike). Idempotent: givePermissionTo() no-ops if the role
+        // already has it.
+        foreach (['view general ledger', 'view balance sheet'] as $permissionName) {
+            $permission = Permission::where('name', $permissionName)->first();
+
+            if ($permission !== null) {
+                Role::whereIn('name', ['admin', 'company'])->get()->each(
+                    fn (Role $role) => $role->hasPermissionTo($permission) ? null : $role->givePermissionTo($permission)
+                );
+            }
         }
     }
 }

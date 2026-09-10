@@ -30,6 +30,19 @@
             </div>
         </div>
 
+        {{-- CT-A6-2 transition banner: engine on, legacy rows still remain company-wide. --}}
+        @if($transitionBanner ?? null)
+            <div class="mb-6 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                <h3 class="font-semibold text-amber-900 dark:text-amber-100">⚠ Ledger in transition</h3>
+                <p class="text-sm text-amber-800 dark:text-amber-200 mt-1">
+                    The posting engine is on for this company, but {{ number_format($transitionBanner['legacy_lines']) }} legacy-sourced
+                    journal line(s) still exist company-wide (Dr {{ number_format($transitionBanner['legacy_debit'], 3) }} /
+                    Cr {{ number_format($transitionBanner['legacy_credit'], 3) }}, diff {{ number_format($transitionBanner['legacy_diff'], 3) }}).
+                    This trial balance shows ENGINE rows only — the legacy figures above are company-wide context, not part of this report's own totals.
+                </p>
+            </div>
+        @endif
+
         <!-- Balance Status Alert -->
         <div class="mb-6">
             @if($trialBalance['totals']['is_balanced'])
@@ -182,6 +195,15 @@
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                                             </svg>
                                         </a>
+                                        {{-- CT-A6-3: drill down into the new per-account general ledger screen (opening/running
+                                             balance/closing, one ledger source) for the same account and period this row shows. --}}
+                                        @can('viewGeneralLedger', \App\Models\Report::class)
+                                        <a href="{{ route('accounting.reports.general-ledger', ['account_id' => $account->id, 'date_from' => $dateFrom, 'date_to' => $dateTo]) }}" class="inline-flex items-center justify-center w-8 h-8 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/30 rounded-md transition" title="Open in General Ledger">
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-6h6v6m-9 4h12a2 2 0 002-2V7a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </a>
+                                        @endcan
                                     </td>
                                 </tr>
                             @empty

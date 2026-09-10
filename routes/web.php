@@ -585,6 +585,12 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('accounting/reports')->name('accounting.reports.')->middleware(['module:accounting'])->group(function () {
         Route::get('/equity-changes', [\App\Http\Controllers\Accounting\EquityStatementController::class, 'show'])->name('equity-changes');
         Route::get('/equity-changes/export', [\App\Http\Controllers\Accounting\EquityStatementController::class, 'export'])->name('equity-changes.export');
+        // CT-A6-3/CT-A6-4: per-action authorization is Gate::authorize('viewGeneralLedger'|
+        // 'viewBalanceSheet', Report::class) inside each controller itself — the route middleware
+        // only gates module visibility, same split every other accounting screen's routes in this
+        // file already use (see this group's own note above EquityStatementController's routes).
+        Route::get('/general-ledger', [\App\Http\Controllers\Accounting\GeneralLedgerController::class, 'show'])->name('general-ledger');
+        Route::get('/balance-sheet', [\App\Http\Controllers\Accounting\BalanceSheetController::class, 'show'])->name('balance-sheet');
     });
 
     //BRANCHES

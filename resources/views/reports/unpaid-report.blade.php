@@ -1,6 +1,19 @@
 <x-app-layout>
     <h1 class="text-center mb-2 font-semibold text-xl">Unpaid Accounts Payable & Receivable Report</h1>
 
+    {{-- CT-A6-2 transition banner: engine on, legacy rows still remain company-wide. --}}
+    @if($transitionBanner ?? null)
+        <div class="max-w-4xl mx-auto mb-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <h3 class="font-semibold text-amber-900">⚠ Ledger in transition</h3>
+            <p class="text-sm text-amber-800 mt-1">
+                The posting engine is on for this company, but {{ number_format($transitionBanner['legacy_lines']) }} legacy-sourced
+                journal line(s) still exist company-wide (Dr {{ number_format($transitionBanner['legacy_debit'], 3) }} /
+                Cr {{ number_format($transitionBanner['legacy_credit'], 3) }}, diff {{ number_format($transitionBanner['legacy_diff'], 3) }}).
+                The figures below are ENGINE rows only.
+            </p>
+        </div>
+    @endif
+
     <div class="flex justify-center items-center bg-gray-100">
         <form method="GET" action="{{ route('reports.unpaid-report') }}"
             class="p-6 my-2 w-full md:w-full lg:w-full flex flex-col gap-4 bg-white rounded shadow">

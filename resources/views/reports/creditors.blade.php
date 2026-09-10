@@ -14,6 +14,19 @@
         <p class="mt-2 text-gray-600">Manage and track amounts owed to creditors</p>
     </div>
 
+    {{-- CT-A6-2 transition banner: engine on, legacy rows still remain company-wide. --}}
+    @if($transitionBanner ?? null)
+        <div class="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <h3 class="font-semibold text-amber-900">⚠ Ledger in transition</h3>
+            <p class="text-sm text-amber-800 mt-1">
+                The posting engine is on for this company, but {{ number_format($transitionBanner['legacy_lines']) }} legacy-sourced
+                journal line(s) still exist company-wide (Dr {{ number_format($transitionBanner['legacy_debit'], 3) }} /
+                Cr {{ number_format($transitionBanner['legacy_credit'], 3) }}, diff {{ number_format($transitionBanner['legacy_diff'], 3) }}).
+                The figures below are ENGINE rows only.
+            </p>
+        </div>
+    @endif
+
     <!-- Summary Cards -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div class="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">

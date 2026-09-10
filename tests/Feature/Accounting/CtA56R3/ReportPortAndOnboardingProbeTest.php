@@ -7,19 +7,20 @@ namespace Tests\Feature\Accounting\CtA56R3;
 use App\Models\Account;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\Country;
 use App\Models\Supplier;
 use App\Models\User;
-use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\BalanceSheetService;
 use App\Services\Accounting\DocumentDraft;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\PurposeHealthService;
+use App\Services\CompanyProvisioner;
 use App\Services\SupplierActivationService;
+use App\Support\CompanyRegistrationData;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\AccountingTestCase;
 
@@ -149,6 +150,46 @@ class ReportPortAndOnboardingProbeTest extends AccountingTestCase
     }
 
     /**
+     * CT-D2b — the two onboarding probes below now provision through {@see CompanyProvisioner}
+     * instead of `makeCompany()` + a hand-run `accounting:coa-linkage --apply`.
+     *
+     * Re-derived, not widened. R3 wrote them against PR #13's head, where the light fixture was
+     * adequate. On the merged CT-D2 head PR #14 makes a NON-LEAF purpose mapping unconditionally
+     * blocking in `CoaLinkage::verifyPurposes()` *regardless of purpose prefix* — deliberately, to
+     * close the travelerp finding where `--apply` minted Knet/uPayment leaves under the `1300
+     * Payment Gateway` pool and exited 0 with Hesabe/MyFatoorah/Tap left pointing at the
+     * now-non-leaf pool. A fixture that stops short of `createGatewayCharges()` is exactly that
+     * shape, so `--apply` now exits 1 on it and R3's own pre-condition assertion (`assertSame(0,
+     * $exit)`) fails — which is the new ratchet biting the fixture, not a regression.
+     *
+     * `provision()` runs `createGatewayCharges()` before `mapAccountingPurposes()`, so every
+     * GATEWAY_* purpose lands on a real leaf and the only non-leaf a probe can then produce is the
+     * one supplier activation creates — which is the property these two probes exist to measure.
+     * It is also the path the defect actually arrives by
+     * (`SupplierCompanyController::activateSupplierProcess` on a provisioned company).
+     */
+    private function provisionCompany(array $supplierIds = []): Company
+    {
+        $unique = uniqid();
+
+        $company = app(CompanyProvisioner::class)->provision(CompanyRegistrationData::fromArray([
+            'company_name' => 'R3 Probe Co '.$unique,
+            'company_code' => 'R3-'.$unique,
+            'country_id' => Country::factory()->create()->id,
+            'company_email' => "owner-{$unique}@example.test",
+            'owner_name' => 'Test Owner',
+            'owner_email' => "owner-{$unique}@example.test",
+            'owner_password' => 'password12345',
+            'currency' => 'KWD',
+            'supplier_ids' => $supplierIds,
+        ]));
+
+        $company->forceFill(['posting_engine_enabled' => true])->save();
+
+        return $company->fresh();
+    }
+
+    /**
      * DEFECT R3-7 — CT-A5a's onboarding fix asserts every purpose resolves to a LEAF **once**,
      * inside `CompanyProvisioner::provision()`. `SupplierActivationService::activate()` carries no
      * equivalent assertion and no re-map, and it is callable at any time afterwards
@@ -162,22 +203,15 @@ class ReportPortAndOnboardingProbeTest extends AccountingTestCase
      */
     public function test_activating_a_supplier_after_provisioning_does_not_make_a_mapped_purpose_non_leaf(): void
     {
-        // Deliberately NOT tracked for the suite invariants. `SupplierActivationService` mints every
-        // child at "parent code + 1" unconditionally, so ANY activation on this chart produces a
-        // duplicate account code (2121 for flight, 5122 for ferry, and so on) — a SEPARATE, still-
-        // open defect measured on its own below (R3-8). Tracking this company would report that one
-        // from tearDown() and mask the ordering property this probe exists to pin.
-        $company = $this->makeCompany(trackInvariants: false);
+        // CT-D2b: provisioned with NO suppliers, so `Suppliers (Flights)` / `Flights Cost` are
+        // still LEAVES when provision() maps the purposes onto them — the exact state R3-7 needs.
+        // Tracked for the suite invariants now that CT-A4b's AccountCodeGenerator has closed R3-8:
+        // activation no longer mints a duplicate code, so tearDown()'s
+        // assertNoDuplicateAccountCodes() is a live guard here rather than a masked failure.
+        $company = $this->provisionCompany([]);
+        $this->trackCompanyForInvariants($company->id);
 
-        // The provisioning-time state: purposes mapped against the chart as it stands with no
-        // flight supplier activated. This is exactly what provision() does at its step 10.
-        $exit = Artisan::call('accounting:coa-linkage', ['--company' => $company->id, '--apply' => true]);
-        $this->assertSame(0, $exit, Artisan::output());
-
-        // Scoped to the SERVICE_* family — the one supplier activation reshapes. (A fixture that
-        // stops short of `createGatewayCharges()` leaves the three GATEWAY_CLEARING_* purposes
-        // mapped to the non-leaf 'Payment Gateway' group; that is its own, separate ordering
-        // observation, reported in the R3 findings, not what this probe is measuring.)
+        // Scoped to the SERVICE_* family — the one supplier activation reshapes.
         $serviceNonLeaf = fn (array $health) => array_values(array_filter(
             $health['non_leaf'],
             fn (array $row) => str_starts_with((string) $row['purpose'], 'SERVICE_')
@@ -211,18 +245,22 @@ class ReportPortAndOnboardingProbeTest extends AccountingTestCase
      * therefore all get the SAME code. CT-A5a reported the symptom ("3 accounts sharing code
      * 2121") without a count; this measures it.
      *
-     * The seeded chart is already colliding before any supplier is activated — `CoaSeeder` seeds
+     * The seeded chart was already colliding before any supplier was activated — `CoaSeeder` seeded
      * BOTH `Suppliers (Hotels)` and `Suppliers (Ferry)` at code 2130, and `Suppliers (Visas)` at
      * 2121, which is `Suppliers (Flights)` (2120) + 1, i.e. the code the FIRST flight supplier
-     * activation mints.
+     * activation minted.
+     *
+     * CT-D2b — INVERTED on the merged CT-D2 head. R3-8 was a RISK reported and NOT fixed, pinned
+     * here as a shrink-only tracked gap ("Delete this test the day the minting is fixed"). PR #14
+     * (CT-A4b) is that day and lands on the same head: `AccountCodeGenerator` now allocates every
+     * child code, and `CoaSeeder`'s own 2130 duplicate is gone (Ferry -> 2131). The measurement is
+     * kept and its expectation flipped to the empty set, so the probe that quantified the defect
+     * becomes the regression guard on the exact population that exposed it.
      */
-    public function test_supplier_activation_still_mints_colliding_account_codes_tracked_gap(): void
+    public function test_supplier_activation_no_longer_mints_colliding_account_codes_r3_8_closed(): void
     {
-        // Deliberately NOT tracked for the suite invariants: this fixture exists to MEASURE the
-        // duplicate-code defect, and AccountingInvariants::assertNoDuplicateAccountCodes() would
-        // otherwise report it from tearDown() instead of from the assertion below, where it can
-        // carry the count and the names.
-        $company = $this->makeCompany(trackInvariants: false);
+        $company = $this->provisionCompany([]);
+        $this->trackCompanyForInvariants($company->id);
 
         foreach (['R3 Flight A', 'R3 Flight B', 'R3 Flight C'] as $name) {
             app(SupplierActivationService::class)->activate($this->makeSupplier($name, 'has_flight'), $company);
@@ -248,26 +286,28 @@ class ReportPortAndOnboardingProbeTest extends AccountingTestCase
             return "{$code} x{$n} ({$names})";
         })->implode(' | ');
 
-        // A TRACKED GAP, pinned to its exact current shape rather than left red: the code-minting
-        // convention is the owner's call (a collision-free scheme cannot stay inside the seeded
-        // 2120-2130 / 5110-5121 bands), so R3 measures it and does not change it.
+        // CT-D2b — RE-DERIVED, per this test's own standing instruction ("Delete this test the day
+        // the minting is fixed. If it starts failing, the shape changed — re-derive, do not
+        // widen."). PR #14 (CT-A4b) IS that day, and it lands on the same head as R3:
         //
-        //   * 2121 x4 — Suppliers (Visas) (seeded 2121) plus all three flight suppliers, because
-        //     SupplierActivationService mints at `(int) $parent->code + 1` UNCONDITIONALLY, so N
-        //     suppliers of one service type produce N accounts on one code, colliding on top of
-        //     whichever sibling the seeder already put there.
-        //   * 5111 x4 — the same thing on the cost side (Visa Cost is 'Flights Cost' 5110 + 1).
-        //   * 2130 x2 — CoaSeeder's OWN duplicate: it seeds both `Suppliers (Hotels)` and
-        //     `Suppliers (Ferry)` at 2130. Nothing to do with activation; already allow-listed by
-        //     AccountingInvariants as an explicitly deferred pair.
+        //   * `SupplierActivationService` no longer mints at `(int) $parent->code + 1`; every child
+        //     goes through the single `AccountCodeGenerator` allocator, whose `codeExists()` guard
+        //     refuses any code already taken anywhere in the company's chart. 2121 x4 and 5111 x4
+        //     are gone.
+        //   * `CoaSeeder`'s own duplicate is gone too — `Suppliers (Ferry)` moved 2130 -> 2131 —
+        //     and `AccountingInvariants::assertNoDuplicateAccountCodes()` no longer tolerates the
+        //     pair.
         //
-        // Delete this test the day the minting is fixed. If it starts failing, the shape changed —
-        // re-derive, do not widen.
+        // The measurement is kept (not deleted) and inverted: R3-8 was a RISK reported and not
+        // fixed, so the probe that quantified it becomes the regression guard that proves it stays
+        // fixed on the very population that exposed it — three suppliers of ONE service type, the
+        // case "parent code + 1" could never survive.
         $this->assertSame(
-            ['2121' => 4, '2130' => 2, '5111' => 4],
+            [],
             $collisions,
-            'The known duplicate-account-code shape after three flight-supplier activations has '.
-            'changed: '.$detail
+            'R3-8 has regressed: activating three flight suppliers minted duplicate account codes '.
+            'again ('.$detail.'). CT-A4b routed this through AccountCodeGenerator precisely so this '.
+            'set stays empty.'
         );
     }
 }

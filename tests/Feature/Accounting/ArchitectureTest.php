@@ -182,6 +182,21 @@ class ArchitectureTest extends TestCase
         // ::test_allow_move_relocates_…). The `parent_id` write is additionally gated behind an
         // explicit --allow-move flag and logs each moved account's before/after ancestor path.
         'Console/Commands/CoaLinkage.php',
+        // CT-D2b — CT-A4b's `accounting:coa-duplicates --renumber` (~line 173):
+        // `DB::table('accounts')->where('id', $account->id)->update(['code' => $newCode, ...])`.
+        //
+        // Exactly the shape already allow-listed for EnsureSystemLeaves above: a RENUMBER of an
+        // EXISTING leaf's `code`, an operation AccountService's contract does not have (it creates
+        // accounts, it does not renumber them). `code` is not a balance column, which is what this
+        // rule exists to protect. It is additionally gated three ways by the command itself — it
+        // runs only under an explicit `--renumber`, it refuses (never guesses) any duplicate group
+        // in which every member carries journal activity, and every write is preceded by a
+        // `CoaLinkageChange` before-image so `accounting:coa-linkage --rollback` can undo it.
+        //
+        // Found by CT-D2b on the merged head: PR #14 shipped this file without the allow-list
+        // entry, so `feat/accounting-dev-line` @ fafaa14268 fails this ratchet on its own. The
+        // ratchet did its job; this is the note it asked for.
+        'Console/Commands/AccountingCoaDuplicates.php',
     ];
 
     /**

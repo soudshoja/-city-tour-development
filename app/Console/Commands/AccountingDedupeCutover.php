@@ -58,6 +58,22 @@ use Throwable;
  *
  * Reversing documents this command itself posts are excluded from the engine side of that test, so
  * a re-run cannot mistake its own output for the engine posting that justified the first one.
+ *
+ * ── CAVEAT an operator must read before choosing `--from` ────────────────────────────────────
+ * `journal_entries.created_at` is the time the ROW WAS WRITTEN BY WHOEVER WROTE IT — which is not
+ * always the time it appeared in the database you are running this against. On the City Travelers
+ * dev site the rows arrive by an hourly live->dev mirror (`/home/citycomm/sync/bin/sync-engine.php`,
+ * root's crontab) that preserves the LIVE row's own id and timestamps, so a row can be absent from
+ * a dump taken at 06:38 UTC and still carry an earlier `created_at` — exactly the "backdated
+ * created_at" CT-D1 §0.4i could not explain. Choose `--from` from when the SOURCE system's writes
+ * stopped being covered by your rollback point, not from your deploy clock.
+ *
+ * Measured on that dev database, read-only, 2026-09-10: bounding at the start of the cutover day
+ * finds **37 legacy transactions / 167 rows / KWD 19,535.794 of debits** already dual-posted —
+ * not the 4 invoices §0.4i counted, because the mirror keeps delivering LIVE's legacy postings
+ * hourly for documents the engine replay has already covered. Unbounded, the same query returns
+ * 2,081 transactions, which is the whole replayed history and is NOT drift: that is the cutover
+ * working as designed. The window is what separates the two, which is why `--from` is required.
  */
 class AccountingDedupeCutover extends Command
 {

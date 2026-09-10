@@ -38,7 +38,10 @@ class CoaLinkageChange extends Model
      * chart those six children carry 2,989 journal rows between them, so which group every
      * historical report rolls them into was NOT restorable. It is now.
      */
-    public const REVERSIBLE_COLUMNS = ['report_type', 'is_group', 'account_type_id', 'parent_id', 'level'];
+    // CT-A4b added 'code': `accounting:coa-duplicates --renumber` writes its before-images into
+    // this same table (same run_id scheme, Str::ulid()) so its renumbers are undoable through
+    // this command's own --rollback={runId} — one rollback mechanism, not two.
+    public const REVERSIBLE_COLUMNS = ['report_type', 'is_group', 'account_type_id', 'parent_id', 'level', 'code'];
 
     /**
      * CT-A3 R3-2. `column_name` sentinel for "this whole ROW was created by the run" — the undo is

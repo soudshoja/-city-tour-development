@@ -145,15 +145,15 @@ trait AccountingInvariants
      * fixDuplicateGatewayFeeCode()` HIGH finding was: a bare renumber with no collision check
      * could hand two different accounts the same code, and nothing in this suite could see it).
      *
-     * Tolerates exactly ONE known, pre-existing, explicitly deferred duplicate that CoaSeeder
-     * itself still ships: code '2130' shared by 'Suppliers (Hotels)' and 'Suppliers (Ferry)'
-     * (the sibling of the '4130' duplicate W1.3 task A's Gateway-Fee-Recovery renumber fixed for
-     * new companies; '2130' itself is explicitly deferred — see CoaSeeder's own history and
-     * AccountCodeGenerator's `while (codeExists)` retry, which exists BECAUSE of this exact
-     * pre-existing pair). Any OTHER duplicate — a new code collision this invariant did not
-     * previously know to tolerate — fails loudly, naming the code and every account that shares
-     * it, so this check stays able to catch a genuinely new defect instead of being silenced by
-     * the one pre-existing exception it has to carry.
+     * CT-A4b: previously tolerated exactly one known, pre-existing duplicate that CoaSeeder itself
+     * shipped — code '2130' shared by 'Suppliers (Hotels)' and 'Suppliers (Ferry)'. That duplicate
+     * is fixed at the source (CoaSeeder now mints Ferry's Suppliers pool at '2131', its own free
+     * slot) and every ad hoc "parent code + 1" minting call site (SupplierActivationService,
+     * TaskController's currency/issued-by child accounts) is routed through the single
+     * AccountCodeGenerator allocator, whose `codeExists()` guard refuses any code already taken
+     * anywhere in the company's chart. A freshly seeded/activated chart now has zero duplicate
+     * codes, so this invariant tolerates NONE — any duplicate found here is a regression, named in
+     * full.
      */
     protected function assertNoDuplicateAccountCodes(int $companyId): void
     {
@@ -169,20 +169,10 @@ trait AccountingInvariants
             ->get();
 
         foreach ($duplicates as $duplicate) {
-            $names = explode(',', (string) $duplicate->names);
-            sort($names);
-
-            $isKnownDeferredPair = (string) $duplicate->code === '2130'
-                && $names === ['Suppliers (Ferry)', 'Suppliers (Hotels)'];
-
-            if ($isKnownDeferredPair) {
-                continue;
-            }
-
             Assert::assertTrue(false, sprintf(
-                'Found %d accounts sharing code "%s" for company %d: %s. Only the known, explicitly '
-                    .'deferred CoaSeeder duplicate (code 2130, "Suppliers (Hotels)"/"Suppliers (Ferry)") is '
-                    .'tolerated by this invariant — every other duplicate code is a defect.',
+                'Found %d accounts sharing code "%s" for company %d: %s. CT-A4b closed the last '
+                    .'known-tolerated duplicate (CoaSeeder\'s 2130 pair) at the source — every '
+                    .'duplicate code is now a defect.',
                 $duplicate->n,
                 $duplicate->code,
                 $companyId,

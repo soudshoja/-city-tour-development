@@ -190,22 +190,27 @@ class R33RefundExceedsOutstandingTest extends AccountingTestCase
         $this->assertSame($arBefore, $this->netForPurpose((int) $company->id, 'RECEIVABLE_CONTROL'));
         $this->assertSame(0.0, $this->netForPurpose((int) $company->id, 'CLIENT_ADVANCE'), 'and nothing reached the client advance');
 
-        // ── The audit trail, and an honest note about where it lives ────────────────────────────
-        // The refusal writes BOTH a structured file-log event and an
-        // `AccountingLog::event('refund_crn_refused', …)` row, exactly as R2-1's own
-        // `refuseNothingOutstanding()` does. MEASURED by this lane, and worth recording because
-        // R2-1's docblock says the opposite: the DB row does NOT survive — `RefundPostingService::
-        // post()` wraps the whole composition in `DB::transaction()`, so the throw rolls the audit
-        // row back with everything else. The FILE log is what actually survives a refusal today,
-        // for this refusal and for R2-1's — see the file-log case below. Asserted on what is
-        // measured, not on what was claimed.
+        // ── The audit trail ─────────────────────────────────────────────────────────────────────
+        // INVERTED BY CT-A3 R4. This assertion used to pin `count() === 0` on the default
+        // connection, with a note recording that the DB row did NOT survive — R3 §4.1's finding,
+        // and a direct contradiction of R2-1's `refuseNothingOutstanding()` docblock, which had
+        // claimed durability since R2. The claim is now true instead of merely documented: the
+        // refusal writes through `AccountingLog::eventDurable()`, i.e. the independent
+        // `accounting_audit` connection `IdempotencyKeyRejection` already uses for exactly this,
+        // so the INSERT commits on its own session and the rollback cannot reach it.
+        //
+        // Read on the durable connection, not the default one — from inside a RefreshDatabase test
+        // the default connection's own open transaction predates the durable INSERT and cannot see
+        // it, which is precisely what proves a different session committed the row. The mechanism
+        // has its own file: {@see \Tests\Feature\Accounting\CtA3\R42DurableRefusalAuditTest}.
         $this->assertSame(
-            0,
-            DB::table('accounting_audit_log')
+            1,
+            DB::connection(\App\Services\Accounting\AccountingLog::DURABLE_CONNECTION)
+                ->table('accounting_audit_log')
                 ->where('company_id', $company->id)
                 ->where('action', 'refund_crn_refused')
                 ->count(),
-            'recorded, not desired: the audit ROW is rolled back with the transaction the throw unwinds'
+            'the refusal is findable afterwards, not only by whoever was watching the screen'
         );
     }
 

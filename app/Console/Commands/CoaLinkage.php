@@ -82,6 +82,7 @@ class CoaLinkage extends Command
                             {--dry-run : Report the full change list without writing anything (the default whenever --apply is absent)}
                             {--apply : Actually write the changes}
                             {--allow-move : Permit relocating an account that carries journal activity; without it every move is refused and reported}
+                            {--sweep-dangling : Delete every system_accounts row, on EVERY company, whose account_id names an account that does not exist — with a before-image — so a mint in this run cannot be adopted by one}
                             {--rollback= : Undo one previous --apply run by its run id in full — removes the leaves it minted (refusing any that now carry journal activity) and the purpose mappings it created, and restores every column it changed}';
 
     protected $description = 'CT-A4 — verify and repair chart-of-accounts linkage: mint the control leaves a used chart needs, map every engine purpose code, backfill account_type_id/report_type/is_group, and record every duplicate, unused leaf and cross-company row as a flag-only finding.';
@@ -276,6 +277,24 @@ class CoaLinkage extends Command
     /** CT-A3 R2-5: set when any BLOCKING finding survives the repair — drives the exit code. */
     private bool $blockingRemains = false;
 
+    /**
+     * CT-A3 R4 — the account ids this run MINTED, per company. Populated by
+     * {@see self::recordRowDiff()} (the same diff the rollback's before-images come from), read by
+     * {@see self::assertNoForeignAdoption()}.
+     *
+     * @var array<int, array<int, int>>
+     */
+    private array $mintedAccountIds = [];
+
+    /**
+     * CT-A3 R4 — every "a mapping belonging to company X points at a leaf this run minted for
+     * company Y" the ratchet caught. Non-empty means the run leaves a cross-tenant chart, so the
+     * command exits non-zero however clean the findings look.
+     *
+     * @var array<int, string>
+     */
+    private array $foreignAdoptions = [];
+
     /** @var array<int, array{company: int, action: string, subject: string, detail: string}> */
     private array $changeLog = [];
 
@@ -320,6 +339,12 @@ class CoaLinkage extends Command
             $this->line('Moves are REFUSED (no --allow-move). Any relocation this run would want is reported, not performed.');
         }
 
+        // CT-A3 R4. BEFORE the per-company loop, and therefore before ANYTHING is minted on ANY
+        // chart — see the method's own docblock for why "before" is the whole of the fix.
+        if (($danglingExit = $this->guardDanglingSystemAccounts()) !== null) {
+            return $danglingExit;
+        }
+
         $exit = self::SUCCESS;
 
         foreach ($companyIds as $companyId) {
@@ -337,6 +362,25 @@ class CoaLinkage extends Command
         $this->newLine();
         $this->renderChangeLog();
         $this->flushColumnChanges();
+
+        // CT-A3 R4 — the ratchet's verdict, rendered AFTER the run id so the operator reading it
+        // already has the id they need to undo the run.
+        if ($this->foreignAdoptions !== []) {
+            $this->newLine();
+            $this->error('CROSS-TENANT ADOPTION — a purpose mapping belonging to ANOTHER company now points at a leaf this run minted.');
+
+            foreach ($this->foreignAdoptions as $line) {
+                $this->error('  '.$line);
+            }
+
+            $this->line('  This is the hazard CT-A3-R3 §9 item 2 recorded: a dangling system_accounts row');
+            $this->line('  becomes a LIVE pointer at another tenant\'s account the moment a mint happens to take');
+            $this->line('  the id it named. --sweep-dangling exists to make it unreachable; reaching it anyway');
+            $this->line('  means a mapping was written between the sweep and the mint, or the sweep was skipped.');
+            $this->line("  Undo this run:  php artisan accounting:coa-linkage --rollback={$this->runId}");
+
+            return self::FAILURE;
+        }
 
         // CT-A3 R2-5 (verify-R1 D14, second half): *"--apply exits 0 even with BLOCKING findings —
         // failure is set only on a thrown exception. Do not gate a deploy on this command's exit
@@ -419,8 +463,10 @@ class CoaLinkage extends Command
         $leavesRemoved = 0;
         $skipped = [];
         $refusedLeaves = [];
+        /** CT-A3 R4 — swept dangling rows: reported, never restored. See CoaLinkageChange::ROW_SWEPT. */
+        $sweptNotes = [];
 
-        DB::transaction(function () use ($rows, &$restored, &$mappingsRemoved, &$mappingsRestored, &$leavesRemoved, &$skipped, &$refusedLeaves) {
+        DB::transaction(function () use ($rows, &$restored, &$mappingsRemoved, &$mappingsRestored, &$leavesRemoved, &$skipped, &$refusedLeaves, &$sweptNotes) {
             $deletedAccountIds = [];
 
             // ── Phase 1 — system_accounts ───────────────────────────────────────────────────────
@@ -433,6 +479,29 @@ class CoaLinkage extends Command
                     DB::table('system_accounts')->where('id', $row->subject_id)->delete();
                     $this->markRolledBack((int) $row->id);
                     $mappingsRemoved++;
+
+                    continue;
+                }
+
+                // CT-A3 R4 — a row `--sweep-dangling` removed. It named an account id that does not
+                // exist, and `system_accounts.account_id` is a real FK, so the database will not
+                // take it back: the sweep is a documented ONE-WAY repair and this says so by name
+                // instead of landing in `$skipped` and making every post-sweep undo report itself
+                // incomplete. Marked rolled back because there is nothing left to do with it.
+                if ($row->column_name === CoaLinkageChange::ROW_SWEPT) {
+                    /** @var array{purpose_code: string, service_type: ?string, account_id: int} $was */
+                    $was = json_decode((string) $row->before_value, true, 512, JSON_THROW_ON_ERROR);
+
+                    $sweptNotes[] = sprintf(
+                        'system_accounts #%d (company %d, %s%s → account #%d, which did not exist) was SWEPT — not restorable, by design',
+                        (int) $row->subject_id,
+                        (int) $row->company_id,
+                        (string) $was['purpose_code'],
+                        $was['service_type'] === null ? '' : '/'.$was['service_type'],
+                        (int) $was['account_id']
+                    );
+
+                    $this->markRolledBack((int) $row->id);
 
                     continue;
                 }
@@ -650,6 +719,10 @@ class CoaLinkage extends Command
             $mappingsRestored
         ));
 
+        foreach ($sweptNotes as $line) {
+            $this->line('  note — '.$line);
+        }
+
         foreach ($refusedLeaves as $line) {
             $this->error('  REFUSED — minted leaf '.$line);
         }
@@ -708,6 +781,245 @@ class CoaLinkage extends Command
     }
 
     /** @return array<int, int> */
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+    // CT-A3 R4 — the dangling-mapping hazard
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * CT-A3 R4 — refuse to mint anything while ANY company carries a `system_accounts` row whose
+     * `account_id` names an account that does not exist.
+     *
+     * ── The hazard, measured, not theorised ─────────────────────────────────────────────────────
+     * `CT-A3-R3-2026-09-10.md` §3.4 / §9 item 2, on `citycomm_ct_r3` (a faithful copy of the City
+     * Travelers dev database):
+     *
+     *   > company 3's `system_accounts` rows **#188** (`SERVICE_REVENUE/lounge`) and **#189**
+     *   > (`SERVICE_REVENUE/ferry`), written 2026-09-05 pointing at account ids **1738/1739 that
+     *   > did not exist**, became live pointers at **company 1's** `21109 Creditors Control` and
+     *   > `4132 Markup Income` the moment `--apply` minted those two leaves at exactly those ids.
+     *
+     * `AUTO_INCREMENT` is the entire mechanism. A dangling row is inert only while nothing occupies
+     * the id it names; the next `INSERT INTO accounts` that reaches that id makes it RESOLVE, and it
+     * resolves to whichever company happened to be minting. Nothing warns, nothing fails, and the
+     * FK is satisfied — because the FK only ever checked that an account with that id exists, never
+     * that it belongs to the same company. CT-A4 catalogued the dangling rows (33 of them, ids
+     * 1662–1694) as a hygiene finding; that a MINT can turn one into a cross-tenant pointer is what
+     * nobody had noticed.
+     *
+     * ── Why this runs before the per-company loop, not inside it ────────────────────────────────
+     * `--company=1` is the normal way this command is run, and the row that gets adopted belongs to
+     * company 3. A scan scoped to the company being repaired cannot see the row that is about to
+     * capture its leaf. The scan is therefore over EVERY company, unconditionally, whatever
+     * `--company` says, and it happens before the first `processCompany()` call — the only moment
+     * at which the hazard is still preventable rather than merely detectable.
+     *
+     * ── What each mode does ─────────────────────────────────────────────────────────────────────
+     *   - `--apply` with dangling rows and no `--sweep-dangling`: **REFUSED**, nothing written,
+     *     every offending row listed with the company that owns it. This is the guard the R3 report
+     *     asked for in a sentence — *"sweep the dangling `system_accounts` rows before any further
+     *     `--apply` on any chart"* — turned into something the command enforces rather than
+     *     something a runbook has to remember.
+     *   - `--apply --sweep-dangling`: the rows are DELETED, each with a
+     *     {@see CoaLinkageChange::ROW_SWEPT} before-image carrying the full row, and the run
+     *     proceeds. Delete, not null: `system_accounts.account_id` is `NOT NULL` with a real FK
+     *     (`2026_08_24_120001_create_system_accounts_table.php`), so "null it out" is not a state
+     *     this schema has. A swept row named an account that does not exist — there is no
+     *     information in it beyond the purpose it claimed, and that purpose is exactly what
+     *     `ensure-system-leaves` re-resolves for the company that owns it.
+     *   - a DRY RUN: reports, never refuses. A dry run writes nothing, so it cannot cause the
+     *     adoption, and making it exit non-zero would train an operator to ignore the code (the
+     *     same reasoning `handle()` already applies to BLOCKING findings).
+     *
+     * @return int|null an exit code to return immediately, or null to continue
+     */
+    private function guardDanglingSystemAccounts(): ?int
+    {
+        $sweep = (bool) $this->option('sweep-dangling');
+        $dangling = $this->danglingSystemAccounts();
+
+        if ($dangling->isEmpty()) {
+            $this->line('  dangling system_accounts (ALL companies): none — no mint in this run can be adopted by one.');
+
+            return null;
+        }
+
+        $this->newLine();
+        $this->warn(sprintf(
+            'DANGLING system_accounts rows: %d, across %d company/companies. Each names an account id that DOES NOT EXIST.',
+            $dangling->count(),
+            $dangling->pluck('company_id')->unique()->count()
+        ));
+
+        $this->table(
+            ['system_accounts.id', 'company', 'purpose', 'service_type', 'account_id (missing)'],
+            $dangling->map(static fn (object $r): array => [
+                (int) $r->id,
+                (int) $r->company_id,
+                (string) $r->purpose_code,
+                $r->service_type === null ? '—' : (string) $r->service_type,
+                (int) $r->account_id,
+            ])->all()
+        );
+
+        if (! $sweep) {
+            if ($this->apply) {
+                $this->error('REFUSED — --apply will not mint an account while a dangling purpose mapping exists on ANY company.');
+                $this->line('  Minting takes the next AUTO_INCREMENT id. If that id is one of the ones listed above, the');
+                $this->line('  mapping that named it stops being dangling and starts pointing at the leaf you just minted —');
+                $this->line('  for a DIFFERENT company. Measured on this very chart: CT-A3-R3 §3.4.');
+                $this->line('  Sweep them (delete, with a before-image) and re-run:');
+                $this->line('      php artisan accounting:coa-linkage --company='.((string) ($this->option('company') ?? '<id>')).' --apply --sweep-dangling');
+                $this->line('  Or repair them by hand first — each row above names the purpose its own company still wants.');
+
+                return self::FAILURE;
+            }
+
+            $this->line('  A DRY RUN cannot cause the adoption, so this is a warning, not a refusal.');
+            $this->line('  --apply WILL refuse until these are swept (--sweep-dangling) or repaired by hand.');
+
+            return null;
+        }
+
+        if (! $this->apply) {
+            $this->line(sprintf('  --sweep-dangling on a DRY RUN: %d row(s) WOULD be deleted. Nothing written.', $dangling->count()));
+
+            return null;
+        }
+
+        $this->sweepDangling($dangling);
+
+        return null;
+    }
+
+    /**
+     * Every `system_accounts` row, on every company, whose `account_id` has no `accounts` row.
+     *
+     * Deliberately NOT filtered on `accounts.deleted_at`: a soft-deleted account still occupies its
+     * id, so a mapping pointing at one is not dangling in the sense that matters here — nothing can
+     * be minted onto that id, so nothing can adopt the mapping. (It is a different hygiene problem,
+     * and `verifyPurposes()` already reports it as an unresolved purpose.)
+     *
+     * @return \Illuminate\Support\Collection<int, object>
+     */
+    private function danglingSystemAccounts()
+    {
+        return DB::table('system_accounts as sa')
+            ->leftJoin('accounts as a', 'a.id', '=', 'sa.account_id')
+            ->whereNull('a.id')
+            ->orderBy('sa.company_id')
+            ->orderBy('sa.id')
+            ->select('sa.id', 'sa.company_id', 'sa.purpose_code', 'sa.service_type', 'sa.account_id')
+            ->get();
+    }
+
+    /**
+     * Delete the dangling rows, each with a full before-image, inside one transaction.
+     *
+     * The before-image is {@see CoaLinkageChange::ROW_SWEPT} rather than
+     * {@see CoaLinkageChange::ROW_DELETED} — see that constant's docblock. In one sentence: the
+     * database cannot accept these rows back (the FK refuses an `account_id` that does not exist),
+     * so recording them as restorable would only make every later `--rollback` report an incomplete
+     * undo for rows no undo could ever complete.
+     *
+     * @param  \Illuminate\Support\Collection<int, object>  $dangling
+     */
+    private function sweepDangling($dangling): void
+    {
+        DB::transaction(function () use ($dangling): void {
+            foreach ($dangling as $row) {
+                $this->recordColumnChange(
+                    (int) $row->company_id,
+                    (int) $row->id,
+                    CoaLinkageChange::ROW_SWEPT,
+                    json_encode([
+                        'company_id' => (int) $row->company_id,
+                        'purpose_code' => (string) $row->purpose_code,
+                        'service_type' => $row->service_type === null ? null : (string) $row->service_type,
+                        'account_id' => (int) $row->account_id,
+                    ], JSON_THROW_ON_ERROR),
+                    null,
+                    'system_accounts',
+                );
+
+                DB::table('system_accounts')->where('id', $row->id)->delete();
+
+                $this->recordChange(
+                    (int) $row->company_id,
+                    'sweep-dangling',
+                    'system_accounts #'.((int) $row->id),
+                    sprintf(
+                        '%s%s → account #%d (does not exist) — DELETED',
+                        (string) $row->purpose_code,
+                        $row->service_type === null ? '' : '/'.$row->service_type,
+                        (int) $row->account_id
+                    )
+                );
+            }
+        });
+
+        $this->info(sprintf('  SWEPT %d dangling system_accounts row(s). Before-images recorded; the sweep is ONE-WAY.', $dangling->count()));
+        $this->line('  Each swept row named an account that does not exist, so the FK would refuse it back.');
+        $this->line('  The purpose each one claimed is re-resolved for its OWN company by accounting:ensure-system-leaves.');
+    }
+
+    /**
+     * CT-A3 R4 — the ratchet behind the guard: after this company's repair, no `system_accounts`
+     * row belonging to a DIFFERENT company may point at a leaf this run minted.
+     *
+     * The guard above makes the adoption unreachable; this asserts that it actually was. They are
+     * not the same check and one does not make the other redundant — the guard reads the chart
+     * BEFORE the mints and reasons about what could happen, this reads it AFTER and reports what
+     * did. Anything caught here means something wrote a `system_accounts` row between the two (a
+     * concurrent seeder, a second operator, a UI save), which is precisely the case a
+     * before-the-fact check cannot cover.
+     *
+     * It does not attempt an in-band undo. The mint already happened, `--apply` is not one
+     * transaction, and silently deleting an account to tidy up a ratchet is exactly the class of
+     * "helpful" write this command refuses everywhere else. It names the rows and exits non-zero
+     * with the run id, so the operator undoes the run deliberately.
+     */
+    private function assertNoForeignAdoption(int $companyId): void
+    {
+        if (! $this->apply) {
+            return;
+        }
+
+        $minted = $this->mintedAccountIds[$companyId] ?? [];
+
+        if ($minted === []) {
+            return;
+        }
+
+        $adopted = DB::table('system_accounts as sa')
+            ->join('accounts as a', 'a.id', '=', 'sa.account_id')
+            ->whereIn('sa.account_id', $minted)
+            ->where('sa.company_id', '!=', $companyId)
+            ->orderBy('sa.id')
+            ->select('sa.id', 'sa.company_id', 'sa.purpose_code', 'sa.service_type', 'sa.account_id', 'a.code', 'a.name')
+            ->get();
+
+        foreach ($adopted as $row) {
+            $this->foreignAdoptions[] = sprintf(
+                'system_accounts #%d (company %d, %s%s) → account #%d "%s %s", which company %d minted in THIS run',
+                (int) $row->id,
+                (int) $row->company_id,
+                (string) $row->purpose_code,
+                $row->service_type === null ? '' : '/'.$row->service_type,
+                (int) $row->account_id,
+                (string) ($row->code ?? '?'),
+                (string) ($row->name ?? '?'),
+                $companyId
+            );
+        }
+
+        if ($adopted->isEmpty()) {
+            $this->line(sprintf(
+                '  cross-tenant ratchet: %d leaf/leaves minted, none adopted by another company\'s purpose mapping.',
+                count($minted)
+            ));
+        }
+    }
+
     private function resolveCompanyIds(): array
     {
         $one = $this->option('company');
@@ -760,6 +1072,11 @@ class CoaLinkage extends Command
         //     before-images cover the whole repair and the verification still reports the repaired
         //     state. Records nothing on a dry run (nothing was created to record).
         $this->recordRowDiff($companyId);
+
+        // 5d. CT-A3 R4. Immediately after the row diff, because that is what knows which ids this
+        //     run minted, and before the verification, so the operator reads the cross-tenant
+        //     verdict next to the mints it is about.
+        $this->assertNoForeignAdoption($companyId);
 
         $this->verifyPurposes($companyId, $resolver, $findings);
         $this->collectStructuralFindings($companyId, $findings);
@@ -1990,6 +2307,10 @@ class CoaLinkage extends Command
         foreach ($after['accounts'] as $id => $_) {
             if (! isset($before['accounts'][$id])) {
                 $account = DB::table('accounts')->where('id', $id)->first();
+
+                // CT-A3 R4: the same list the cross-tenant ratchet reads. Collected here rather
+                // than re-derived, so "what this run minted" has exactly one definition.
+                $this->mintedAccountIds[$companyId][] = (int) $id;
 
                 $this->recordColumnChange(
                     $companyId,

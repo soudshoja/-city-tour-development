@@ -146,6 +146,10 @@ class LedgerSourceTest extends AccountingTestCase
                 'description' => 'LedgerSourceTest legacy fixture debit',
                 'debit' => $amount,
                 'credit' => 0,
+                // Present on both rows -- DB::table()->insert() with a multi-row array requires
+                // every row to carry the same column set (a mismatch produces a MySQL 1136
+                // "column count doesn't match value count" error, not a Laravel-level one).
+                'type_reference_id' => null,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

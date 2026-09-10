@@ -59,7 +59,7 @@ class GeneralLedgerServiceTest extends AccountingTestCase
         ]);
     }
 
-    private function post(Company $company, Branch $branch, int $debitAccountId, int $payableAccountId, float $amount, int $supplierId, Carbon $date): void
+    private function postFixtureDocument(Company $company, Branch $branch, int $debitAccountId, int $payableAccountId, float $amount, int $supplierId, Carbon $date): void
     {
         $draft = new DocumentDraft(
             companyId: $company->id,
@@ -105,11 +105,11 @@ class GeneralLedgerServiceTest extends AccountingTestCase
         $payable = app(AccountResolver::class)->resolve('PAYABLE_CONTROL', $company->id);
 
         // Opening: one document dated well before the reporting period.
-        $this->post($company, $branch, $debitAccount->id, $payable->id, 40.000, $supplier->id, Carbon::parse('2024-01-01'));
+        $this->postFixtureDocument($company, $branch, $debitAccount->id, $payable->id, 40.000, $supplier->id, Carbon::parse('2024-01-01'));
 
         // Period: two documents inside [2025-01-01, 2025-01-31].
-        $this->post($company, $branch, $debitAccount->id, $payable->id, 25.000, $supplier->id, Carbon::parse('2025-01-10'));
-        $this->post($company, $branch, $debitAccount->id, $payable->id, 15.000, $supplier->id, Carbon::parse('2025-01-20'));
+        $this->postFixtureDocument($company, $branch, $debitAccount->id, $payable->id, 25.000, $supplier->id, Carbon::parse('2025-01-10'));
+        $this->postFixtureDocument($company, $branch, $debitAccount->id, $payable->id, 15.000, $supplier->id, Carbon::parse('2025-01-20'));
 
         $ledger = app(GeneralLedgerService::class)->generate(
             $company->id,
@@ -138,7 +138,7 @@ class GeneralLedgerServiceTest extends AccountingTestCase
         $debitAccount = Account::factory()->create(['company_id' => $company->id]);
         $payable = app(AccountResolver::class)->resolve('PAYABLE_CONTROL', $company->id);
 
-        $this->post($company, $branch, $debitAccount->id, $payable->id, 100.000, $supplier->id, now());
+        $this->postFixtureDocument($company, $branch, $debitAccount->id, $payable->id, 100.000, $supplier->id, now());
 
         \Illuminate\Support\Facades\DB::table('transactions')->insert([
             'company_id' => $company->id,
@@ -156,7 +156,7 @@ class GeneralLedgerServiceTest extends AccountingTestCase
         $legacyTransactionId = \Illuminate\Support\Facades\DB::getPdo()->lastInsertId();
 
         \Illuminate\Support\Facades\DB::table('journal_entries')->insert([
-            ['name' => 'd', 'transaction_id' => $legacyTransactionId, 'company_id' => $company->id, 'account_id' => $debitAccount->id, 'branch_id' => $branch->id, 'transaction_date' => now(), 'description' => 'legacy debit', 'debit' => 50, 'credit' => 0, 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'd', 'transaction_id' => $legacyTransactionId, 'company_id' => $company->id, 'account_id' => $debitAccount->id, 'branch_id' => $branch->id, 'transaction_date' => now(), 'description' => 'legacy debit', 'debit' => 50, 'credit' => 0, 'type_reference_id' => null, 'created_at' => now(), 'updated_at' => now()],
             ['name' => 'c', 'transaction_id' => $legacyTransactionId, 'company_id' => $company->id, 'account_id' => $payable->id, 'branch_id' => $branch->id, 'transaction_date' => now(), 'description' => 'legacy credit', 'debit' => 0, 'credit' => 50, 'type_reference_id' => $supplier->id, 'created_at' => now(), 'updated_at' => now()],
         ]);
 

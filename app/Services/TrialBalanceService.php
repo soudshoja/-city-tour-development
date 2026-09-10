@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\Accounting\CrossTenantAccountException;
 use App\Models\Account;
+use App\Services\Accounting\LedgerSource;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -11,6 +12,13 @@ use Illuminate\Support\Facades\Log;
 
 class TrialBalanceService
 {
+    private LedgerSource $ledgerSource;
+
+    public function __construct(?LedgerSource $ledgerSource = null)
+    {
+        $this->ledgerSource = $ledgerSource ?? app(LedgerSource::class);
+    }
+
     public function generate(
         int $companyId,
         Carbon $dateFrom,
@@ -140,7 +148,7 @@ class TrialBalanceService
             // YearEndCloseReportExclusionTest::test_multi_year_movement_and_opening_semantics_around_a_yec_boundary()
             // for both halves pinned together: RE movement is 0 for the closing year's own report, and
             // getOpeningBalances() for the following year correctly carries the swept 300 forward.
-            ->leftJoin('journal_entries as je', function ($join) use ($dateFrom, $dateTo) {
+            ->leftJoin('journal_entries as je', function ($join) use ($companyId, $dateFrom, $dateTo) {
                 $join->on('je.account_id', '=', 'a.id')
                     ->whereNull('je.deleted_at')
                     ->whereNotExists(function ($sub) {
@@ -149,6 +157,9 @@ class TrialBalanceService
                             ->whereColumn('yec_t.id', 'je.transaction_id')
                             ->where('yec_t.doc_type', 'YEC');
                     });
+                // CT-A6-2: one company reads engine rows OR legacy rows for its movement, never
+                // both — see LedgerSource's own docblock for why (CT-D1b's GL 1430 finding).
+                $this->ledgerSource->restrict($join, $companyId, 'je.transaction_id');
                 if ($dateFrom && $dateTo) {
                     $join->whereBetween(DB::raw('COALESCE(je.posting_date, je.transaction_date)'), [$dateFrom, $dateTo]);
                 }
@@ -209,10 +220,13 @@ class TrialBalanceService
             // zeroing lines are exactly what must be included for next year to open with Income/
             // Expense leaves at zero and Retained Earnings carrying the swept net forward. Excluding
             // YEC here would break carry-forward, not fix anything.
-            ->leftJoin('journal_entries as je', function ($join) use ($dateFrom) {
+            ->leftJoin('journal_entries as je', function ($join) use ($companyId, $dateFrom) {
                 $join->on('je.account_id', '=', 'a.id')
                     ->whereNull('je.deleted_at')
                     ->where(DB::raw('COALESCE(je.posting_date, je.transaction_date)'), '<', $dateFrom);
+                // CT-A6-2: same engine-XOR-legacy restriction as getAccountBalances() — an
+                // opening balance must never sum an engine leaf's history against a legacy leaf's.
+                $this->ledgerSource->restrict($join, $companyId, 'je.transaction_id');
             })
             ->where('a.company_id', $companyId)
             ->whereRaw('NOT EXISTS (
@@ -288,6 +302,11 @@ class TrialBalanceService
                     ->whereNull('je.deleted_at');
             })
             ->where('t.company_id', $companyId);
+
+        // CT-A6-2: transactions is already joined here, so the cheaper
+        // restrictJoinedTransactions() form applies directly to t.doc_type rather than
+        // re-deriving a correlated EXISTS subquery restrict() would otherwise need.
+        $this->ledgerSource->restrictJoinedTransactions($query, $companyId, 't.doc_type');
 
         if ($dateFrom && $dateTo) {
             $query->whereBetween(DB::raw('COALESCE(t.posting_date, t.transaction_date)'), [$dateFrom, $dateTo]);

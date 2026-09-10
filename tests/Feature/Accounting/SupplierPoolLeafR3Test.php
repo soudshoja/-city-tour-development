@@ -187,11 +187,36 @@ class SupplierPoolLeafR3Test extends AccountingTestCase
         // Two active hotel suppliers for the same company is a genuine business ambiguity this
         // seeder must never silently resolve by picking a winner -- see mapSupplierPoolLeaf()'s
         // own docblock, and the REAL company_id=1 akeed_verify_snapshot shape (19 active hotel
-        // suppliers) this scenario models. A never-before-mapped purpose code in this shape stays
-        // unmapped and reports the gap; it must NOT throw anything other than
-        // UnmappedPurposeException, and it must not resolve to either supplier's leaf.
-        $this->expectException(UnmappedPurposeException::class);
-        app(AccountResolver::class)->resolve('SERVICE_PAYABLE', $company->id, 'hotel');
+        // suppliers) this scenario models. The SEEDER's contract is unchanged: it still refuses to
+        // pick a winner and leaves SERVICE_PAYABLE/hotel unmapped.
+        $this->assertDatabaseMissing('system_accounts', [
+            'company_id' => $company->id,
+            'purpose_code' => 'SERVICE_PAYABLE',
+            'service_type' => 'hotel',
+        ]);
+
+        // CT-A3 E5 (CT-F37), 2026-09-09 — what CHANGED is what the RESOLVER does with that gap.
+        // It used to throw UnmappedPurposeException, which is why CT-A2 had to hand-create 13
+        // per-service control leaves plus a Creditors Control before its replay would run at all
+        // (CT-A2 §2.3, recorded there as scaffolding, "not a recommendation"). Per the owner
+        // ruling it now falls back to the company's single PAYABLE_CONTROL leaf, logged, and
+        // still never resolves to either supplier's own leaf.
+        $resolved = app(AccountResolver::class)->resolve('SERVICE_PAYABLE', $company->id, 'hotel');
+        $payableControl = app(AccountResolver::class)->resolve('PAYABLE_CONTROL', $company->id);
+
+        $this->assertSame(
+            $payableControl->id,
+            $resolved->id,
+            'An unmapped per-service payable falls back to the single PAYABLE_CONTROL leaf.'
+        );
+
+        $dotwLeafId = Account::query()->withoutGlobalScopes()
+            ->where('company_id', $company->id)->where('name', 'DOTW')->value('id');
+        $rateHawkLeafId = Account::query()->withoutGlobalScopes()
+            ->where('company_id', $company->id)->where('name', 'Rate Hawk')->value('id');
+
+        $this->assertNotSame($dotwLeafId, $resolved->id, 'The fallback must never pick a supplier leaf.');
+        $this->assertNotSame($rateHawkLeafId, $resolved->id, 'The fallback must never pick a supplier leaf.');
     }
 
     public function test_a_stale_pre_ambiguity_mapping_fails_closed_as_non_leaf_not_silently(): void

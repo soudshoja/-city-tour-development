@@ -47,6 +47,7 @@ use App\Services\Accounting\PostingService;
 use App\Services\Accounting\RevenueRecognitionService;
 use App\Services\Accounting\SaleDraftBuilder;
 use App\Services\Accounting\SaleDraftInput;
+use App\Services\Accounting\SupplierReassignDraftBuilder;
 use App\Services\Accounting\SupplierCostCorrectionDraftBuilder;
 use App\Services\Accounting\SupplierCostCorrectionInput;
 use App\Services\TaskStatusService;
@@ -2768,6 +2769,15 @@ class TaskController extends Controller
                 }
             }
 
+            // CT-A3 verify R1. The ISSUANCE ACCRUAL is the fourth core document a void reverses
+            // (TaskStatusService::void() calls TaskIssuancePayableService::reverseForTask() before
+            // it touches the sale), and un-void named no key for it -- so an un-voided UNINVOICED
+            // booking came back to life owing its supplier nothing, permanently: the key
+            // `task:{id}:issuance-payable` stays occupied by the reversed header, so no later
+            // dispatch or replay can ever re-post it. It is not in $coreKeys above because the
+            // restore is the same REV-of-REV done by the service that owns that chain.
+            app(\App\Services\Accounting\TaskIssuancePayableService::class)->restoreForTask($originalTask);
+
             $voidDocs = Transaction::withoutGlobalScopes()
                 ->whereNull('deleted_at')
                 ->where('company_id', $companyId)
@@ -2775,7 +2785,13 @@ class TaskController extends Controller
                 ->where(function ($q) use ($originalTask) {
                     $q->where('idempotency_key', 'void:' . $originalTask->id . ':fee')
                         ->orWhere('idempotency_key', 'void:' . $originalTask->id . ':fee-commission')
-                        ->orWhere('idempotency_key', 'void:' . $originalTask->id . ':disposition');
+                        ->orWhere('idempotency_key', 'void:' . $originalTask->id . ':disposition')
+                        // CT-A3 verify R1: wave 2's own W2-5 document. void() posts a configured
+                        // supplier cancellation fee (Dr SUPPLIER_CHARGE_EXPENSE / Cr
+                        // SERVICE_PAYABLE, key `void:{task}:supplier-cxl-fee`); un-void was never
+                        // taught about it, so an un-voided booking kept a payable to the supplier
+                        // for a cancellation that no longer exists, plus the matching expense.
+                        ->orWhere('idempotency_key', 'void:' . $originalTask->id . ':supplier-cxl-fee');
                 })
                 ->get();
 
@@ -5613,6 +5629,31 @@ class TaskController extends Controller
         }
     }
 
+    /**
+     * CT-A3 E3 -- CT-F39. HEAD's implementation of this method wrote a ONE-SIDED credit to the new
+     * payable account and only "reversed" the old side when a replicate-based heuristic happened
+     * to fire, so on the City Travelers data it produced 1,511 documents carrying KWD 220,908.987
+     * of credits against KWD 477.800 of debits (CT-A1 §0 item 2). 1,435 of them were later
+     * neutralised by parking the difference in Equity 3900 Suspense; the flow itself was never
+     * fixed and wrote 685 more documents in 2026. CT-A2 §5 row 14 additionally found the engine had
+     * NO counterpart at all, so a cutover would have silently stopped a live operation.
+     *
+     * This method now routes through {@see PostingSeam}: with the engine ON it posts ONE balanced
+     * JV/PAYEE_REASSIGN reclassification document built by
+     * {@see SupplierReassignDraftBuilder} -- Dr each account still carrying this task's payable /
+     * Cr the new payable account -- and the legacy one-sided writer below NEVER RUNS. With the
+     * engine OFF the legacy closure runs byte-for-byte as before, so nothing changes for a company
+     * that has not cut over.
+     *
+     * Idempotency is by construction, not by a key alone: the builder derives its amounts from the
+     * ledger's CURRENT net position per account, so once the money has moved there is nothing left
+     * to move and a retry posts nothing. This matters because every caller
+     * ({@see self::handlePaymentMethodChange()}, TaskWebhook, the import paths) sets
+     * `tasks.payment_method_account_id` BEFORE calling, so "did the task change?" is not a question
+     * this method can ask. The document key additionally carries the count of reassignment
+     * documents already posted for the task, so a genuine A -> B -> A -> B sequence produces four
+     * distinct documents instead of colliding on one key.
+     */
     public function updateJournalPaymentMethod(Task $task, int $payment_method_account_id): JsonResponse
     {
         Log::info('Task ID: ' . $task->id . '. Updating journal entries for payment method account ID: ' . $payment_method_account_id);
@@ -5631,6 +5672,15 @@ class TaskController extends Controller
 
         $supplier = Supplier::find($task->supplier_id);
         $branchId = $this->getTaskBranchId($task);
+        $companyId = (int) $task->company_id;
+
+        // ENGINE PATH. Built and posted here rather than inside a $legacy-style closure because
+        // this feeder's two paths return different shapes and the seam deliberately does not paper
+        // over that (see PostingSeam's own docblock). The seam's routing decision is re-used
+        // verbatim via isEnabledFor(), so there is exactly one gate, not two.
+        if ($companyId > 0 && app(PostingSeam::class)->isEnabledFor($companyId)) {
+            return $this->postSupplierReassignDocument($task, $paymentMethodAccount, $supplier, $branchId, $companyId);
+        }
 
         $liabilities = Account::where('name', 'like', '%Liabilities%')
             ->where('company_id', $task->company_id)
@@ -5781,6 +5831,144 @@ class TaskController extends Controller
                 'message' => 'Failed to create transaction or journal entry: ' . $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * CT-A3 E3 -- the ENGINE half of {@see self::updateJournalPaymentMethod()}. Posts ONE balanced
+     * `JV`/`PAYEE_REASSIGN` document (Dr old payable party / Cr new payable party, same amount)
+     * and returns the same JsonResponse contract every existing caller already checks
+     * (`status`, `message`, `data.task_id`, `data.transaction_id`,
+     * `data.payment_method_account_id`), so no call site needed changing.
+     *
+     * "Nothing to move" is a SUCCESS, not an error: it is what a retry, a re-import, or a task that
+     * never carried a payable looks like, and the caller contract has no way to express a
+     * distinction that would only ever be noise. `data.transaction_id` is null in that case and the
+     * decision is logged.
+     */
+    private function postSupplierReassignDocument(
+        Task $task,
+        Account $paymentMethodAccount,
+        ?Supplier $supplier,
+        $branchId,
+        int $companyId
+    ): JsonResponse {
+        // ── CT-A3 wave 2, item W2-4: this feeder re-checked against owner ruling R-CT3 ──────
+        // Reassignment MOVES a payable between parties. It must never CREATE one -- reassigning
+        // the supplier on a task whose payable was gated off (supplier on hold, trigger not
+        // reached, `manual`) must post nothing at all. That is guaranteed twice over, and the
+        // belt-and-braces is deliberate:
+        //
+        //   1. Structurally. SupplierReassignDraftBuilder derives its debits from the ledger's
+        //      CURRENT net credit per AP leaf for this task, so a task that was never accrued has
+        //      no position to move and the builder returns an empty array. This is the guarantee
+        //      that actually holds the line, and it cannot be bypassed by a mis-read rule.
+        //   2. Observably. The rule is consulted here so the log and the response DISTINGUISH
+        //      "the payable was deliberately gated off" from "already reassigned". Without it both
+        //      look like an indistinguishable "nothing to move", and an operator cannot tell a
+        //      working gate from a broken feeder -- which is exactly how CT-F39's one-sided writes
+        //      went unnoticed for 1,511 documents.
+        $payableDecision = app(\App\Services\Accounting\SupplierPayableRule::class)->decide($task, $supplier);
+
+        $lines = app(SupplierReassignDraftBuilder::class)->buildLines(
+            $task,
+            $companyId,
+            $paymentMethodAccount,
+            $supplier?->id,
+            $supplier?->name,
+        );
+
+        if ($lines === []) {
+            $gatedOff = ! $payableDecision->shouldPost;
+
+            Log::info(
+                $gatedOff
+                    ? 'accounting.supplier_reassign.payable_gated_off'
+                    : 'accounting.supplier_reassign.nothing_to_move',
+                array_merge($payableDecision->toLogContext(), [
+                    'task_id' => $task->id,
+                    'company_id' => $companyId,
+                    'payment_method_account_id' => $paymentMethodAccount->id,
+                    'supplier_id' => $supplier?->id,
+                ])
+            );
+
+            return response()->json([
+                'status' => 'success',
+                'message' => $gatedOff
+                    ? 'No supplier payable is accrued for this task ('.$payableDecision->reason.'); nothing to reclassify.'
+                    : 'Payment account already carries this task\'s payable; nothing to reclassify.',
+                'data' => [
+                    'task_id' => $task->id,
+                    'transaction_id' => null,
+                    'payment_method_account_id' => $paymentMethodAccount->id,
+                    'payable_gated_off' => $gatedOff,
+                    'reason' => $payableDecision->reason,
+                ],
+            ], 200);
+        }
+
+        // Sequence, so a genuine A -> B -> A -> B sequence produces four documents rather than
+        // colliding on one key. Safe under retry because a retry never reaches this line: the
+        // builder returns [] once the money has already moved.
+        //
+        // CT-A3 R2-7 — VERIFY-CT-A3-STACK-R1 §3.3 D13. This count used to run OUTSIDE any
+        // transaction and with no lock on the task, so two concurrent reassignments of the same
+        // task both read the same value, minted the same key, and BOTH posted -- idempotency never
+        // engaged, and the result is a duplicate supplier payable that no balance check can see
+        // (each document is individually balanced). The count and the post now happen inside one
+        // transaction that first takes a row lock on the TASK, which is the thing being reassigned:
+        // a second caller blocks until the first has committed and then reads the sequence it
+        // actually produced.
+        $docDate = $task->supplier_pay_date ?? $task->issued_date ?? $task->created_at;
+
+        return DB::transaction(function () use ($task, $companyId, $branchId, $lines, $paymentMethodAccount, $docDate) {
+            Task::withoutGlobalScopes()->whereKey($task->id)->lockForUpdate()->first();
+
+            $sequence = Transaction::withoutGlobalScopes()
+                ->whereNull('deleted_at')
+                ->where('company_id', $companyId)
+                ->where('idempotency_key', 'like', 'task:' . $task->id . ':supplier-reassign:%')
+                ->count();
+
+            $draft = new \App\Services\Accounting\DocumentDraft(
+                companyId: $companyId,
+                branchId: $branchId !== null ? (int) $branchId : null,
+                docType: 'JV',
+                // 'PAYEE_REASSIGN', not 'SUPPLIER_REASSIGN': transactions.sub_type is varchar(16) and
+                // the longer name silently truncates (MySQL strict mode rejects it outright, which is
+                // how this was caught). Same 16-char ceiling every other sub_type in this codebase
+                // lives under -- e.g. 'AGENT_COMMISSION' is exactly 16.
+                subType: 'PAYEE_REASSIGN',
+                docDate: $docDate ? Carbon::parse($docDate) : Carbon::now(),
+                narration: 'Update For Whom to Pay: ' . $task->reference,
+                lines: $lines,
+                idempotencyKey: 'task:' . $task->id . ':supplier-reassign:' . $sequence . ':' . $paymentMethodAccount->id,
+                sourceType: 'Payment',
+                sourceId: $task->id,
+                userId: Auth::id(),
+            );
+
+            $posted = app(PostingService::class)->post($draft);
+
+            Log::info('accounting.supplier_reassign.posted', [
+                'task_id' => $task->id,
+                'company_id' => $companyId,
+                'transaction_id' => $posted->transaction->id,
+                'payment_method_account_id' => $paymentMethodAccount->id,
+                'lines' => count($lines),
+                'sequence' => $sequence,
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Journal entries updated successfully.',
+                'data' => [
+                    'task_id' => $task->id,
+                    'transaction_id' => $posted->transaction->id,
+                    'payment_method_account_id' => $paymentMethodAccount->id,
+                ],
+            ], 200);
+        });
     }
 
     public function handleTaskFromEmail(Request $request): JsonResponse

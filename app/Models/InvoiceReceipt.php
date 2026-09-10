@@ -42,6 +42,10 @@ class InvoiceReceipt extends Model
         'status',
         'is_used',
         'bank_account_id',
+        // CT-A3 wave 2 (W2-2): WHICH payment method / gateway this money came in through.
+        // ReceiptPostingRule resolves the instrument leg's bank account from the matching
+        // `charges.acc_bank_id`, so the account itself is never copied onto the receipt.
+        'settlement_channel',
         'cheque_no',
         'cheque_date',
         'cheque_clearance_date',

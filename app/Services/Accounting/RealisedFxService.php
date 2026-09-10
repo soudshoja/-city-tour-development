@@ -442,11 +442,22 @@ final class RealisedFxService
      * a real gain/loss, with only an `accounting.fx_apply_skipped_no_posted_rate` info log.
      *
      * The fallback follows the ONLY linkage PostingService itself sanctions ("The only reliable
-     * way to find a repost's REPLACEMENT is by its idempotency key"): `repost()` suffixes the
-     * replacement's key with `":repost:{$old->id}"` whenever it collides with `$old`'s. Chained
-     * reposts nest that suffix, so the walk loops (bounded — a malformed chain must never spin).
-     * When the chain cannot be followed (the replacement used a genuinely different key, so no
-     * suffix was added) the caller's skip stands, but it is logged DISTINCTLY
+     * way to find a repost's REPLACEMENT is by its idempotency key").
+     *
+     * CT-A3 R2-2 UPDATE. `repost()` used to suffix the replacement's key with
+     * `":repost:{$old->id}"` ONLY when it collided with `$old`'s own key, which nested on a chained
+     * repost and — the D6 blocker this lane fixed — silently stopped happening from the SECOND
+     * edit onwards. It now always mints `"{base}:rev{n}"` from the document's own base key, so a
+     * document's revisions are a FLAT family (`K`, `K:rev1`, `K:rev2`, …) instead of a nested
+     * chain. That makes this resolution strictly simpler and strictly more robust: the live
+     * document is the one member of the base key's family still at `posting_status = 'posted'`,
+     * found in ONE query, with no hop bound to exceed and no chain to break halfway. Legacy
+     * `":repost:{id}"` members — every document edited before R2-2 — are matched by the same
+     * family predicate, including the nested ones, so nothing already on a ledger becomes
+     * unfollowable.
+     *
+     * When no live family member exists (every revision reversed, or the replacement used a
+     * genuinely unrelated key) the caller's skip stands, but it is logged DISTINCTLY
      * (`reason: 'source_document_reposted_unresolvable'`) so the miss is triageable rather than
      * indistinguishable from "this payment was never engine-posted at all".
      */
@@ -474,28 +485,32 @@ final class RealisedFxService
 
         $reversedOriginalExists = $node !== null;
 
-        for ($hop = 0; $node !== null && $hop < 10; $hop++) {
-            $key = (string) $node->idempotency_key;
+        $key = $node !== null ? (string) $node->idempotency_key : '';
 
-            if ($key === '') {
-                break;
-            }
+        if ($key !== '') {
+            // The document's BASE key: strip one revision marker in either convention, so this
+            // works whether the reversed row we found is the original itself or an intermediate
+            // revision. Same normalisation PostingService::repostBaseKey() applies when it mints
+            // the next revision, restated here rather than reached into because that method is
+            // private to the engine and this is a read-only consumer.
+            $base = (string) preg_replace('/(?::rev\d+|:repost:\d+)$/', '', $key);
+            $prefix = addcslashes($base, '%_\\');
 
             $replacement = Transaction::withoutGlobalScopes()
                 ->whereNull('deleted_at')
                 ->where('company_id', $companyId)
-                ->where('idempotency_key', $key.':repost:'.$node->id)
+                ->where('posting_status', 'posted')
+                ->where(function ($q) use ($base, $prefix) {
+                    $q->where('idempotency_key', $base)
+                        ->orWhere('idempotency_key', 'like', $prefix.':rev%')
+                        ->orWhere('idempotency_key', 'like', $prefix.':repost:%');
+                })
+                ->orderByDesc('id')
                 ->first(['id', 'idempotency_key', 'posting_status']);
 
-            if ($replacement === null) {
-                break;
-            }
-
-            if ($replacement->posting_status === 'posted') {
+            if ($replacement !== null) {
                 return $replacement;
             }
-
-            $node = $replacement->posting_status === 'reversed' ? $replacement : null;
         }
 
         if ($reversedOriginalExists) {

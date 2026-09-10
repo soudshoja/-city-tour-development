@@ -1532,7 +1532,15 @@ class PostingServiceBalanceTest extends AccountingTestCase
         $this->assertNull($unattributedLine->invoice_detail_id);
         $this->assertNull($unattributedLine->task_id);
         $this->assertNull($unattributedLine->type_reference_id);
-        $this->assertSame('INCOME', $unattributedLine->type, 'ledgerType null must fall back to transactionType — W1\'s existing behaviour.');
+        // CT-A3 E7 (CT-F36) fix: ledgerType null still falls back to transactionType (W1's
+        // existing behaviour, unchanged), but the resolved value now ALSO passes through
+        // LedgerType::resolve() before it is written — the audit label 'INCOME' is a known
+        // legacy/audit-label synonym (see LedgerType::LEGACY_MAP) and resolves to the canonical
+        // 'income', never the raw uppercase label. This assertion used to read the raw 'INCOME'
+        // (the old two-vocabulary defect this ticket exists to close) — see
+        // test_post_leaves_line_attribution_null_when_the_draft_omits_it() below for the sibling
+        // case (a label with NO known mapping, which resolves to NULL, not raw either).
+        $this->assertSame('income', $unattributedLine->type, 'ledgerType null must fall back to transactionType, then resolve through LedgerType\'s canonical mapping (CT-F36) — never the raw audit label.');
         $this->assertSame($creditAccount->name, $unattributedLine->name, 'partyName null must fall back to the resolved account name — W1\'s existing behaviour.');
         $this->assertSame($posted->documentNumber, $unattributedLine->voucher_number, 'voucherNumber null must fall back to the document\'s own formatted number — W1\'s existing behaviour.');
     }
@@ -1579,8 +1587,15 @@ class PostingServiceBalanceTest extends AccountingTestCase
 
         $debitLine = $lines->firstWhere('account_id', $debitAccount->id);
         $creditLine = $lines->firstWhere('account_id', $creditAccount->id);
-        $this->assertSame('TEST_DEBIT', $debitLine->type);
-        $this->assertSame('TEST_CREDIT', $creditLine->type);
+        // CT-A3 E7 (CT-F36) fix: 'TEST_DEBIT'/'TEST_CREDIT' are this suite's own synthetic
+        // transactionType fixtures (balancedDraft() below) — not real business audit labels, so
+        // LedgerType::LEGACY_MAP has (and should have) no entry for them. Before this fix,
+        // PostingService wrote them straight into `journal_entries.type` raw; LedgerType::resolve()
+        // now logs the miss and writes NULL instead (never a raw, unrecognised label — the nullable
+        // column already means "unclassified" is a legitimate value; see LedgerType's own class
+        // docblock). This assertion used to read the raw 'TEST_DEBIT'/'TEST_CREDIT' labels.
+        $this->assertNull($debitLine->type, 'A transactionType with no known canonical mapping must resolve to NULL, never be written raw (CT-F36).');
+        $this->assertNull($creditLine->type, 'A transactionType with no known canonical mapping must resolve to NULL, never be written raw (CT-F36).');
         $this->assertSame($debitAccount->name, $debitLine->name);
         $this->assertSame($creditAccount->name, $creditLine->name);
     }

@@ -137,7 +137,7 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
     private function enableEngine(Company $company): void
     {
         config(['accounting.engine.enabled' => true]);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
     }
 
@@ -147,9 +147,17 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
     //     (sale-shape-audit.md) — 'hotel' defaults to 'agent' basis (config('accounting.posting_basis')).
     // ────────────────────────────────────────────────────────────────────────────────────────
 
-    public function test_on_path_sale_posts_receivable_control_service_payable_and_service_revenue_margin(): void
+    /**
+     * OWNER RULING R-CT1, 2026-09-09 — gross basis. Was: asserted the 3-line NET/agent-basis
+     * shape (Dr receivable 250 / Cr payable 150 / Cr revenue = margin 100, and explicitly asserted
+     * NO other line may carry the full $250 sell). Now: agent basis builds the SAME 4-line GROSS
+     * document as principal basis (Dr receivable 250 / Cr revenue 250 full sell / Dr cost 150 /
+     * Cr payable 150) — the old test's own central claim (SERVICE_REVENUE must hold only the
+     * margin, never the full sell) is the exact thing R-CT1 reverses.
+     */
+    public function test_on_path_agent_basis_sale_now_posts_gross_revenue_and_cost_of_sales(): void
     {
-        // total (supplier cost) pinned to 150.000 by makeFixture(); sell 250.000 -> margin 100.000.
+        // total (supplier cost) pinned to 150.000 by makeFixture(); sell 250.000.
         [$company, , $agent, $client, $task, $invoice, $invoiceDetail, $transaction] = $this->makeFixture();
         $this->enableEngine($company);
         $this->trackCompanyForInvariants($company->id);
@@ -173,23 +181,27 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
         $receivableControlId = $this->resolvedAccountId($company, 'RECEIVABLE_CONTROL');
         $servicePayableId = $this->resolvedAccountId($company, 'SERVICE_PAYABLE', 'hotel');
         $serviceRevenueId = $this->resolvedAccountId($company, 'SERVICE_REVENUE', 'hotel');
+        $serviceCostId = $this->resolvedAccountId($company, 'SERVICE_COST', 'hotel');
         $markupIncomeId = $this->resolvedAccountId($company, 'MARKUP_INCOME');
 
         $this->assertNotNull($receivableControlId);
         $this->assertNotNull($servicePayableId);
         $this->assertNotNull($serviceRevenueId);
+        $this->assertNotNull($serviceCostId, 'SERVICE_COST(hotel) must be mapped — R-CT1 makes it agent basis\'s own cost-of-sales leg too.');
         $this->assertNotEquals($serviceRevenueId, $markupIncomeId, 'Fixture sanity: SERVICE_REVENUE(hotel) and MARKUP_INCOME must be different leaves.');
 
         $lines = DB::table('journal_entries')->where('transaction_id', $result->transaction->id)->get();
-        $this->assertCount(3, $lines, 'ON-path NET sale document must be Dr receivable / Cr payable / Cr margin.');
+        $this->assertCount(4, $lines, 'R-CT1: ON-path GROSS sale document is Dr receivable / Cr revenue(full sell) / Dr cost / Cr payable.');
 
         $debitLine = $lines->firstWhere('account_id', $receivableControlId);
         $payableLine = $lines->firstWhere('account_id', $servicePayableId);
         $revenueLine = $lines->firstWhere('account_id', $serviceRevenueId);
+        $costLine = $lines->firstWhere('account_id', $serviceCostId);
 
         $this->assertNotNull($debitLine, 'Must debit RECEIVABLE_CONTROL.');
-        $this->assertNotNull($payableLine, 'Must credit SERVICE_PAYABLE(hotel) with the supplier cost — this is the audit finding W3d fixes: cost was never posted at all before.');
-        $this->assertNotNull($revenueLine, 'Must credit SERVICE_REVENUE(hotel) with the margin.');
+        $this->assertNotNull($payableLine, 'Must credit SERVICE_PAYABLE(hotel) with the supplier cost.');
+        $this->assertNotNull($revenueLine, 'Must credit SERVICE_REVENUE(hotel) with the full sell price.');
+        $this->assertNotNull($costLine, 'Must debit SERVICE_COST(hotel) with the full supplier cost.');
 
         $this->assertEquals(250.000, (float) $debitLine->debit);
         $this->assertEquals(0.0, (float) $debitLine->credit);
@@ -198,27 +210,30 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
         $this->assertEquals(0.0, (float) $payableLine->debit);
         $this->assertSame((int) $task->supplier_id, (int) $payableLine->type_reference_id);
 
-        $this->assertEquals(100.000, (float) $revenueLine->credit, 'Margin = sell(250) - cost(150) = 100, never the full sell price.');
+        $this->assertEquals(250.000, (float) $revenueLine->credit, 'R-CT1: SERVICE_REVENUE holds the FULL sell price (250), never the margin (100).');
         $this->assertEquals(0.0, (float) $revenueLine->debit);
 
-        // No line anywhere in this document may carry the full $250 sell price except the
-        // receivable debit itself — the exact defect the audit found (SERVICE_REVENUE credited
-        // the FULL sell, not the margin).
-        $this->assertSame(
-            0,
-            $lines->filter(fn ($l) => $l->id !== $debitLine->id && (float) $l->credit === 250.000)->count(),
-            'No non-receivable line may carry the full sell price — SERVICE_REVENUE must hold only the margin.'
+        $this->assertEquals(150.000, (float) $costLine->debit, 'R-CT1: SERVICE_COST holds the full supplier cost (150) as cost-of-sales.');
+        $this->assertEquals(0.0, (float) $costLine->credit);
+
+        // The old margin-only cap is gone: revenue AND receivable both legitimately carry 250 now.
+        // What must still never happen is revenue collapsing back to the margin value.
+        $this->assertNotEquals(
+            100.000,
+            (float) $revenueLine->credit,
+            'Regression guard: SERVICE_REVENUE must never fall back to the superseded margin (100).'
         );
     }
 
     /**
-     * Negative-margin sign test (sold below cost): SERVICE_REVENUE flips to the DEBIT side for
-     * abs(margin) rather than the whole sale being refused — mirrors ChatController's own
-     * pre-existing sign-aware handling, now shared via SaleDraftBuilder. w3d-brief.md's own "W4.A
-     * rule: company-borne negative margin posts nothing extra" — this IS the only posting for the
-     * loss; the document still balances on its own (Dr receivable + Dr margin(abs) = Cr payable).
+     * OWNER RULING R-CT1, 2026-09-09 — gross basis. Was: "SERVICE_REVENUE flips to the DEBIT side
+     * for abs(margin) rather than the whole sale being refused" (a single sign-aware leg carrying
+     * 50.000, the negative margin). Now: there is no sign-aware leg at all — revenue posts as a
+     * CREDIT of the FULL sell (250.000, `type='income'`) and cost posts independently as a DEBIT
+     * of the FULL cost (300.000, `type='expense'`); the below-cost loss surfaces as revenue < cost
+     * across two independent lines, not as one contra-income debit.
      */
-    public function test_on_path_sale_negative_margin_debits_service_revenue(): void
+    public function test_on_path_below_cost_sale_posts_gross_revenue_and_cost_independently(): void
     {
         [$company, , $agent, $client, $task, $invoice, $invoiceDetail, $transaction] = $this->makeFixture(taskTotal: 300.000);
         $this->enableEngine($company);
@@ -234,7 +249,7 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
             $task,
             $agent,
             $company->id,
-            250.000, // sold below the 300.000 cost -> margin = -50.000
+            250.000, // sold below the 300.000 cost
             $client->full_name,
         ]);
 
@@ -243,18 +258,26 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
             0.0,
             (float) $result->transaction->total_debit - (float) $result->transaction->total_credit,
             0.0005,
-            'Below-cost sale must still balance: Dr receivable + Dr margin(abs) = Cr payable.'
+            'Below-cost sale must still balance: Dr receivable(250) + Dr cost(300) = Cr revenue(250) + Cr payable(300).'
         );
 
         $serviceRevenueId = $this->resolvedAccountId($company, 'SERVICE_REVENUE', 'hotel');
+        $serviceCostId = $this->resolvedAccountId($company, 'SERVICE_COST', 'hotel');
         $lines = DB::table('journal_entries')->where('transaction_id', $result->transaction->id)->get();
-        $this->assertCount(3, $lines);
+        $this->assertCount(4, $lines, 'R-CT1: gross basis posts all 4 lines even below cost.');
 
-        $marginLine = $lines->firstWhere('account_id', $serviceRevenueId);
-        $this->assertNotNull($marginLine);
-        $this->assertEquals(50.000, (float) $marginLine->debit, 'Negative margin posts as a DEBIT of abs(margin), never a negative credit.');
-        $this->assertEquals(0.0, (float) $marginLine->credit);
-        $this->assertSame('income', $marginLine->type, 'A contra-income debit still carries ledgerType income, not expense — matches ChatController\'s own convention.');
+        $revenueLine = $lines->firstWhere('account_id', $serviceRevenueId);
+        $costLine = $lines->firstWhere('account_id', $serviceCostId);
+
+        $this->assertNotNull($revenueLine);
+        $this->assertNotNull($costLine);
+        $this->assertEquals(250.000, (float) $revenueLine->credit, 'Revenue is always a CREDIT of the full sell price, even below cost — never a debit of abs(margin).');
+        $this->assertEquals(0.0, (float) $revenueLine->debit);
+        $this->assertSame('income', $revenueLine->type, 'The revenue leg still carries ledgerType income.');
+
+        $this->assertEquals(300.000, (float) $costLine->debit, 'Cost is always a DEBIT of the full supplier cost.');
+        $this->assertEquals(0.0, (float) $costLine->credit);
+        $this->assertSame('expense', $costLine->type, 'The cost leg carries ledgerType expense — matches ChatController\'s own convention.');
     }
 
     /**
@@ -403,12 +426,14 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
     }
 
     /**
-     * Refund reversal (W3b PostingService::reverse()) still balances against the NEW 3-line NET
-     * shape. reverse() is shape-agnostic (it swaps debit/credit for whatever canonical lines a
-     * transaction actually has — see its own docblock), so this proves that generic mechanism
-     * against THIS lane's specific new shape, without touching W3b's own code.
+     * OWNER RULING R-CT1, 2026-09-09 — gross basis. Was: reversal of the 3-line NET shape (Dr
+     * receivable 250 / Cr payable 150 / Cr margin 100), reversed debits asserted as
+     * [100.000, 150.000] (payable + margin). Now: reversal of the 4-line GROSS shape (Dr
+     * receivable 250 / Cr revenue 250 / Dr cost 150 / Cr payable 150) — reversed debits are
+     * [150.000, 250.000] (payable(150) + revenue(250)); reverse() itself (W3b) is unchanged and
+     * unaudited here — only the shape it is reversing changed.
      */
-    public function test_on_path_sale_reversal_still_balances_against_the_net_shape(): void
+    public function test_on_path_sale_reversal_still_balances_against_the_gross_shape(): void
     {
         [$company, , $agent, $client, $task, $invoice, $invoiceDetail, $transaction] = $this->makeFixture();
         $this->enableEngine($company);
@@ -440,19 +465,19 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
             0.0,
             (float) $reversal->transaction->total_debit - (float) $reversal->transaction->total_credit,
             0.0005,
-            'The reversal of the new 3-line NET sale document must itself balance.'
+            'The reversal of the new 4-line GROSS sale document must itself balance.'
         );
 
         $reversalLines = DB::table('journal_entries')->where('transaction_id', $reversal->transaction->id)->get();
-        $this->assertCount(3, $reversalLines, 'Reversal must carry the same number of lines as the original.');
+        $this->assertCount(4, $reversalLines, 'Reversal must carry the same number of lines as the original (R-CT1: 4, not the superseded 3).');
 
-        // Original: Dr receivable 250 / Cr payable 150 / Cr margin 100. Reversed: Cr receivable
-        // 250 / Dr payable 150 / Dr margin 100.
+        // Original: Dr receivable 250 / Cr revenue 250 / Dr cost 150 / Cr payable 150. Reversed:
+        // Cr receivable 250 / Dr revenue 250 / Cr cost 150 / Dr payable 150.
         $reversedCredits = $reversalLines->pluck('credit')->map(fn ($v) => (float) $v)->sort()->values();
         $reversedDebits = $reversalLines->pluck('debit')->map(fn ($v) => (float) $v)->filter(fn ($v) => $v > 0)->sort()->values();
 
         $this->assertEqualsWithDelta(250.000, (float) $reversedCredits->last(), 0.0005, 'The receivable leg reverses to a 250 credit.');
-        $this->assertEqualsWithDelta([100.000, 150.000], $reversedDebits->all(), 0.0005, 'Payable(150) and margin(100) legs both reverse to debits.');
+        $this->assertEqualsWithDelta([150.000, 250.000], $reversedDebits->all(), 0.0005, 'Payable(150) and revenue(250) legs both reverse to debits.');
     }
 
     /**
@@ -583,22 +608,34 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
             $commission,
         ]);
 
+        // CT-A3 E4 (CT-F38), 2026-09-09 — was SALARY_EXPENSE / SALARY_PAYABLE (5160 'Agent
+        // Salaries' / 2201 'Salaries & Wages Payable'), a PAYROLL pair. A commission on a sale is
+        // not payroll; it belongs on 5130 'Commissions Expense (Agents)' / 2210 'Commissions
+        // (Agents)', which is where the legacy ledger already put it. SALARY_* keeps its own
+        // genuinely-payroll feeder (AgentController::update()).
+        $commissionExpenseId = $this->resolvedAccountId($company, 'COMMISSION_EXPENSE');
+        $commissionPayableId = $this->resolvedAccountId($company, 'COMMISSION_PAYABLE');
+        $this->assertNotNull($commissionExpenseId);
+        $this->assertNotNull($commissionPayableId);
+
+        $this->assertSame('5130', Account::find($commissionExpenseId)->code, 'COMMISSION_EXPENSE must resolve to 5130.');
+        $this->assertSame('2210', Account::find($commissionPayableId)->code, 'COMMISSION_PAYABLE must resolve to 2210.');
+
+        // The payroll pair must receive NOTHING from a commission (CT-F38's own acceptance test).
         $salaryExpenseId = $this->resolvedAccountId($company, 'SALARY_EXPENSE');
         $salaryPayableId = $this->resolvedAccountId($company, 'SALARY_PAYABLE');
-        $this->assertNotNull($salaryExpenseId);
-        $this->assertNotNull($salaryPayableId);
-
-        $salaryPayableAccount = Account::find($salaryPayableId);
-        $this->assertSame('2201', $salaryPayableAccount->code, 'SALARY_PAYABLE must resolve to the locked 2201 leaf.');
 
         $lines = DB::table('journal_entries')->where('invoice_detail_id', $invoiceDetail->id)->get();
+
+        $this->assertNull($lines->firstWhere('account_id', $salaryExpenseId), '5160 Agent Salaries must receive nothing from a commission.');
+        $this->assertNull($lines->firstWhere('account_id', $salaryPayableId), '2201 Salaries & Wages Payable must receive nothing from a commission.');
 
         // Exactly 2 lines total for this call — the D1 correction means the legacy $profit pair
         // (Dr Agent Salaries / Cr Agent Profit Payable) is NOT posted on the ON path at all.
         $this->assertCount(2, $lines, 'ON path must post ONLY the commission JV — never the case-profit pair too.');
 
-        $debitLine = $lines->firstWhere('account_id', $salaryExpenseId);
-        $creditLine = $lines->firstWhere('account_id', $salaryPayableId);
+        $debitLine = $lines->firstWhere('account_id', $commissionExpenseId);
+        $creditLine = $lines->firstWhere('account_id', $commissionPayableId);
 
         $this->assertNotNull($debitLine);
         $this->assertNotNull($creditLine);
@@ -754,6 +791,11 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
      * Same sell/cost/service-type input posted through BOTH controllers must produce the same
      * per-purpose-code amounts — proof the two feeders share one builder rather than two
      * hand-rolled copies that can silently diverge again.
+     *
+     * OWNER RULING R-CT1, 2026-09-09 — gross basis. Was: asserted the shared 3-line NET shape
+     * (Dr receivable 130 / Cr payable 100 / Cr margin 30). Now: both feeders share the same 4-line
+     * GROSS shape (Dr receivable 130 / Cr revenue 130 / Dr cost 100 / Cr payable 100) — parity
+     * still holds, just against the new shape.
      */
     public function test_invoice_controller_and_chat_controller_sale_drafts_have_parity(): void
     {
@@ -804,7 +846,7 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
         $chatTaskPayload = $chatTask;
         $chatTaskPayload->invprice = 130.000;
 
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         Artisan::call('accounting:engine', ['company' => $chatCompany->id, '--enable' => true]);
         $this->trackCompanyForInvariants($chatCompany->id);
 
@@ -828,14 +870,15 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
         );
         $this->assertInstanceOf(\App\Services\Accounting\PostedDocument::class, $chatResult);
 
-        // Parity assertion: both documents post the SAME 3-line shape with the SAME amounts —
-        // Dr receivable 130 / Cr payable(flight) 100 / Cr margin(flight) 30 — even though one
-        // came from the GDS/task auto-invoicing path and the other from the AI-chat path.
+        // Parity assertion: both documents post the SAME 4-line GROSS shape with the SAME amounts —
+        // Dr receivable 130 / Cr revenue(flight) 130 (full sell) / Dr cost(flight) 100 / Cr
+        // payable(flight) 100 — even though one came from the GDS/task auto-invoicing path and the
+        // other from the AI-chat path.
         $invoiceLines = DB::table('journal_entries')->where('transaction_id', $invoiceResult->transaction->id)->get();
         $chatLines = DB::table('journal_entries')->where('transaction_id', $chatResult->transaction->id)->get();
 
-        $this->assertCount(3, $invoiceLines);
-        $this->assertCount(3, $chatLines);
+        $this->assertCount(4, $invoiceLines, 'R-CT1: gross basis is 4 lines, not the superseded 3-line net shape.');
+        $this->assertCount(4, $chatLines, 'R-CT1: gross basis is 4 lines, not the superseded 3-line net shape.');
 
         $invoiceShape = collect($invoiceLines)->map(fn ($l) => round((float) $l->debit, 3).'/'.round((float) $l->credit, 3))->sort()->values()->all();
         $chatShape = collect($chatLines)->map(fn ($l) => round((float) $l->debit, 3).'/'.round((float) $l->credit, 3))->sort()->values()->all();
@@ -845,7 +888,11 @@ class InvoiceControllerProfitLossPostingTest extends AccountingTestCase
             $chatShape,
             'InvoiceController and ChatController must post the SAME set of (debit, credit) amounts for the same sell/cost/service-type input — proof both share SaleDraftBuilder.'
         );
-        // Lexicographic string sort, not numeric: '0/100' < '0/30' (char-by-char, '1' < '3').
-        $this->assertSame(['0/100', '0/30', '130/0'], $invoiceShape, 'Expected shape: Dr receivable 130 / Cr payable 100 / Cr margin 30.');
+        // Lexicographic string sort, not numeric: '0/100' < '0/130' < '100/0' < '130/0'.
+        $this->assertSame(
+            ['0/100', '0/130', '100/0', '130/0'],
+            $invoiceShape,
+            'Expected shape: Dr receivable 130 / Cr revenue 130 / Dr cost 100 / Cr payable 100.'
+        );
     }
 }

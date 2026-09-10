@@ -72,9 +72,35 @@ use Illuminate\Support\Facades\Route as RouteFacade;
 final class AccountingLog
 {
     /**
+     * CT-A3 R4 — the connection a REFUSAL's audit row is written on, so it survives the rollback
+     * the refusal's own throw triggers.
+     *
+     * `CT-A3-R3-2026-09-10.md` §4.1 measured what R2-1's `refuseNothingOutstanding()` docblock
+     * already claimed: *"an audit row that survives the rollback the throw triggers"*. It did not.
+     * `RefundPostingService::post()` wraps the whole composition in `DB::transaction()`, so a row
+     * written through the DEFAULT connection inside it is undone by the same rollback the throw
+     * causes — the row existed for microseconds and then never had.
+     *
+     * This is the identical durability requirement {@see \App\Models\IdempotencyKeyRejection}
+     * already solves, and it is solved the same way: `config/database.php`'s `accounting_audit`
+     * connection is a second, independent PDO handle onto the SAME physical database, with its own
+     * transaction state, so a plain INSERT through it commits immediately and is unaffected by the
+     * open-and-about-to-roll-back transaction on `mysql`/`mysql_testing`. See that connection's own
+     * comment in `config/database.php` for why a separate NAME (not merely a separate table) is
+     * what makes this work, and `tests/Concerns/GuardsTestDatabaseIsolation.php` for how it is
+     * pinned to the per-agent test database rather than a shared one.
+     */
+    public const DURABLE_CONNECTION = 'accounting_audit';
+
+    /**
      * Writer (a)/(b): a direct, structured audit row. `$action` should be a short verb
      * (`post`, `reverse`, `close`, `unlock`, ...), never `accounting.`-prefixed — the table's own
      * `action` column is already scoped to the accounting domain by virtue of the table itself.
+     *
+     * `$connection` is normally null (the default connection, so the row is part of whatever
+     * transaction the caller is in — which is right for a row describing something that COMMITTED).
+     * Pass {@see self::DURABLE_CONNECTION} only for a row describing something that is about to be
+     * ROLLED BACK; {@see self::eventDurable()} is the supported way to do that.
      */
     public static function write(
         string $action,
@@ -88,8 +114,15 @@ final class AccountingLog
         ?int $actorId = null,
         ?string $actorType = null,
         \DateTimeInterface|string|null $postingPeriod = null,
+        ?string $connection = null,
     ): AccountingAuditLog {
-        return AccountingAuditLog::create([
+        $row = new AccountingAuditLog;
+
+        if ($connection !== null) {
+            $row->setConnection($connection);
+        }
+
+        $row->fill([
             'company_id' => $companyId,
             'actor_id' => $actorId,
             'actor_type' => $actorType ?? ($actorId !== null ? 'user' : 'system'),
@@ -104,7 +137,9 @@ final class AccountingLog
             'route' => self::currentRouteName(),
             'posting_period' => self::normalizePostingPeriod($postingPeriod),
             'created_at' => now(),
-        ]);
+        ])->save();
+
+        return $row;
     }
 
     /**
@@ -112,7 +147,7 @@ final class AccountingLog
      * with best-effort field extraction from the same `$context` array the file log line already
      * carries — see class docblock for the exact 10 events that call this today.
      */
-    public static function event(string $eventName, array $context = [], string $level = 'info'): AccountingAuditLog
+    public static function event(string $eventName, array $context = [], string $level = 'info', ?string $connection = null): AccountingAuditLog
     {
         // Defensive: Log::channel() returns null when the Log facade has been replaced with a
         // Mockery spy/fake (Log::spy()/Log::fake()), a pattern many existing accounting tests use
@@ -143,7 +178,56 @@ final class AccountingLog
             reason: $context['reason'] ?? null,
             actorId: $actorId,
             postingPeriod: $postingPeriod,
+            connection: $connection,
         );
+    }
+
+    /**
+     * CT-A3 R4 — writer (c), for the one case where the DEFAULT connection is the wrong answer:
+     * an event that describes a REFUSAL, emitted from inside a `DB::transaction()` that the
+     * refusal's own exception is about to roll back.
+     *
+     * `CT-A3-R3-2026-09-10.md` §4.1: *"the `AccountingLog::event(...)` DB row a refusal writes does
+     * not survive … R2-1's `refuseNothingOutstanding()` docblock says the row 'survives the rollback
+     * the throw triggers' … measured here, it does not."* This method is what makes that sentence
+     * true, on the {@see self::DURABLE_CONNECTION} handle — see that constant's docblock.
+     *
+     * Best-effort by construction, and deliberately so: an audit row is a record OF a refusal, never
+     * a precondition FOR it. If the durable connection is unavailable (no second handle, wrong
+     * driver, a database that cannot be reached twice), this falls back to the default connection —
+     * which at least writes the row when the caller is NOT inside a transaction — and if even that
+     * fails it returns null rather than replacing the caller's named refusal exception with a
+     * `QueryException` about logging. The FILE log line is written first, before either attempt, so
+     * the trail exists no matter which branch is taken.
+     *
+     * Defaults to `warning`, not `info`: every caller is a refusal.
+     */
+    public static function eventDurable(string $eventName, array $context = [], string $level = 'warning'): ?AccountingAuditLog
+    {
+        try {
+            return self::event($eventName, $context, $level, self::DURABLE_CONNECTION);
+        } catch (\Throwable $durableFailure) {
+            try {
+                Log::channel('accounting')?->warning('accounting.audit_durable_write_failed', [
+                    'event' => $eventName,
+                    'connection' => self::DURABLE_CONNECTION,
+                    'error' => $durableFailure->getMessage(),
+                ]);
+            } catch (\Throwable) {
+                // Logging the logging failure is best-effort too.
+            }
+
+            try {
+                return self::write(
+                    action: $eventName,
+                    companyId: self::intOrNull($context['company_id'] ?? null),
+                    after: $context,
+                    reason: $context['reason'] ?? null,
+                );
+            } catch (\Throwable) {
+                return null;
+            }
+        }
     }
 
     /**

@@ -167,6 +167,21 @@ class ArchitectureTest extends TestCase
         // renamed. Legacy denormalisation-sync pre-dating AccountService; GATE-REPORT §3 named
         // this as a pre-existing gap, not a defect this phase fixes.
         'Http/Controllers/SupplierController.php',
+        // CT-A4 — CoaLinkage::backfillAccountTypeId() / backfillReportType() / backfillIsGroup()
+        // / movePoolChildrenUp(): raw `DB::table('accounts')->...->update(...)` on
+        // `account_type_id`, `report_type`, `is_group` and (only under --allow-move) `parent_id`
+        // + `level`.
+        //
+        // These are the four columns AccountService has NO operation for and deliberately never
+        // will: it creates accounts, it does not reclassify or re-parent existing ones. The rule
+        // this allow-list enforces is about BALANCES — `accounts.actual_balance` is derived from
+        // `journal_entries` and must never be written — and none of these four columns is a
+        // balance. The command's own test file pins that with a whole-chart per-root trial
+        // balance taken before and after every applied repair
+        // (CoaLinkageCommandTest::test_apply_changes_no_balance, ::test_report_type_is_derived…,
+        // ::test_allow_move_relocates_…). The `parent_id` write is additionally gated behind an
+        // explicit --allow-move flag and logs each moved account's before/after ancestor path.
+        'Console/Commands/CoaLinkage.php',
     ];
 
     /**
@@ -184,7 +199,7 @@ class ArchitectureTest extends TestCase
             $message .= 'Raw accounts-table update(s) found outside App\\Services\\Accounting\\ in '
                 .'file(s) NOT on the allow-list (new/regressed raw accounts writer -- route this '
                 .'write through AccountService, or if genuinely gated/pre-existing, add the file to '
-                ."ArchitectureTest::ALLOW_LISTED_RAW_ACCOUNTS_WRITER_FILES with a note explaining "
+                .'ArchitectureTest::ALLOW_LISTED_RAW_ACCOUNTS_WRITER_FILES with a note explaining '
                 ."why):\n".implode("\n", $result['unlisted'])."\n";
         }
 
@@ -356,16 +371,16 @@ class ArchitectureTest extends TestCase
         $message = '';
 
         if (! empty($result['unlisted'])) {
-            $message .= "Raw ledger write(s) found outside App\\Services\\Accounting\\ in file(s) "
-                ."NOT on the ArchitectureTest allow-list (new/regressed raw writer -- either route "
-                ."this write through PostingSeam::post(), or if it is genuinely gated, add the file "
-                ."to ArchitectureTest::ALLOW_LISTED_RAW_WRITER_FILES with a note explaining the "
+            $message .= 'Raw ledger write(s) found outside App\\Services\\Accounting\\ in file(s) '
+                .'NOT on the ArchitectureTest allow-list (new/regressed raw writer -- either route '
+                .'this write through PostingSeam::post(), or if it is genuinely gated, add the file '
+                .'to ArchitectureTest::ALLOW_LISTED_RAW_WRITER_FILES with a note explaining the '
                 ."gate):\n".implode("\n", $result['unlisted'])."\n";
         }
 
         if (! empty($result['stale'])) {
-            $message .= "Allow-listed file(s) with NO raw-writer hit found (stale allow-list "
-                ."entry -- remove from ArchitectureTest::ALLOW_LISTED_RAW_WRITER_FILES; the legacy "
+            $message .= 'Allow-listed file(s) with NO raw-writer hit found (stale allow-list '
+                .'entry -- remove from ArchitectureTest::ALLOW_LISTED_RAW_WRITER_FILES; the legacy '
                 ."write this entry was covering appears to be gone):\n".implode("\n", $result['stale']);
         }
 
@@ -485,7 +500,7 @@ class ArchitectureTest extends TestCase
      * analysis -- good enough to gate CI, not intended as a general-purpose static analyzer.
      *
      * @return array{unlisted: string[], stale: string[]} 'unlisted' = absolute paths with a hit
-     *   not on the allow-list; 'stale' = allow-list entries (relative paths) with no hit.
+     *                                                    not on the allow-list; 'stale' = allow-list entries (relative paths) with no hit.
      */
     private function scanForRawLedgerWriters(?string $rootDir = null): array
     {
@@ -747,7 +762,7 @@ class ArchitectureTest extends TestCase
             $violations,
             "Post-hoc JournalEntry::...->update(['settlement_channel' => ...]) found outside "
                 ."App\\Services\\Accounting\\ (L12: written ONLY by PostingService's own INSERT, "
-                ."never a post-hoc update — do not copy the TaskStatusService reason_tag "
+                .'never a post-hoc update — do not copy the TaskStatusService reason_tag '
                 ."anti-pattern):\n".implode("\n", $violations)
         );
     }

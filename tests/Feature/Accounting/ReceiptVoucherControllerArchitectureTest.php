@@ -4,7 +4,6 @@ namespace Tests\Feature\Accounting;
 
 use PHPUnit\Framework\TestCase;
 use ReflectionClass;
-use ReflectionMethod;
 
 /**
  * W5.X (w5-brief.md §W5.X "ArchitectureTest: no RV/PV code resolves accounts by name").
@@ -39,7 +38,6 @@ class ReceiptVoucherControllerArchitectureTest extends TestCase
         'postVoucher',
         'buildVoucherDraft',
         'writeLegacyTransaction',
-        'resolveInstrumentLeg',
         'applyAllocationsToInvoices',
         'undoAllocationsForVoucher',
         'fillVoucherRow',
@@ -48,6 +46,34 @@ class ReceiptVoucherControllerArchitectureTest extends TestCase
         'autoGenerate',
         'writeLegacyReceiptVoucherTransaction',
     ];
+
+    /**
+     * CT-A3 wave 2 (W2-2): the instrument leg moved OUT of this controller into
+     * {@see \App\Services\Accounting\ReceiptPostingRule::instrumentAccountFor()}, so the ratchet
+     * follows it. `resolveInstrumentLeg` was removed from GOVERNED_METHODS above and the rule is
+     * scanned here instead -- otherwise the one method that actually picks the cash/bank account
+     * would have walked out from under the guard that exists for it.
+     */
+    public function test_the_receipt_instrument_rule_never_resolves_an_account_by_name(): void
+    {
+        $class = new ReflectionClass(\App\Services\Accounting\ReceiptPostingRule::class);
+        $file = $class->getFileName();
+        $this->assertNotFalse($file);
+
+        $body = file_get_contents($file);
+
+        $this->assertDoesNotMatchRegularExpression(
+            "/Account::where\\(\\s*'name'/",
+            $body,
+            'ReceiptPostingRule must resolve every account by purpose code or configured id, never by name.'
+        );
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/->where\\(\\s*[\'"]name[\'"]\\s*,\\s*[\'"]LIKE[\'"]/i',
+            $body,
+            'ReceiptPostingRule must never resolve an account by a name LIKE pattern.'
+        );
+    }
 
     public function test_posting_path_methods_never_resolve_an_account_by_name(): void
     {

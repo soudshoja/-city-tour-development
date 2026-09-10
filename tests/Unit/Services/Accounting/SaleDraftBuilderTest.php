@@ -29,53 +29,99 @@ class SaleDraftBuilderTest extends TestCase
         );
     }
 
-    public function test_agent_basis_positive_margin_posts_three_lines(): void
+    /**
+     * OWNER RULING R-CT1, 2026-09-09 — was `test_agent_basis_positive_margin_posts_three_lines`,
+     * which asserted the NET shape (Cr SERVICE_REVENUE = margin). Gross is now the basis for
+     * BOTH `BASIS_AGENT` and `BASIS_PRINCIPAL`: revenue is the FULL sell and the supplier cost
+     * posts as cost of sales.
+     */
+    public function test_agent_basis_posts_gross_revenue_and_a_cost_of_sales_pair(): void
     {
         $lines = (new SaleDraftBuilder)->buildLines($this->agentInput(130.0, 100.0));
 
-        $this->assertCount(3, $lines);
+        $this->assertCount(4, $lines);
+        $this->assertSame(
+            ['RECEIVABLE_CONTROL', 'SERVICE_REVENUE', 'SERVICE_COST', 'SERVICE_PAYABLE'],
+            array_map(fn ($l) => $l->purposeCode, $lines)
+        );
 
         $receivable = $lines[0];
-        $this->assertSame('RECEIVABLE_CONTROL', $receivable->purposeCode);
         $this->assertSame('debit', $receivable->side);
         $this->assertEqualsWithDelta(130.0, $receivable->amount, 0.0005);
 
-        $payable = $lines[1];
-        $this->assertSame('SERVICE_PAYABLE', $payable->purposeCode);
+        $revenue = $lines[1];
+        $this->assertSame('flight', $revenue->serviceType);
+        $this->assertSame('credit', $revenue->side);
+        $this->assertEqualsWithDelta(130.0, $revenue->amount, 0.0005, 'GROSS: revenue is the full sell, never the margin (R-CT1).');
+
+        $cost = $lines[2];
+        $this->assertSame('flight', $cost->serviceType);
+        $this->assertSame('debit', $cost->side);
+        $this->assertEqualsWithDelta(100.0, $cost->amount, 0.0005, 'GROSS: the supplier cost posts as cost of sales (R-CT1).');
+
+        $payable = $lines[3];
         $this->assertSame('flight', $payable->serviceType);
         $this->assertSame('credit', $payable->side);
         $this->assertEqualsWithDelta(100.0, $payable->amount, 0.0005);
-
-        $margin = $lines[2];
-        $this->assertSame('SERVICE_REVENUE', $margin->purposeCode, 'Margin belongs to SERVICE_REVENUE, never MARKUP_INCOME (w3d-brief.md decision 3).');
-        $this->assertSame('flight', $margin->serviceType);
-        $this->assertSame('credit', $margin->side);
-        $this->assertEqualsWithDelta(30.0, $margin->amount, 0.0005);
 
         $debitTotal = array_sum(array_map(fn ($l) => $l->side === 'debit' ? $l->amount : 0.0, $lines));
         $creditTotal = array_sum(array_map(fn ($l) => $l->side === 'credit' ? $l->amount : 0.0, $lines));
         $this->assertEqualsWithDelta($debitTotal, $creditTotal, 0.0005, 'Every line set this builder produces must self-balance.');
     }
 
-    public function test_agent_basis_negative_margin_flips_service_revenue_to_debit(): void
+    /**
+     * R-CT1: the sign-aware contra-income leg is GONE. A below-cost sale posts revenue and cost
+     * independently and simply shows a negative gross margin — never a flipped revenue side.
+     */
+    public function test_agent_basis_below_cost_sale_posts_revenue_and_cost_independently(): void
     {
         $lines = (new SaleDraftBuilder)->buildLines($this->agentInput(70.0, 100.0));
 
-        $this->assertCount(3, $lines);
-        $margin = $lines[2];
+        $this->assertCount(4, $lines);
 
-        $this->assertSame('SERVICE_REVENUE', $margin->purposeCode);
-        $this->assertSame('debit', $margin->side, 'Sold below cost: the margin leg flips to a debit of abs(margin), never a negative credit.');
-        $this->assertEqualsWithDelta(30.0, $margin->amount, 0.0005);
+        $revenue = $lines[1];
+        $this->assertSame('SERVICE_REVENUE', $revenue->purposeCode);
+        $this->assertSame('credit', $revenue->side, 'Revenue is ALWAYS a credit under gross — no contra-income debit exists any more.');
+        $this->assertEqualsWithDelta(70.0, $revenue->amount, 0.0005);
+
+        $cost = $lines[2];
+        $this->assertSame('SERVICE_COST', $cost->purposeCode);
+        $this->assertSame('debit', $cost->side);
+        $this->assertEqualsWithDelta(100.0, $cost->amount, 0.0005);
+
+        $debitTotal = array_sum(array_map(fn ($l) => $l->side === 'debit' ? $l->amount : 0.0, $lines));
+        $creditTotal = array_sum(array_map(fn ($l) => $l->side === 'credit' ? $l->amount : 0.0, $lines));
+        $this->assertEqualsWithDelta($debitTotal, $creditTotal, 0.0005);
     }
 
-    public function test_agent_basis_zero_margin_omits_the_margin_line(): void
+    /**
+     * R-CT1: there is no margin line to omit any more. Sold exactly at cost still posts the full
+     * four-line gross document — revenue = cost = sell, which is the economically correct
+     * presentation and what a gross P&L must show.
+     */
+    public function test_agent_basis_sold_at_cost_still_posts_the_full_gross_document(): void
     {
         $lines = (new SaleDraftBuilder)->buildLines($this->agentInput(100.0, 100.0));
 
-        $this->assertCount(2, $lines, 'Sold exactly at cost: the margin line is omitted, not posted as a zero-amount line.');
-        $this->assertSame('RECEIVABLE_CONTROL', $lines[0]->purposeCode);
-        $this->assertSame('SERVICE_PAYABLE', $lines[1]->purposeCode);
+        $this->assertCount(4, $lines);
+        $this->assertSame(
+            ['RECEIVABLE_CONTROL', 'SERVICE_REVENUE', 'SERVICE_COST', 'SERVICE_PAYABLE'],
+            array_map(fn ($l) => $l->purposeCode, $lines)
+        );
+        $this->assertEqualsWithDelta(100.0, $lines[1]->amount, 0.0005);
+        $this->assertEqualsWithDelta(100.0, $lines[2]->amount, 0.0005);
+    }
+
+    /**
+     * CT-A3 E1 / CT-F34, now applying to both bases from one place.
+     */
+    public function test_agent_basis_omits_the_whole_cost_pair_when_cost_is_zero(): void
+    {
+        $lines = (new SaleDraftBuilder)->buildLines($this->agentInput(30.0, 0.0));
+
+        $this->assertCount(2, $lines, 'A pure-fee sale posts Dr AR / Cr SERVICE_REVENUE only — never a 0.000 cost or payable line.');
+        $this->assertSame(['RECEIVABLE_CONTROL', 'SERVICE_REVENUE'], array_map(fn ($l) => $l->purposeCode, $lines));
+        $this->assertEqualsWithDelta(30.0, $lines[1]->amount, 0.0005);
     }
 
     public function test_agent_basis_never_uses_markup_income(): void
@@ -176,7 +222,9 @@ class SaleDraftBuilderTest extends TestCase
         // byte-for-byte pre-P2.5.D shape when $recognitionTiming is left null.
         $lines = (new SaleDraftBuilder)->buildLines($this->agentInput(130.0, 100.0, 'flight'));
 
-        $this->assertSame('SERVICE_REVENUE', $lines[2]->purposeCode);
+        $this->assertSame('SERVICE_REVENUE', $lines[1]->purposeCode);
+        $this->assertSame('flight', $lines[1]->serviceType);
+        $this->assertSame('SERVICE_COST', $lines[2]->purposeCode);
         $this->assertSame('flight', $lines[2]->serviceType);
     }
 
@@ -192,18 +240,25 @@ class SaleDraftBuilderTest extends TestCase
 
         $lines = (new SaleDraftBuilder)->buildLines($input);
 
-        $this->assertCount(3, $lines, 'Line count/amounts are unchanged by recognition timing — only the margin leg\'s purpose code differs.');
-        $this->assertSame('RECEIVABLE_CONTROL', $lines[0]->purposeCode);
-        $this->assertSame('SERVICE_PAYABLE', $lines[1]->purposeCode, 'Agent basis never posts a cost expense leg — SERVICE_PAYABLE is unaffected by recognition timing.');
+        $this->assertCount(4, $lines, 'Line count/amounts are unchanged by recognition timing — only the purpose codes differ.');
+        $this->assertSame(
+            ['RECEIVABLE_CONTROL', 'DEFERRED_REVENUE', 'PREPAID_SUPPLIER_COST', 'SERVICE_PAYABLE'],
+            array_map(fn ($l) => $l->purposeCode, $lines)
+        );
 
-        $margin = $lines[2];
-        $this->assertSame('DEFERRED_REVENUE', $margin->purposeCode);
-        $this->assertNull($margin->serviceType, 'DEFERRED_REVENUE is a GLOBAL purpose code — never carries a per-service serviceType.');
-        $this->assertSame('credit', $margin->side);
-        $this->assertEqualsWithDelta(30.0, $margin->amount, 0.0005);
+        $revenue = $lines[1];
+        $this->assertNull($revenue->serviceType, 'DEFERRED_REVENUE is a GLOBAL purpose code — never carries a per-service serviceType.');
+        $this->assertSame('credit', $revenue->side);
+        $this->assertEqualsWithDelta(130.0, $revenue->amount, 0.0005, 'R-CT1: the deferred amount is the full sell, not the margin.');
+
+        $this->assertNull($lines[2]->serviceType);
+        $this->assertSame('debit', $lines[2]->side);
+        $this->assertEqualsWithDelta(100.0, $lines[2]->amount, 0.0005);
+
+        $this->assertSame('SERVICE_PAYABLE', $lines[3]->purposeCode, 'SERVICE_PAYABLE (the real supplier liability) is never deferred.');
     }
 
-    public function test_agent_basis_at_travel_negative_margin_flips_deferred_revenue_to_debit(): void
+    public function test_agent_basis_at_travel_below_cost_sale_keeps_both_legs_on_their_natural_side(): void
     {
         $input = new SaleDraftInput(
             serviceType: 'flight',
@@ -213,11 +268,17 @@ class SaleDraftBuilderTest extends TestCase
             recognitionTiming: SaleDraftInput::RECOGNITION_AT_TRAVEL,
         );
 
-        $margin = (new SaleDraftBuilder)->buildLines($input)[2];
+        $lines = (new SaleDraftBuilder)->buildLines($input);
 
-        $this->assertSame('DEFERRED_REVENUE', $margin->purposeCode);
-        $this->assertSame('debit', $margin->side);
-        $this->assertEqualsWithDelta(30.0, $margin->amount, 0.0005);
+        $revenue = $lines[1];
+        $this->assertSame('DEFERRED_REVENUE', $revenue->purposeCode);
+        $this->assertSame('credit', $revenue->side, 'R-CT1 removed the sign-aware flip — deferred revenue is always a credit.');
+        $this->assertEqualsWithDelta(70.0, $revenue->amount, 0.0005);
+
+        $cost = $lines[2];
+        $this->assertSame('PREPAID_SUPPLIER_COST', $cost->purposeCode);
+        $this->assertSame('debit', $cost->side);
+        $this->assertEqualsWithDelta(100.0, $cost->amount, 0.0005);
     }
 
     public function test_principal_basis_at_issue_default_is_unchanged(): void

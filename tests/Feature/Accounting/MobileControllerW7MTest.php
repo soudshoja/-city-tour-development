@@ -120,7 +120,7 @@ class MobileControllerW7MTest extends AccountingTestCase
     private function enableEngine(Company $company): void
     {
         config(['accounting.engine.enabled' => true]);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
     }
 
@@ -176,20 +176,28 @@ class MobileControllerW7MTest extends AccountingTestCase
         $invoice = Invoice::where('invoice_number', 'W7M-INV-1')->firstOrFail();
         $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->firstOrFail();
 
-        $saleKey = 'invoice-detail:' . $invoiceDetail->id . ':sale';
+        $saleKey = 'invoice-detail:'.$invoiceDetail->id.':sale';
         $transaction = Transaction::withoutGlobalScopes()->where('idempotency_key', $saleKey)->first();
 
         $this->assertNotNull($transaction, 'A sale document must be posted under the standard invoice-detail:{id}:sale key.');
         $this->assertSame('posted', $transaction->posting_status);
-        $this->assertEqualsWithDelta(500.0, (float) $transaction->amount, 0.01);
+        // OWNER RULING R-CT1, 2026-09-09 — GROSS basis. Was 500.0 (the net shape's Dr AR only);
+        // a costed sale now posts Dr AR 500 + Dr cost of sales 350 = 850 on the debit side.
+        $this->assertEqualsWithDelta(850.0, (float) $transaction->amount, 0.01);
 
         $lines = JournalEntry::withoutGlobalScopes()->where('transaction_id', $transaction->id)->get();
-        $this->assertSame(3, $lines->count(), 'Agent-basis sale: receivable / payable / margin.');
+        $this->assertSame(4, $lines->count(), 'Gross sale: receivable / revenue / cost of sales / payable. Was 3 under the superseded net shape.');
 
         $debit = (float) $lines->sum('debit');
         $credit = (float) $lines->sum('credit');
         $this->assertEqualsWithDelta($debit, $credit, 0.001, 'The posted document must balance.');
-        $this->assertEqualsWithDelta(500.0, $debit, 0.01);
+        $this->assertEqualsWithDelta(850.0, $debit, 0.01, 'Gross: sell 500.00 + supplier cost 350.00.');
+        $this->assertEqualsWithDelta(
+            500.0,
+            (float) $lines->max('debit'),
+            0.01,
+            'The AR leg still carries the full sell price.'
+        );
 
         // Raw HEAD writers are gone on the ON path: the engine resolves real, seeded leaf
         // accounts (never a name-LIKE lookup or the dead $PayablechildAccountId computation),
@@ -242,7 +250,7 @@ class MobileControllerW7MTest extends AccountingTestCase
         $method->invoke($controller, $invoice, $invoiceDetail, $task, $task->supplier, $client, $agent, $company->id, $agent->branch_id, 500.0, 'retry test', $legacy);
         $method->invoke($controller, $invoice, $invoiceDetail, $task, $task->supplier, $client, $agent, $company->id, $agent->branch_id, 500.0, 'retry test', $legacy);
 
-        $saleKey = 'invoice-detail:' . $invoiceDetail->id . ':sale';
+        $saleKey = 'invoice-detail:'.$invoiceDetail->id.':sale';
         $this->assertSame(
             1,
             Transaction::withoutGlobalScopes()->where('idempotency_key', $saleKey)->count(),
@@ -271,7 +279,7 @@ class MobileControllerW7MTest extends AccountingTestCase
         $invoiceDetail = InvoiceDetail::where('invoice_id', $invoice->id)->firstOrFail();
 
         // No idempotency-keyed engine document exists -- the legacy path never sets one.
-        $saleKey = 'invoice-detail:' . $invoiceDetail->id . ':sale';
+        $saleKey = 'invoice-detail:'.$invoiceDetail->id.':sale';
         $this->assertNull(Transaction::withoutGlobalScopes()->where('idempotency_key', $saleKey)->first());
 
         // Legacy Transaction::create() never sets company_id (see w7m-build.md's disclosed gap
@@ -306,7 +314,7 @@ class MobileControllerW7MTest extends AccountingTestCase
 
         $invoice = Invoice::where('invoice_number', 'W7M-UPD-1')->firstOrFail();
         $oldDetail = InvoiceDetail::where('invoice_id', $invoice->id)->firstOrFail();
-        $oldKey = 'invoice-detail:' . $oldDetail->id . ':sale';
+        $oldKey = 'invoice-detail:'.$oldDetail->id.':sale';
         $oldTransaction = Transaction::withoutGlobalScopes()->where('idempotency_key', $oldKey)->firstOrFail();
         $this->assertSame('posted', $oldTransaction->posting_status);
 
@@ -330,7 +338,7 @@ class MobileControllerW7MTest extends AccountingTestCase
             'currency' => 'KWD',
         ];
 
-        $update = $this->putJson('/api/invoice/' . $invoice->id, $updatePayload);
+        $update = $this->putJson('/api/invoice/'.$invoice->id, $updatePayload);
         // Same pre-existing status='Assigned' ENUM bug as store() (see that test's comment) --
         // but HEAD's updateInvoice() per-task catch (unlike store()'s) explicitly returns
         // response()->json(..., 500), so the same benign, unrelated bug surfaces as a 500 here
@@ -356,10 +364,18 @@ class MobileControllerW7MTest extends AccountingTestCase
         $this->assertNotNull($newDetail);
         $this->assertNotSame($oldDetail->id, $newDetail->id, 'updateInvoice() replaces the InvoiceDetail row wholesale, not in place.');
 
-        $newKey = 'invoice-detail:' . $newDetail->id . ':sale';
+        $newKey = 'invoice-detail:'.$newDetail->id.':sale';
         $newTransaction = Transaction::withoutGlobalScopes()->where('idempotency_key', $newKey)->where('posting_status', 'posted')->first();
         $this->assertNotNull($newTransaction);
-        $this->assertEqualsWithDelta(650.0, (float) $newTransaction->amount, 0.01);
+        // R-CT1 gross: the document total is sell 650.00 + supplier cost 350.00 (the fixture's
+        // task cost, unchanged by the amount correction). Was 650.00 under the net shape.
+        $this->assertEqualsWithDelta(1000.0, (float) $newTransaction->amount, 0.01);
+        $this->assertEqualsWithDelta(
+            650.0,
+            (float) JournalEntry::withoutGlobalScopes()->where('transaction_id', $newTransaction->id)->max('debit'),
+            0.01,
+            'The AR leg carries the corrected sell price.'
+        );
 
         $newLines = JournalEntry::withoutGlobalScopes()->where('transaction_id', $newTransaction->id)->get();
         $this->assertEqualsWithDelta((float) $newLines->sum('debit'), (float) $newLines->sum('credit'), 0.001);
@@ -399,7 +415,7 @@ class MobileControllerW7MTest extends AccountingTestCase
             'currency' => 'KWD',
         ];
 
-        $update = $this->putJson('/api/invoice/' . $invoice->id, $updatePayload);
+        $update = $this->putJson('/api/invoice/'.$invoice->id, $updatePayload);
         // HEAD's updateInvoice() legacy body (verbatim, unfixed -- see w7m-build.md's disclosed
         // gap list) writes `'account_id' => $supplier->id` directly into JournalEntry's real
         // `accounts.id` foreign key -- not a resolved GL leaf, so the FIRST JournalEntry::create()

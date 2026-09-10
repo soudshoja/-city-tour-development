@@ -855,6 +855,11 @@ class ReceiptVoucherControllerW5RTest extends AccountingTestCase
 
         $receivable = app(AccountResolver::class)->resolve('RECEIVABLE_CONTROL', $company->id);
         $serviceRevenue = app(AccountResolver::class)->resolve('SERVICE_REVENUE', $company->id, 'flight');
+        // CT-A3 E4 (CT-F38), 2026-09-09 — was SALARY_EXPENSE / SALARY_PAYABLE (5160 / 2201, a
+        // PAYROLL pair). A commission on a sale posts to COMMISSION_EXPENSE / COMMISSION_PAYABLE
+        // (5130 / 2210), where the legacy ledger already put it.
+        $commissionExpense = app(AccountResolver::class)->resolve('COMMISSION_EXPENSE', $company->id);
+        $commissionPayable = app(AccountResolver::class)->resolve('COMMISSION_PAYABLE', $company->id);
         $salaryExpense = app(AccountResolver::class)->resolve('SALARY_EXPENSE', $company->id);
         $salaryPayable = app(AccountResolver::class)->resolve('SALARY_PAYABLE', $company->id);
 
@@ -884,8 +889,10 @@ class ReceiptVoucherControllerW5RTest extends AccountingTestCase
         $this->assertNotNull($commissionTransaction, 'Agent (type_id=2) commission pair must also post through the seam.');
 
         $commissionLines = JournalEntry::where('transaction_id', $commissionTransaction->id)->get();
-        $this->assertEqualsWithDelta(15.0, (float) ($commissionLines->firstWhere('account_id', $salaryExpense->id)?->debit ?? 0), 0.001);
-        $this->assertEqualsWithDelta(15.0, (float) ($commissionLines->firstWhere('account_id', $salaryPayable->id)?->credit ?? 0), 0.001);
+        $this->assertEqualsWithDelta(15.0, (float) ($commissionLines->firstWhere('account_id', $commissionExpense->id)?->debit ?? 0), 0.001);
+        $this->assertEqualsWithDelta(15.0, (float) ($commissionLines->firstWhere('account_id', $commissionPayable->id)?->credit ?? 0), 0.001);
+        $this->assertNull($commissionLines->firstWhere('account_id', $salaryExpense->id), 'CT-F38: 5160 Agent Salaries must receive nothing from a commission.');
+        $this->assertNull($commissionLines->firstWhere('account_id', $salaryPayable->id), 'CT-F38: 2201 Salaries & Wages Payable must receive nothing from a commission.');
         $this->assertEqualsWithDelta((float) $commissionLines->sum('debit'), (float) $commissionLines->sum('credit'), 0.001);
     }
 

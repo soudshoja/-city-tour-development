@@ -263,6 +263,16 @@ class PhaseGateIntegratedScenarioTest extends AccountingTestCase
             ];
         }
 
+        // CT-A3 R2: keyed by account id and SORTED by it, because `assertSame()` on an array
+        // compares key ORDER as well as values, and this array's order comes from
+        // TrialBalanceService's `ORDER BY a.code` — which is NOT a total order on this chart.
+        // CoaSeeder mints code 2130 twice ('Suppliers (Hotels)' and 'Suppliers (Ferry)', the
+        // duplicate W2SeededChartRatchetTest allow-lists and CT-A4 chose not to renumber), so the
+        // two tied rows may come back in either order, and a row inserted between two snapshots can
+        // flip them. Sorting removes a dependency on an order the query never promised; it does not
+        // weaken the assertion, which still compares every account's debit and credit exactly.
+        ksort($snapshot);
+
         return $snapshot;
     }
 

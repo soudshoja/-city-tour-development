@@ -88,4 +88,78 @@
             class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
         <p class="text-xs text-gray-400 mt-1">When set, the system records each task's net = retail price minus this %.</p>
     </div>
+
+    {{--
+        CT-A3 wave 1 — owner ruling R-CT3, 2026-09-09: "need to pay are the one guaranteed to be
+        paid not hold or some supplier confirmed so this needs to be done based on the status of
+        supplier which we set on supplier aspect". This is that setting. App\Services\Accounting\
+        SupplierPayableRule reads it and App\Services\Accounting\TaskIssuancePayableService acts
+        on it; the task statuses each option covers live in
+        config('accounting.supplier_payable.triggers'), never in code.
+    --}}
+    <div class="mt-4" @click.stop>
+        <label for="payable_trigger" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supplier payable becomes due</label>
+        <select name="payable_trigger" id="payable_trigger"
+            class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+            @php($currentTrigger = old('payable_trigger', $supplier->payable_trigger ?: config('accounting.supplier_payable.default_trigger', 'on_issue')))
+            <option value="on_supplier_confirm" @selected($currentTrigger === 'on_supplier_confirm')>On supplier confirmation</option>
+            <option value="on_issue" @selected($currentTrigger === 'on_issue')>On issue / ticketing (default)</option>
+            <option value="on_voucher" @selected($currentTrigger === 'on_voucher')>Only once a voucher is raised</option>
+            <option value="manual" @selected($currentTrigger === 'manual')>Never — raise the payable manually</option>
+        </select>
+        <p class="text-xs text-gray-400 mt-1">
+            The earliest task status at which this supplier's cost is a guaranteed liability. Held and
+            unconfirmed tasks never accrue. Changing this does not restate tasks already posted.
+        </p>
+    </div>
+
+    <div class="mt-4" @click.stop>
+        <label class="inline-flex items-center gap-2">
+            <input type="hidden" name="payable_hold" value="0">
+            <input type="checkbox" name="payable_hold" id="payable_hold" value="1"
+                @checked(old('payable_hold', (bool) $supplier->payable_hold))
+                class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-blue-600 focus:ring-blue-400">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Hold supplier payable accrual</span>
+        </label>
+        <p class="text-xs text-gray-400 mt-1">
+            Suspends automatic accrual for this supplier at every status, whatever the setting above says.
+        </p>
+    </div>
+
+    {{--
+        CT-A3 wave 2 (W2-3) — the same owner ruling applied to getting money BACK. Before this,
+        every refund assumed the supplier returned the cost unless an operator typed a figure to
+        say otherwise, so a refund the supplier refused erased a cost the agency had really borne
+        (CT-A1 CT-F11). App\Services\Accounting\SupplierRefundRule reads this setting; the task
+        statuses each option covers live in config('accounting.supplier_refund.triggers'), never in
+        code.
+    --}}
+    <div class="mt-4" @click.stop>
+        <label for="refund_trigger" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Supplier refund is recoverable</label>
+        <select name="refund_trigger" id="refund_trigger"
+            class="block h-10 w-64 md:w-72 min-w-[16rem] border border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded px-3 focus:ring-2 focus:ring-blue-400 focus:border-blue-400 transition">
+            @php($currentRefundTrigger = old('refund_trigger', $supplier->refund_trigger ?: config('accounting.supplier_refund.default_trigger', 'on_supplier_refund_confirmed')))
+            <option value="on_supplier_refund_confirmed" @selected($currentRefundTrigger === 'on_supplier_refund_confirmed')>Only once the supplier confirms the refund (default)</option>
+            <option value="on_refund_request" @selected($currentRefundTrigger === 'on_refund_request')>As soon as a refund is requested</option>
+            <option value="manual" @selected($currentRefundTrigger === 'manual')>Only the amount an operator enters</option>
+            <option value="never" @selected($currentRefundTrigger === 'never')>Never — this supplier does not refund</option>
+        </select>
+        <p class="text-xs text-gray-400 mt-1">
+            When a booking is refunded, this decides whether the supplier's cost comes back to us or
+            stays with us as a loss. An amount typed on the refund itself always wins over this setting.
+        </p>
+    </div>
+
+    <div class="mt-4" @click.stop>
+        <label class="inline-flex items-center gap-2">
+            <input type="hidden" name="refund_hold" value="0">
+            <input type="checkbox" name="refund_hold" id="refund_hold" value="1"
+                @checked(old('refund_hold', (bool) $supplier->refund_hold))
+                class="rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 text-blue-600 focus:ring-blue-400">
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-300">Hold supplier refund recovery</span>
+        </label>
+        <p class="text-xs text-gray-400 mt-1">
+            For a supplier in dispute: nothing is treated as recoverable at any status until this is cleared.
+        </p>
+    </div>
 </div>

@@ -12,7 +12,6 @@ use App\Models\Client;
 use App\Models\Company;
 use App\Models\Invoice;
 use App\Models\InvoiceDetail;
-use App\Models\InvoicePartial;
 use App\Models\InvoiceSequence;
 use App\Models\JournalEntry;
 use App\Models\Payment;
@@ -26,7 +25,6 @@ use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -124,7 +122,7 @@ class InvoiceControllerW3eTest extends AccountingTestCase
     private function enableEngine(Company $company): void
     {
         config(['accounting.engine.enabled' => true]);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
     }
 
@@ -466,7 +464,12 @@ class InvoiceControllerW3eTest extends AccountingTestCase
 
         $decoyStillLive = $decoyTransaction->fresh();
         $this->assertSame('posted', $decoyStillLive->posting_status, 'The decoy transaction (same description, different invoice) must be untouched.');
-        $this->assertEqualsWithDelta(150.00, (float) JournalEntry::where('transaction_id', $decoyTransaction->id)->where('debit', '>', 0)->sum('debit'), 0.01);
+        // OWNER RULING R-CT1, 2026-09-09 — gross basis: a costed sale posts TWO debits, the AR leg
+        // (the full sell, 150.00) and the cost-of-sales leg (the supplier cost, 100.00). Was
+        // 150.00 total under the superseded net shape, which posted no cost leg at all.
+        $decoyDebits = JournalEntry::where('transaction_id', $decoyTransaction->id)->where('debit', '>', 0)->get();
+        $this->assertEqualsWithDelta(250.00, (float) $decoyDebits->sum('debit'), 0.01, 'Gross: AR 150.00 + cost of sales 100.00.');
+        $this->assertEqualsWithDelta(150.00, (float) $decoyDebits->max('debit'), 0.01, "The decoy's AR leg still carries its own, untouched sell price.");
 
         // PostingService::repost() suffixes the replacement's idempotency key with
         // ':repost:{old->id}' whenever it collides with $old's own key (its own documented,

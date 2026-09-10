@@ -560,9 +560,12 @@ class RefundController extends Controller
             'tasks.*.original_task_profit' => ['required', 'numeric'],
             'tasks.*.refund_fee_to_client' => ['required', 'numeric'],
             'tasks.*.supplier_charge' => ['required', 'numeric'],
-            // W4.U §b — editable "supplier net" override (w4-brief.md §4 process decisions);
-            // nullable so RefundPostingService::supplierRefundAmount()'s own default (cost -
-            // penalty) applies when the operator leaves it blank.
+            // W4.U §b — editable "supplier net" override (w4-brief.md §4 process decisions).
+            // CT-A3 wave 2 (W2-3): still nullable, but null no longer means "assume cost -
+            // penalty". Null means "nobody has recorded what the supplier did", and
+            // App\Services\Accounting\SupplierRefundRule then decides from the supplier's own
+            // configured refund_trigger and the task's status. An explicit figure typed here
+            // always wins over that rule.
             'tasks.*.supplier_refund_amount' => ['nullable', 'numeric'],
             'tasks.*.new_task_profit' => ['required', 'numeric'],
             'tasks.*.total_refund_to_client' => ['required', 'numeric'],
@@ -600,6 +603,15 @@ class RefundController extends Controller
         );
         if ($appliedInvoiceError !== null) {
             return redirect()->back()->withErrors(['error' => $appliedInvoiceError])->withInput();
+        }
+
+        // CT-A3 R3-3 — VERIFY-CT-A3-STACK-R2 §3.2 finding V3, at the BOUNDARY as well as in the
+        // engine. Checked here, before either the batch path or the single-invoice path, for the
+        // same reason validateAppliedInvoiceId() is: one check covering both entry points.
+        $overCreditError = $this->validateCreditWithinOutstanding($validatedData['tasks'], $tasksForGrouping);
+
+        if ($overCreditError !== null) {
+            return redirect()->back()->withErrors(['error' => $overCreditError])->withInput();
         }
 
         if ($distinctInvoiceIds->count() > 1) {
@@ -812,6 +824,76 @@ class RefundController extends Controller
             Log::error('Refund processing failed: ' . $e->getMessage());
             return back()->withErrors(['error' => 'Refund failed: ' . $e->getMessage()]);
         }
+    }
+
+    /**
+     * CT-A3 **R3-3** — VERIFY-CT-A3-STACK-R2 §3.2 finding **V3**, at the controller boundary.
+     *
+     * `tasks.*.original_invoice_price` and `tasks.*.total_refund_to_client` were validated as bare
+     * `['required','numeric']` — no `max`, no relation to the sale. A live sale of 100 credited 500
+     * left `RECEIVABLE_CONTROL` at **+500.000** against `CLIENT_ADVANCE` at **−500.000**: the
+     * client's NET position is still zero, so the trial balance is right and nothing in any wave
+     * report could see it, while AR ageing, the client statement and the credit-limit check each
+     * read one leaf without the other and each report the inflated figure.
+     *
+     * The engine refuses this too ({@see \App\Exceptions\Accounting\RefundExceedsOutstandingException}),
+     * and that is the guarantee that actually holds the line — every path reaches it, including the
+     * replay and the API. This boundary check exists so an operator gets a FIELD ERROR they can
+     * correct instead of a 500-shaped "Refund failed:" message after a rolled-back transaction, and
+     * so a batch of five refunds is refused before any of the five is written.
+     *
+     * The outstanding figure is asked of {@see RefundPostingService::outstandingSellForTask()} —
+     * the same computation the credit note itself uses — never re-derived here. A NULL from it
+     * means "nothing measurable" (uninvoiced task, no posted sale) and this method defers: the
+     * engine still applies its own rule, so a null can never become a silent pass.
+     *
+     * Returns null when every requested credit is within its sale's outstanding sell, else a
+     * user-facing error string naming the task and both figures.
+     *
+     * @param  array<int, array<string, mixed>>  $tasks  the validated `tasks` payload
+     * @param  \Illuminate\Support\Collection<int, Task>  $loadedTasks  the same tasks, already loaded, in the same order
+     */
+    private function validateCreditWithinOutstanding(array $tasks, \Illuminate\Support\Collection $loadedTasks): ?string
+    {
+        $tolerance = (float) config('accounting.engine.balance_tolerance', 0.0005);
+        $service = app(RefundPostingService::class);
+
+        foreach ($tasks as $index => $taskData) {
+            $task = $loadedTasks[$index] ?? null;
+
+            if ($task === null) {
+                continue;
+            }
+
+            $companyId = (int) ($task->company_id ?? 0);
+
+            if ($companyId <= 0) {
+                continue;
+            }
+
+            $outstanding = $service->outstandingSellForTask($task, $companyId);
+
+            if ($outstanding === null) {
+                continue;
+            }
+
+            $requested = round((float) ($taskData['original_invoice_price'] ?? 0), 3);
+
+            if ($requested - $outstanding <= $tolerance) {
+                continue;
+            }
+
+            return sprintf(
+                'Task #%s: the credit requested (%s) is more than the sale is still carrying (%s). '
+                .'Refunds cannot credit more than the outstanding sell — correct the amount, or reverse '
+                .'whatever already credited this sale, and try again.',
+                (string) $task->getKey(),
+                number_format($requested, 3),
+                number_format($outstanding, 3)
+            );
+        }
+
+        return null;
     }
 
     /**

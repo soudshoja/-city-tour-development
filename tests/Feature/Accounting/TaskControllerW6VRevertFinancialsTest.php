@@ -8,8 +8,8 @@ use App\Models\AgentType;
 use App\Models\Branch;
 use App\Models\Client;
 use App\Models\Company;
-use App\Models\Invoice;
 use App\Models\InvoiceDetail;
+use App\Models\JournalEntry;
 use App\Models\Supplier;
 use App\Models\Task;
 use App\Models\Transaction;
@@ -80,7 +80,7 @@ class TaskControllerW6VRevertFinancialsTest extends AccountingTestCase
     private function enableEngine(Company $company): void
     {
         config(['accounting.engine.enabled' => true]);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
     }
 
@@ -93,7 +93,7 @@ class TaskControllerW6VRevertFinancialsTest extends AccountingTestCase
             'supplier_id' => $supplier->id,
             'type' => 'flight',
             'status' => 'issued',
-            'reference' => 'PNR-' . uniqid(),
+            'reference' => 'PNR-'.uniqid(),
             'price' => 500.0,
             'total' => 350.0,
         ], $overrides));
@@ -110,7 +110,7 @@ class TaskControllerW6VRevertFinancialsTest extends AccountingTestCase
         $service->issue($task);
 
         $invoiceDetail = InvoiceDetail::where('task_id', $task->id)->first();
-        $saleKey = 'invoice-detail:' . $invoiceDetail->id . ':sale';
+        $saleKey = 'invoice-detail:'.$invoiceDetail->id.':sale';
         $saleTransaction = Transaction::withoutGlobalScopes()->where('idempotency_key', $saleKey)->first();
         $this->assertNotNull($saleTransaction);
 
@@ -135,7 +135,7 @@ class TaskControllerW6VRevertFinancialsTest extends AccountingTestCase
         $service->issue($task);
 
         $invoiceDetail = InvoiceDetail::where('task_id', $task->id)->first();
-        $saleKey = 'invoice-detail:' . $invoiceDetail->id . ':sale';
+        $saleKey = 'invoice-detail:'.$invoiceDetail->id.':sale';
         $oldSale = Transaction::withoutGlobalScopes()->where('idempotency_key', $saleKey)->first();
 
         $task->total = 600.0;
@@ -146,16 +146,27 @@ class TaskControllerW6VRevertFinancialsTest extends AccountingTestCase
         $oldSale->refresh();
         $this->assertSame('reversed', $oldSale->posting_status, 'The OLD amount document must be reversed, never mutated in place.');
 
-        // repost()'s own key convention (PostingService::repost(), see its docblock): when the
-        // replacement draft's idempotencyKey collides with the ORIGINAL's, it is suffixed
-        // ':repost:{old_id}' rather than reused verbatim -- exactly the same convention
-        // InvoiceController::updateTaskPriceOnPath() already relies on for this identical shape.
+        // repost()'s own key convention (PostingService::repost(), see its docblock). CT-A3 R2-2
+        // replaced the conditional ':repost:{old_id}' suffix -- which stopped being applied from
+        // the SECOND edit onwards, verify-R1 D6 -- with a MONOTONIC revision of the document's own
+        // base key, '{base}:rev{n}'. First correction of this sale, so ':rev1'. Pinned as the
+        // LITERAL the production code mints, not re-derived from it.
         $newSale = Transaction::withoutGlobalScopes()
-            ->where('idempotency_key', $saleKey . ':repost:' . $oldSale->id)
+            ->where('idempotency_key', $saleKey.':rev1')
             ->where('posting_status', 'posted')
             ->first();
-        $this->assertNotNull($newSale, 'A fresh posted document must exist under the repost-suffixed idempotency key.');
-        $this->assertEqualsWithDelta(600.0, (float) $newSale->amount, 0.001);
+        $this->assertNotNull($newSale, 'A fresh posted document must exist under the next revision of the sale key.');
+        // OWNER RULING R-CT1, 2026-09-09 -- GROSS basis: the document total is the corrected sell
+        // (600.00) plus the task's supplier cost (350.00, unchanged by an amount correction), not
+        // the sell alone as the superseded net shape produced. The corrected SELL itself is
+        // asserted directly below, on the AR leg, so what this test pins is unchanged.
+        $this->assertEqualsWithDelta(950.0, (float) $newSale->amount, 0.001);
+        $this->assertEqualsWithDelta(
+            600.0,
+            (float) JournalEntry::withoutGlobalScopes()->where('transaction_id', $newSale->id)->max('debit'),
+            0.001,
+            'The AR leg carries the corrected sell price.'
+        );
 
         $invoiceDetail->refresh();
         $this->assertEqualsWithDelta(600.0, (float) $invoiceDetail->task_price, 0.001, 'invoice_detail.task_price must be kept in sync before reposting.');
@@ -172,7 +183,7 @@ class TaskControllerW6VRevertFinancialsTest extends AccountingTestCase
         $service->issue($task);
 
         $invoiceDetail = InvoiceDetail::where('task_id', $task->id)->first();
-        $saleKey = 'invoice-detail:' . $invoiceDetail->id . ':sale';
+        $saleKey = 'invoice-detail:'.$invoiceDetail->id.':sale';
         $oldSale = Transaction::withoutGlobalScopes()->where('idempotency_key', $saleKey)->first();
 
         $newClient = Client::factory()->create(['agent_id' => $agent->id]);
@@ -187,7 +198,7 @@ class TaskControllerW6VRevertFinancialsTest extends AccountingTestCase
         $this->assertSame('reversed', $oldSale->posting_status);
 
         $newSale = Transaction::withoutGlobalScopes()
-            ->where('idempotency_key', $saleKey . ':repost:' . $oldSale->id)
+            ->where('idempotency_key', $saleKey.':rev1')
             ->where('posting_status', 'posted')
             ->first();
         $this->assertNotNull($newSale);
@@ -235,10 +246,10 @@ class TaskControllerW6VRevertFinancialsTest extends AccountingTestCase
         $this->invokePrivate('handleClientChange', $task->fresh(), $prevClientName);
 
         $newSale = Transaction::withoutGlobalScopes()
-            ->where('idempotency_key', $saleKey.':repost:'.$oldSale->id)
+            ->where('idempotency_key', $saleKey.':rev1')
             ->where('posting_status', 'posted')
             ->first();
-        $this->assertNotNull($newSale, 'A fresh posted document must exist under the repost-suffixed idempotency key.');
+        $this->assertNotNull($newSale, 'A fresh posted document must exist under the next revision of the sale key.');
 
         $lines = \App\Models\JournalEntry::withoutGlobalScopes()->where('transaction_id', $newSale->id)->get();
 

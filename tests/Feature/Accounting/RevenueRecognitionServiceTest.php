@@ -58,7 +58,7 @@ class RevenueRecognitionServiceTest extends AccountingTestCase
 
         $company = Company::factory()->create();
         CoaSeeder::run($company->id);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
         $this->trackCompanyForInvariants($company->id);
         Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
 
@@ -264,7 +264,11 @@ class RevenueRecognitionServiceTest extends AccountingTestCase
         $serviceRevenueFlightId = app(AccountResolver::class)->resolve('SERVICE_REVENUE', $company->id, 'flight')->id;
         $line = DB::table('journal_entries')->where('company_id', $company->id)->where('task_id', $task->id)->where('account_id', $serviceRevenueFlightId)->first();
         $this->assertNotNull($line, 'flight (at_issue default) posts SERVICE_REVENUE at sale time, unchanged by P2.5.D.');
-        $this->assertEqualsWithDelta(30.0, (float) $line->credit, 0.0005);
+        // OWNER RULING R-CT1, 2026-09-09 -- GROSS basis: the revenue leg carries the FULL sell
+        // (130.0), not the margin (30.0 = 130 - 100) the superseded net shape posted. What this
+        // test pins is unchanged -- an at_issue service type recognises at SALE time and never
+        // surfaces to accounting:recognize-revenue -- only the amount moved.
+        $this->assertEqualsWithDelta(130.0, (float) $line->credit, 0.0005);
 
         $this->assertArrayNotHasKey($task->id, app(RevenueRecognitionService::class)->outstandingByTask($company->id));
 

@@ -1049,6 +1049,22 @@ class ChatController extends Controller
             costDescription: 'Supplier cost for task #'.$selectedtask->id,
         ));
 
+        // CT-A3 wave-1 (2026-09-09): SaleDraftBuilder returns an EMPTY line array when a sale
+        // carries neither a sell price nor a supplier cost — nothing happened, so there is no
+        // document to post. PostingService rejects an empty line set by construction, so a caller
+        // that handed it one would fail the whole invoice for a line carrying no money in either
+        // direction. Mirrors InvoiceController::postSaleJournalEntries()'s own guard.
+        if ($lines === []) {
+            Log::info('accounting.chat_sale.nothing_to_post', [
+                'company_id' => (int) $draftCompanyId,
+                'invoice_id' => $invoice->id,
+                'invoice_detail_id' => $invoiceDetail->id,
+                'task_id' => $selectedtask->id,
+            ]);
+
+            return null;
+        }
+
         $draft = new DocumentDraft(
             companyId: (int) $draftCompanyId,
             branchId: (int) $draftBranchId,

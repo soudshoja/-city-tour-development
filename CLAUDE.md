@@ -174,6 +174,15 @@ or the ratchet is decorative.
    a second approval silently overwrites the first claim's `reconciled_ref_id`. Matchers must also
    refuse to PROPOSE over a foreign kind's live claim (their `liveClaimOn()` lookups are
    deliberately kind-agnostic), so the exceptions report stays honest instead of failing late.
+6. **No report resolves an account by hardcoded name.** `ReportController::
+   unpaidaccountsPayableReceivableReport()`/`creditors()`/`creditorsPdf()` resolve
+   `PAYABLE_CONTROL`/`RECEIVABLE_CONTROL` through `AccountResolver`'s purpose-code mapping now,
+   never `Account::where('name', 'Accounts Payable')` or a `Liabilities -> Accounts Payable ->
+   Creditors` parent-chain walk (CT-D1B: this lands on whatever a company happened to NAME an
+   account, not on the leaf the engine actually posts to). Scoped to `ReportController.php` only
+   — ten pre-existing, individually-named hits elsewhere in that same file are allow-listed as a
+   tracked, shrink-only gap (CT-A6-1); a repo-wide sweep found dozens more in `AccountingController.php`
+   alone, a separate, much larger remediation this ratchet does not yet cover.
 
 Running the accounting suites: **chunk `tests/Feature/Accounting` into groups of ~32 files.** A
 single-process run of all 128 files reports hundreds of phantom failures — one test leaking an open

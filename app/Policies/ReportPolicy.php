@@ -98,6 +98,28 @@ class ReportPolicy
         return $user->can('view creditors');
     }
 
+    // CT-A6-5: general ledger / balance sheet — same Modules::ACCOUNTING gate and
+    // $user->can('view X') Spatie-permission-string convention as viewProfitLoss()/
+    // viewCreditors() immediately above, rather than the older inline role_id check some other
+    // report actions on ReportController still carry.
+    public function viewGeneralLedger(User $user)
+    {
+        if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {
+            return false;
+        }
+
+        return $user->can('view general ledger');
+    }
+
+    public function viewBalanceSheet(User $user)
+    {
+        if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {
+            return false;
+        }
+
+        return $user->can('view balance sheet');
+    }
+
     public function viewDailySales(User $user)
     {
         if (! $this->moduleEnabled($user, Modules::ACCOUNTING)) {

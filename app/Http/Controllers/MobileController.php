@@ -704,11 +704,16 @@ class MobileController extends Controller
         try {
             // 🔹 Find the existing invoice
             $invoice = Invoice::where('invoice_number', $invoiceNumber)->first();
-    
+
             if (!$invoice) {
                 return response()->json(['error' => 'Invoice not found.'], 404);
             }
-    
+
+            // CT-F29: only the invoice's own company may rewrite its ledger rows.
+            if (! $this->userMayManageInvoice($invoice)) {
+                return response()->json(['error' => 'You are not authorized to update this invoice.'], 403);
+            }
+
             // 🔹 Delete related records before updating
             //
             // W7.M: HEAD hard-deleted the invoice's live Transaction/JournalEntry rows here --
@@ -952,6 +957,12 @@ class MobileController extends Controller
             return redirect()->back()->with('error', 'Invoice not found!');
         }
 
+        // CT-F29: refuse to touch (soft-)delete ledger rows for an invoice
+        // that does not belong to the authenticated caller's company.
+        if (! $this->userMayManageInvoice($invoice)) {
+            return response()->json(['success' => false, 'message' => 'You are not authorized to delete this invoice.'], 403);
+        }
+
         try {
             InvoiceDetail::where('invoice_id', $invoice->id)->delete();
             InvoicePartial::where('invoice_id', $invoice->id)->delete();
@@ -965,10 +976,36 @@ class MobileController extends Controller
         } catch (Exception $error) {
             logger('Failed to delete invoice: ' . $error->getMessage());
             return redirect()->back()->with('error', 'Failed to delete invoice!');
-        }            
+        }
     }
 
-    
+    /**
+     * CT-F29: authorize the destructive invoice/journal mutation paths in
+     * this controller (updateInvoice, deleteInvoice) so a caller can only
+     * act on invoices that belong to their own company. `invoices` has no
+     * `company_id` column, so company is resolved the same way the rest of
+     * this controller resolves it: invoice -> agent -> branch -> company
+     * (see updateInvoice() above), compared against the authenticated
+     * user's company (User::company, which walks the same agent/accountant/
+     * branch chain). Fails closed: an unresolvable company on either side
+     * is treated as not authorized.
+     */
+    private function userMayManageInvoice(Invoice $invoice): bool
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return false;
+        }
+
+        $userCompanyId = $user->company?->id;
+        if (! $userCompanyId) {
+            return false;
+        }
+
+        $invoiceCompanyId = $invoice->agent?->branch?->company?->id;
+
+        return $invoiceCompanyId !== null && $invoiceCompanyId === $userCompanyId;
+    }
 
     private function generateInvoiceNumber($sequence)
     {

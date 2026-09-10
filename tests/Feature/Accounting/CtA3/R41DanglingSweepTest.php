@@ -313,6 +313,7 @@ class R41DanglingSweepTest extends AccountingTestCase
     public function test_after_the_sweep_no_foreign_mapping_points_at_a_minted_leaf(): void
     {
         $mine = $this->companyThatWillMint();
+        $this->dropPooledGatewayMappings((int) $mine->id);
         $theirs = $this->otherCompany();
 
         $this->plantDangling((int) $theirs->id, 'SERVICE_REVENUE', 'lounge', $this->nextAccountId());
@@ -442,6 +443,7 @@ class R41DanglingSweepTest extends AccountingTestCase
     public function test_the_ratchet_reports_a_clean_run_when_nothing_adopted_a_mint(): void
     {
         $mine = $this->companyThatWillMint();
+        $this->dropPooledGatewayMappings((int) $mine->id);
         $before = $this->accountCount((int) $mine->id);
 
         $exit = $this->runLinkage(['--company' => (int) $mine->id, '--apply' => true]);

@@ -275,6 +275,7 @@ class R25CoaLinkageReversibilityTest extends AccountingTestCase
     public function test_the_exit_code_is_non_zero_while_a_blocking_finding_remains(): void
     {
         $company = $this->freshCompany();
+        $this->dropPooledGatewayMappings((int) $company->id);
 
         // A repaired chart exits 0 …
         $this->assertSame(
@@ -315,6 +316,7 @@ class R25CoaLinkageReversibilityTest extends AccountingTestCase
     public function test_the_gateway_clearing_family_is_a_ruling_not_a_blocker(): void
     {
         $company = $this->freshCompany();
+        $this->dropPooledGatewayMappings((int) $company->id);
 
         $this->assertSame(0, $this->runLinkage(['--company' => (string) $company->id, '--apply' => true]));
 
@@ -369,6 +371,7 @@ class R25CoaLinkageReversibilityTest extends AccountingTestCase
     public function test_refund_payout_is_mapped_to_the_cash_bank_leaf_and_flagged_when_nothing_is_configured(): void
     {
         $company = $this->freshCompany();
+        $this->dropPooledGatewayMappings((int) $company->id);
 
         DB::table('system_accounts')->where('company_id', $company->id)
             ->where('purpose_code', 'REFUND_PAYOUT_CASH_BANK')->delete();

@@ -413,4 +413,89 @@ class Rv2Probe2Test extends AccountingTestCase
         // undeletable, not to model a real posting.
         DB::table('journal_entries')->where('account_id', $target)->where('name', 'probe9b')->delete();
     }
+
+    /**
+     * CT-A3 R3-2, FOUND BY THE SERVER RUN AND NOT BY A TEST — the other way a minted leaf can be
+     * undeletable, and the one that used to abort the whole undo.
+     *
+     * `system_accounts.account_id` carries a real, enforced foreign key. A mapping this run did not
+     * create, still pointing at a leaf the rollback wants to delete, makes the DELETE fail, the
+     * surrounding transaction roll the WHOLE undo back, and the operator get a QueryException
+     * instead of a rollback. Measured on `citycomm_ct_r3`: company 3's `system_accounts` rows #188
+     * and #189, written on 2026-09-05 pointing at account ids 1738/1739 that did not then exist
+     * (CT-A4's dangling-mapping finding, one id range later), silently became live pointers at
+     * company 1's newly minted `21109 Creditors Control` and `4132 Markup Income` when --apply took
+     * exactly those two ids.
+     *
+     * Refusing the one leaf by name leaves the rest of the undo intact.
+     */
+    public function test_probe9c_rollback_refuses_a_minted_leaf_a_foreign_purpose_mapping_still_points_at(): void
+    {
+        [$company] = $this->makeFixture();
+
+        $missing = Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '5131')->first();
+
+        if ($missing !== null) {
+            SystemAccount::withoutGlobalScopes()->where('company_id', $company->id)->where('account_id', $missing->id)->delete();
+            DB::table('accounts')->where('id', $missing->id)->delete();
+        }
+
+        $accountIdsBefore = DB::table('accounts')->where('company_id', $company->id)->pluck('id')->all();
+
+        Artisan::call('accounting:coa-linkage', ['--company' => (string) $company->id, '--apply' => true]);
+
+        $runId = (string) DB::table('coa_linkage_changes')->where('company_id', $company->id)
+            ->orderByDesc('id')->value('run_id');
+
+        $minted = array_values(array_diff(
+            DB::table('accounts')->where('company_id', $company->id)->pluck('id')->all(),
+            $accountIdsBefore
+        ));
+
+        $this->assertNotSame([], $minted, 'the apply run must have minted a leaf for this case to mean anything');
+
+        $target = (int) $minted[0];
+
+        // A mapping belonging to ANOTHER company, landing on this leaf by id — the exact shape the
+        // server run hit. Written directly, because that is how it got there on the real chart too:
+        // it was dangling, and the id came into existence later.
+        $otherCompany = Company::factory()->create();
+
+        DB::table('system_accounts')->insert([
+            'company_id' => $otherCompany->id,
+            'purpose_code' => 'SERVICE_REVENUE',
+            'service_type' => 'lounge',
+            'account_id' => $target,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->withoutMockingConsoleOutput();
+
+        $buffer = new \Symfony\Component\Console\Output\BufferedOutput;
+        $exit = Artisan::call('accounting:coa-linkage', ['--rollback' => $runId], $buffer);
+        $out = $buffer->fetch();
+
+        fwrite(STDERR, "\n[PROBE9c] exit={$exit} out=".trim(preg_replace('/\s+/', ' ', $out))."\n");
+
+        $this->assertSame(1, $exit, 'an incomplete undo must exit non-zero');
+        $this->assertStringContainsString('REFUSED', $out);
+        $this->assertStringContainsString('#'.$target, $out);
+        $this->assertStringContainsString('purpose mapping(s) this run did not create', $out);
+
+        $this->assertTrue(
+            DB::table('accounts')->where('id', $target)->exists(),
+            'the referenced leaf is left in place rather than aborting the whole undo on a foreign key'
+        );
+
+        // …and the rest of the undo still happened: every OTHER minted leaf is gone.
+        $stillMinted = array_values(array_intersect(
+            $minted,
+            DB::table('accounts')->where('company_id', $company->id)->pluck('id')->all()
+        ));
+
+        $this->assertSame([$target], $stillMinted, 'only the blocked leaf survives — the refusal is per leaf, not per run');
+
+        DB::table('system_accounts')->where('account_id', $target)->where('company_id', $otherCompany->id)->delete();
+    }
 }

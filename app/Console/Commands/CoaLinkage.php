@@ -441,6 +441,21 @@ class CoaLinkage extends Command
                     /** @var array{purpose_code: string, service_type: ?string, account_id: int} $was */
                     $was = json_decode((string) $row->before_value, true, 512, JSON_THROW_ON_ERROR);
 
+                    // Same foreign key, same reasoning as the account_id restore below: a deleted
+                    // mapping whose account no longer exists cannot be re-inserted, and trying
+                    // would abort the whole undo rather than lose one row.
+                    if (! DB::table('accounts')->where('id', (int) $was['account_id'])->exists()) {
+                        $skipped[] = sprintf(
+                            'system_accounts #%d (%s%s → account #%d) cannot be restored: that account no longer exists',
+                            $row->subject_id,
+                            $was['purpose_code'],
+                            $was['service_type'] === null ? '' : '/'.$was['service_type'],
+                            (int) $was['account_id']
+                        );
+
+                        continue;
+                    }
+
                     DB::table('system_accounts')->insert([
                         'id' => $row->subject_id,
                         'company_id' => $row->company_id,
@@ -476,8 +491,37 @@ class CoaLinkage extends Command
                     continue;
                 }
 
+                // ── FOUND BY THE SERVER RUN, NOT BY A TEST (CT-A3 R3-2), second of two ──────────
+                // The before-value can name an account that DOES NOT EXIST. That is not a
+                // hypothetical: CT-A4 measured "33 dangling system_accounts rows pointing at
+                // account ids 1662-1694 when the highest real id is 1661" on this very chart, and
+                // repairing exactly those is a large part of what `ensure-system-leaves` does. So
+                // the state this run started from was itself foreign-key-invalid — the constraint
+                // must post-date those rows — and restoring it is something the database will
+                // simply refuse: measured, `Cannot add or update a child row … system_accounts_
+                // account_id_foreign` on `set account_id = 1670 where id = 14`, which aborted the
+                // whole transaction and undid nothing.
+                //
+                // A rollback must not try to RE-BREAK a repaired mapping, and must not lose the
+                // rest of the undo trying. The row is left re-pointed, named, and the command exits
+                // non-zero — the operator is told which mappings this run repaired that it cannot
+                // un-repair, which is a more useful fact than a stack trace.
+                $beforeAccountId = (int) $row->before_value;
+
+                if (! DB::table('accounts')->where('id', $beforeAccountId)->exists()) {
+                    $skipped[] = sprintf(
+                        'system_accounts #%d.account_id: this run REPAIRED a dangling mapping (%d does not exist, '
+                        .'and did not when it was written); it cannot be re-broken — left pointing at #%s',
+                        $row->subject_id,
+                        $beforeAccountId,
+                        (string) $row->after_value
+                    );
+
+                    continue;
+                }
+
                 DB::table('system_accounts')->where('id', $row->subject_id)->update([
-                    'account_id' => (int) $row->before_value,
+                    'account_id' => $beforeAccountId,
                     'updated_at' => now(),
                 ]);
 
@@ -508,14 +552,38 @@ class CoaLinkage extends Command
                     ->whereNull('deleted_at')
                     ->count();
 
-                if ($journalRows > 0 || $children > 0) {
+                // ── FOUND BY THE SERVER RUN, NOT BY A TEST (CT-A3 R3-2) ─────────────────────────
+                // `system_accounts.account_id` carries a real, enforced foreign key. Phase 1 has
+                // already removed every mapping THIS run created, so anything still pointing at a
+                // leaf we are about to delete belongs to somebody else — and on the City Travelers
+                // chart that is not hypothetical:
+                //
+                //   company 3's system_accounts rows #188 (SERVICE_REVENUE/lounge) and #189
+                //   (SERVICE_REVENUE/ferry) were written on 2026-09-05 pointing at account ids
+                //   1738 and 1739, which DID NOT EXIST. That is CT-A4's own finding — "33 dangling
+                //   system_accounts rows pointing at account ids 1662-1694 when the highest real id
+                //   is 1661" — one id range later. This run's --apply then minted company 1's
+                //   `21109 Creditors Control` and `4132 Markup Income`, which took exactly those
+                //   two ids, and two dangling CROSS-COMPANY mappings silently became live pointers
+                //   at another tenant's accounts.
+                //
+                // Without this guard the FK aborts the DELETE, the surrounding transaction rolls
+                // the WHOLE undo back, and the operator gets a QueryException stack trace instead
+                // of a rollback: measured, exactly that, on the first server attempt. Refusing the
+                // one leaf by name leaves the rest of the undo intact and says what is in the way.
+                $foreignMappings = DB::table('system_accounts')
+                    ->where('account_id', $row->subject_id)
+                    ->count();
+
+                if ($journalRows > 0 || $children > 0 || $foreignMappings > 0) {
                     $refusedLeaves[] = sprintf(
-                        '#%d %s %s — %d journal row(s), %d child account(s): NOT removed',
+                        '#%d %s %s — %d journal row(s), %d child account(s), %d purpose mapping(s) this run did not create: NOT removed',
                         (int) $account->id,
                         (string) ($account->code ?? '?'),
                         (string) ($account->name ?? '?'),
                         $journalRows,
-                        $children
+                        $children,
+                        $foreignMappings
                     );
 
                     continue;
@@ -606,6 +674,10 @@ class CoaLinkage extends Command
             $this->line('  A minted leaf that has been POSTED TO since the repair cannot be removed without');
             $this->line('  destroying ledger rows. Re-point its purpose mapping by hand, or reverse the');
             $this->line('  documents on it first and roll back again — this command will pick up where it stopped.');
+            $this->line('  A leaf still carrying a purpose mapping THIS RUN DID NOT CREATE is the same story:');
+            $this->line('  somebody else is pointing at it. On a chart with dangling system_accounts rows that');
+            $this->line('  can be a mapping from ANOTHER COMPANY that landed on this leaf by id — check');
+            $this->line('  system_accounts WHERE account_id = <id> before doing anything to it.');
 
             return self::FAILURE;
         }

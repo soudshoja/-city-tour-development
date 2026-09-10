@@ -59,8 +59,16 @@ class W2SeededChartRatchetTest extends AccountingTestCase
      *          NOT fixed here, deliberately: renumbering a seeded account is a chart decision and
      *          CT-A4 (PR #5) owns the chart. Handed over rather than grabbed, so the two lanes do
      *          not both edit CoaSeeder.
+     *
+     *          CT-D2b: CLOSED and the entry DELETED, exactly as this ratchet's own failure message
+     *          instructs ("Code 2130 is on KNOWN_SEEDER_CODE_COLLISIONS but no longer collides —
+     *          delete the entry"). PR #14 (CT-A4b) renumbered `Suppliers (Ferry)` 2130 -> 2131 in
+     *          `CoaSeeder` and removed the matching tolerated-pair exception from
+     *          `AccountingInvariants::assertNoDuplicateAccountCodes()`. The list is now empty, which
+     *          is where a shrink-only list is supposed to end up; the assertion below is unchanged
+     *          and now has nothing to exempt.
      */
-    private const KNOWN_SEEDER_CODE_COLLISIONS = ['2130'];
+    private const KNOWN_SEEDER_CODE_COLLISIONS = [];
 
     // ────────────────────────────────────────────────────────────────────────────────────────
     // Ratchet 1

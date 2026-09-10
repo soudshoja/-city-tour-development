@@ -9,6 +9,7 @@ use App\Models\CoaLinkageChange;
 use App\Models\CoaLinkageFinding;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\AccountService;
+use App\Services\Accounting\PurposeHealthService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -1728,29 +1729,10 @@ class CoaLinkage extends Command
      */
     private function requiredPurposes(): array
     {
-        $out = [];
-
-        foreach ((array) config('accounting.purpose_codes.global', []) as $code) {
-            $out[] = [$code, null];
-        }
-
-        foreach (array_keys((array) config('accounting.purpose_codes.gateways', [])) as $key) {
-            $out[] = ["GATEWAY_CLEARING_{$key}", null];
-            $out[] = ["GATEWAY_FEE_EXPENSE_{$key}", null];
-        }
-
-        foreach (array_keys((array) config('accounting.purpose_codes.fixed_asset_classes', [])) as $key) {
-            $out[] = ["FA_COST_{$key}", null];
-            $out[] = ["FA_ACCUM_DEP_{$key}", null];
-        }
-
-        foreach ((array) config('accounting.purpose_codes.per_service', []) as $code) {
-            foreach ((array) config('accounting.purpose_codes.service_types', []) as $serviceType) {
-                $out[] = [$code, $serviceType];
-            }
-        }
-
-        return $out;
+        // CT-A5a: the list now lives in PurposeHealthService, because `accounting:purpose-health`
+        // and CompanyProvisioner's own post-onboarding assertion have to ask the SAME question
+        // this command answers. Three copies of an assembled vocabulary is three chances to drift.
+        return app(PurposeHealthService::class)->requiredPurposes();
     }
 
     // ─────────────────────────────────────────────────────────────────────────────────────────

@@ -953,6 +953,14 @@ final class RefundPostingService
      * triggers, so the refusal is findable afterwards rather than only visible to whoever was
      * watching the screen.
      *
+     * CT-A3 R4 — that second half is now TRUE. It was not when this docblock was written:
+     * `CT-A3-R3-2026-09-10.md` §4.1 measured the row being rolled back with everything else,
+     * because {@see self::post()} wraps the whole composition in one `DB::transaction()` and this
+     * row was written through the same connection. It now goes through
+     * {@see AccountingLog::eventDurable()} — the independent `accounting_audit` handle
+     * {@see \App\Models\IdempotencyKeyRejection} already uses for exactly this reason — so the
+     * INSERT commits on its own connection and the rollback cannot reach it.
+     *
      * @return never
      */
     private function refuseNothingOutstanding(
@@ -973,7 +981,7 @@ final class RefundPostingService
             'reason' => $reason,
         ]);
 
-        AccountingLog::event('refund_crn_refused', [
+        AccountingLog::eventDurable('refund_crn_refused', [
             'refund_id' => $refund->id,
             'refund_detail_id' => $detail->id,
             'company_id' => $companyId,
@@ -994,7 +1002,8 @@ final class RefundPostingService
      * CT-A3 R3-3 — refuse a credit note for more than its sale is still carrying, LOUDLY: a named
      * exception the replay command can bucket by class, and an audit row that survives the rollback
      * the throw triggers, so the refusal is findable afterwards rather than only visible to whoever
-     * was watching the screen. Same shape as {@see self::refuseNothingOutstanding()}, deliberately.
+     * was watching the screen. Same shape as {@see self::refuseNothingOutstanding()}, deliberately —
+     * including CT-A3 R4's durable audit connection, and for the same measured reason.
      *
      * @return never
      */
@@ -1018,7 +1027,7 @@ final class RefundPostingService
             'ruling' => 'R-CT6 default: refuse, do not clamp',
         ]);
 
-        AccountingLog::event('refund_crn_refused', [
+        AccountingLog::eventDurable('refund_crn_refused', [
             'refund_id' => $refund->id,
             'refund_detail_id' => $detail->id,
             'company_id' => $companyId,

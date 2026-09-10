@@ -56,6 +56,25 @@ class CoaLinkageChange extends Model
      */
     public const ROW_DELETED = '__row_deleted__';
 
+    /**
+     * CT-A3 R4. `column_name` sentinel for "this row was a DANGLING purpose mapping and
+     * `--sweep-dangling` removed it" — recorded so the removal is evidenced, NOT so it can be put
+     * back.
+     *
+     * It is a separate sentinel from {@see self::ROW_DELETED} precisely because the undo is
+     * different: a swept row named an `account_id` that DOES NOT EXIST (that is the whole
+     * definition of dangling), and `system_accounts.account_id` carries a real, enforced foreign
+     * key, so re-inserting it is something the database itself refuses. Filed under ROW_DELETED it
+     * would land in `--rollback`'s "cannot be restored" skip list and make every post-sweep undo
+     * exit non-zero for a row the undo was never able to restore — turning a meaningful "the undo
+     * was NOT complete" signal into noise. A sweep is a documented ONE-WAY repair; the before-image
+     * is the audit trail for it, and `--rollback` says so by name instead of failing over it.
+     *
+     * See {@see \App\Console\Commands\CoaLinkage}'s `--sweep-dangling` docblock for why the sweep
+     * has to happen before anything is minted on ANY chart.
+     */
+    public const ROW_SWEPT = '__row_swept__';
+
     protected $table = 'coa_linkage_changes';
 
     protected $fillable = [

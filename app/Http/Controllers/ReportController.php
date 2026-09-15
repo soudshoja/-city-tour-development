@@ -602,9 +602,19 @@ class ReportController extends Controller
         // site this build's strangler cutover has not yet migrated (doc 11 §C2's 131-site census)
         // would otherwise leave a new row's posting_date NULL and silently invisible to this
         // report — transaction_date is the correct, non-regressive fallback for exactly that row.
-        $journalEntries = JournalEntry::where('company_id', $companyId)
-            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$from, $to])
-            ->get();
+        //
+        // CT-A7-4 (finding **R3-12**, the HALF of it that is unambiguous): this query had NO
+        // LedgerSource restriction, so on a ledger carrying both engine rows and their mirrored
+        // legacy twins (CT-A5a: 2,081 dual-posted transactions) it summed both and this screen read
+        // roughly DOUBLE the trial balance and balance sheet. Same defect, same fix, as R3-5 on the
+        // dashboard tiles and R3-11 on the paid report. It does NOT by itself close R3-12 — see
+        // this method's own note below on the two profit TAXONOMIES, which is an owner decision.
+        $plLedgerSource = app(LedgerSource::class);
+
+        $journalEntriesQuery = JournalEntry::where('company_id', $companyId)
+            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$from, $to]);
+        $plLedgerSource->restrict($journalEntriesQuery, $companyId, 'transaction_id');
+        $journalEntries = $journalEntriesQuery->get();
 
         $entriesByAccount = $journalEntries->groupBy('account_id');
 
@@ -687,10 +697,14 @@ class ReportController extends Controller
 
         // P2.5.B fix (BUG-C4) — same COALESCE(posting_date, transaction_date) rationale as the
         // monthly query above.
-        $yearlyEntries = JournalEntry::where('company_id', $companyId)
+        //
+        // CT-A7-4 (R3-12): the same restriction as the monthly query above. The twelve-month chart
+        // and the table beneath it must not disagree about which rows exist.
+        $yearlyEntriesQuery = JournalEntry::where('company_id', $companyId)
             ->whereIn('account_id', $relevantAccountIds)
-            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$yearStart, $yearEnd])
-            ->get();
+            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$yearStart, $yearEnd]);
+        $plLedgerSource->restrict($yearlyEntriesQuery, $companyId, 'transaction_id');
+        $yearlyEntries = $yearlyEntriesQuery->get();
 
         $entriesByMonthAndAccount = [];
         foreach ($yearlyEntries as $entry) {
@@ -1008,6 +1022,9 @@ class ReportController extends Controller
         $endDate = $request->input('end_date');
         $branchId = $request->input('branch_id');
         $supplierId = $request->input('supplier_id');
+        // CT-A7-4 (R3-10b, on this screen too): the receivable half's own party filter -- the same
+        // split CT-A7-3 made on the UNPAID twin.
+        $clientId = $request->input('client_id');
         $accountId = $request->input('account_id');
 
         $user = Auth::user();
@@ -1017,42 +1034,63 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $accountPayable = Account::where('name', 'Accounts Payable')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A7-4 (finding **R3-11**). This screen is the PAID twin of
+        // unpaidaccountsPayableReceivableReport() and carried, unfixed, every defect CT-A6-1 and
+        // CT-A7-1/CT-A7-3 closed on that one: it resolved its two control accounts by HARDCODED
+        // NAME (landing on whatever a company happened to call an account rather than on the leaf
+        // the engine posts PAYABLE_CONTROL/RECEIVABLE_CONTROL to), it walked the name-anchored
+        // parent chain for its leaf list, it had NO LedgerSource restriction at all -- so on this
+        // ledger, where CT-A5a measured 2,081 replayed documents still carrying mirrored legacy
+        // twins, it read roughly DOUBLE the trial balance one click away -- it collapsed 'all' to a
+        // single leaf, and it filtered BOTH halves by a supplier id matched against
+        // `journal_entries.name`, which is free text.
+        //
+        // One method, one shape, shared with the unpaid twin. This method's entry in
+        // ArchitectureTest::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS is deleted in the same commit;
+        // that ratchet is two-sided and fails on a STALE entry, so the deletion is itself the proof
+        // the name lookup is gone and cannot come back unnoticed.
+        $resolver = app(AccountResolver::class);
+        $ledgerSource = app(LedgerSource::class);
 
-        if (!$accountPayable) {
-            return redirect()->back()->with('error', 'Accounts Payable account not found.');
+        try {
+            $accountPayable = $resolver->resolve('PAYABLE_CONTROL', $companyId);
+            $payableAccountIds = $ledgerSource->payableAccountIds($companyId, $resolver);
+        } catch (UnmappedPurposeException $e) {
+            return redirect()->back()->with('error', 'Accounts Payable control account is not configured for this company.');
         }
 
-        $receivableAccount = Account::where('name', 'Accounts Receivable')
-            ->where('company_id', $companyId)
-            ->first();
-
-        if (!$receivableAccount) {
-            return redirect()->back()->with('error', 'Accounts Receivable account not found.');
+        try {
+            $receivableAccount = $resolver->resolve('RECEIVABLE_CONTROL', $companyId);
+            $receivableAccountIds = $ledgerSource->receivableAccountIds($companyId, $resolver);
+        } catch (UnmappedPurposeException $e) {
+            return redirect()->back()->with('error', 'Accounts Receivable control account is not configured for this company.');
         }
 
-        // Preload all leaf accounts
-        $payableAccounts = $this->getLeafAccountsUnderParent($accountPayable->id);
-        $receivableAccounts = $this->getLeafAccountsUnderParent($receivableAccount->id);
+        $payableAccounts = Account::withoutGlobalScopes()->whereIn('id', $payableAccountIds)->get();
+        $receivableAccounts = Account::withoutGlobalScopes()->whereIn('id', $receivableAccountIds)->get();
         $allAccounts = $payableAccounts->merge($receivableAccounts);
 
-        // Default to first account if none selected
-        if (empty($accountId) || $accountId === 'all') {
-            $firstAccount = $allAccounts->first();
-            $accountId = $firstAccount ? $firstAccount->id : null;
+        // 'all' means all -- see the same block on the unpaid twin for why the old "collapse to
+        // $allAccounts->first()" default was itself the R-CT9 invisibility.
+        if (empty($accountId)) {
+            $accountId = 'all';
         }
 
-        $payableQuery = JournalEntry::whereIn('account_id', $payableAccounts->pluck('id'))
-            ->where('company_id', $companyId)
-            ->orderBy('transaction_date', 'asc')
-            ->orderBy('id', 'asc');
+        if ($accountId === 'all') {
+            $accountId = null;
+        }
 
-        $receivableQuery = JournalEntry::whereIn('account_id', $receivableAccounts->pluck('id'))
+        $payableQuery = JournalEntry::whereIn('account_id', $payableAccountIds)
             ->where('company_id', $companyId)
             ->orderBy('transaction_date', 'asc')
             ->orderBy('id', 'asc');
+        $ledgerSource->restrict($payableQuery, $companyId, 'transaction_id');
+
+        $receivableQuery = JournalEntry::whereIn('account_id', $receivableAccountIds)
+            ->where('company_id', $companyId)
+            ->orderBy('transaction_date', 'asc')
+            ->orderBy('id', 'asc');
+        $ledgerSource->restrict($receivableQuery, $companyId, 'transaction_id');
 
         // Apply account filter
         if ($accountId) {
@@ -1065,12 +1103,15 @@ class ReportController extends Controller
             $receivableQuery->where('branch_id', $branchId);
         }
 
+        // CT-A7-4: the PARTY column, not a free-text name; and each half filtered by its own party
+        // only (R3-10b). `journal_entries.name` is a display string -- two suppliers sharing one, or
+        // a supplier renamed after posting, silently mismatched under the old lookup.
         if ($supplierId) {
-            $supplier = Supplier::find($supplierId);
-            if ($supplier) {
-                $payableQuery->where('name', $supplier->name);
-                $receivableQuery->where('name', $supplier->name);
-            }
+            $payableQuery->where('type_reference_id', $supplierId);
+        }
+
+        if ($clientId) {
+            $receivableQuery->where('type_reference_id', $clientId);
         }
 
         if ($startDate == null && $endDate !== null) {
@@ -1136,12 +1177,14 @@ class ReportController extends Controller
             'endDate' => $endDate,
             'branchId' => $branchId,
             'supplierId' => $supplierId,
+            'clientId' => $clientId,
             'branches' => $branches,
             'suppliers' => $suppliers,
             'accountPayable' => $accountPayable,
             'receivableAccount' => $receivableAccount,
             'accountId' => $accountId,
             'allAccounts' => $allAccounts,
+            'transitionBanner' => $ledgerSource->transitionBanner($companyId),
         ]);
     }
 

@@ -1464,20 +1464,21 @@ class ArchitectureTest extends TestCase
      * {@see self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS} fails the build (new regression, or an
      * already-fixed method lost its fix); an allow-listed method with NO hit also fails (stale
      * entry -- shrink the list, per the ratchet's own "shrink-only" mandate). The allow-list holds
-     * TEN pre-existing `ReportController` methods CT-A6 did not reach
-     * (`paidaccountsPayableReceivableReport`, `accountsReconciliationReport`, `getAccounts`,
-     * `getPayableSupplier`, `getReceivable`, `getTotalBank`, `getGatewayReceivable`, `show`,
-     * `rangeSalesSuppliers`, `getAccountBalance`) -- CT-A6-1 fixed
-     * `unpaidaccountsPayableReceivableReport()`, `creditors()` and `creditorsPdf()` (the three
-     * this lane's own scope named), and tracked the rest here — found by actually running this
-     * scan against the real file, not by inspection alone — rather than silently leaving them
-     * undetectable by this ratchet.
+     * NINE pre-existing `ReportController` methods CT-A6 did not reach
+     * (`accountsReconciliationReport`, `getAccounts`, `getPayableSupplier`, `getReceivable`,
+     * `getTotalBank`, `getGatewayReceivable`, `show`, `rangeSalesSuppliers`, `getAccountBalance`)
+     * -- CT-A6-1 fixed `unpaidaccountsPayableReceivableReport()`, `creditors()` and
+     * `creditorsPdf()` (the three this lane's own scope named), and tracked the rest here — found
+     * by actually running this scan against the real file, not by inspection alone — rather than
+     * silently leaving them undetectable by this ratchet.
+     *
+     * CT-A7-4 shrank it by one: `paidaccountsPayableReceivableReport` — R3-11, the PAID twin of the
+     * screen CT-A6-1 fixed — now resolves through `AccountResolver`/`LedgerSource` like its twin,
+     * so its entry was DELETED. That deletion is the proof: this ratchet fails on a stale entry,
+     * so the line could not have been removed while the lookup was still there, and the lookup
+     * cannot come back without failing the unlisted side.
      */
     private const ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS = [
-        // Payable/Receivable "paid" counterpart of the report CT-A6-1 fixed (unpaid). Same
-        // Account::where('name', 'Accounts Payable'|'Accounts Receivable') shape; not migrated
-        // this lane because CT-A6's own scope named only the UNPAID screen. Next to fix.
-        'ReportController::paidaccountsPayableReceivableReport',
         // A reconciliation report walking the same hardcoded-name chain. Not named in CT-A6's
         // scope; tracked here so a future lane closing it can simply delete this line.
         'ReportController::accountsReconciliationReport',

@@ -1,6 +1,21 @@
 <x-app-layout>
     <h1 class="text-center mb-2 font-semibold text-xl">{{ __('general.paid_account_receivable_report') }}</h1>
 
+    {{-- CT-A7-4: the same transition banner the unpaid twin carries -- this screen now reads ENGINE
+         rows only (LedgerSource::restrict()), so an operator has to be told when legacy-sourced
+         lines still exist company-wide. --}}
+    @if($transitionBanner ?? null)
+        <div class="max-w-4xl mx-auto mb-4 bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <h3 class="font-semibold text-amber-900">&#9888; Ledger in transition</h3>
+            <p class="text-sm text-amber-800 mt-1">
+                The posting engine is on for this company, but {{ number_format($transitionBanner['legacy_lines']) }} legacy-sourced
+                journal line(s) still exist company-wide (Dr {{ number_format($transitionBanner['legacy_debit'], 3) }} /
+                Cr {{ number_format($transitionBanner['legacy_credit'], 3) }}, diff {{ number_format($transitionBanner['legacy_diff'], 3) }}).
+                The figures below are ENGINE rows only.
+            </p>
+        </div>
+    @endif
+
     <div class="flex justify-center items-center bg-gray-100">
         <form method="GET" action="{{ route('reports.paid-report') }}"
             class="p-6 my-2 w-full md:w-full lg:w-full flex flex-col gap-4 bg-white rounded shadow">
@@ -35,6 +50,12 @@
                     <label for="account_id" class="font-medium text-sm mb-1">{{ __('report.filter_by_account') }}:</label>
                     <select name="account_id" id="account_id"
                         class="border rounded px-7 py-2 focus:outline-none focus:ring focus:ring-blue-300">
+                        {{-- CT-A7-4 (R3-11): the default, matching the unpaid twin. A null
+                             $accountId means "no per-account filter", so the totals span every
+                             payable leaf the engine posts to -- including a leaf a payee nomination
+                             moved a payable onto (R-CT9). --}}
+                        <option value="all" {{ $accountId ? '' : 'selected' }}>All payable &amp; receivable accounts
+                        </option>
                         @foreach ($allAccounts as $account)
                             <option value="{{ $account->id }}" {{ $accountId == $account->id ? 'selected' : '' }}>
                                 {{ ucfirst($account->name) }}
@@ -84,8 +105,16 @@
                         <p>{{ __('report.filtered_by_branch') }}: {{ \App\Models\Branch::find($branchId)->name ?? 'Unknown Branch' }}</p>
                     @endif
                     @if ($supplierId)
-                        <p>{{ __('report.filtered_by_supplier') }}:
+                        <p>{{ __('report.filtered_by_supplier') }} (payables only):
                             {{ \App\Models\Supplier::find($supplierId)->name ?? 'Unknown Supplier' }}
+                        </p>
+                    @endif
+                    {{-- CT-A7-4 (R3-10b on this screen): the receivable half has its own party
+                         filter. A supplier id and a client id are different parties sharing one
+                         integer space. --}}
+                    @if ($clientId)
+                        <p>Filtered by Client (receivables only):
+                            {{ \App\Models\Client::find($clientId)->full_name ?? 'Unknown Client' }}
                         </p>
                     @endif
                     @if ($selectedType)

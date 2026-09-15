@@ -820,6 +820,9 @@ class ReportController extends Controller
         $endDate = $request->input('end_date');
         $branchId = $request->input('branch_id');
         $supplierId = $request->input('supplier_id');
+        // CT-A7-3 (R3-10b): the receivable half's own party filter. Before this, the screen had
+        // only `supplier_id` and applied it to BOTH queries — see the filter block below.
+        $clientId = $request->input('client_id');
         $accountId = $request->input('account_id');
 
         $user = Auth::user();
@@ -898,15 +901,23 @@ class ReportController extends Controller
             $receivableQuery->where('branch_id', $branchId);
         }
 
+        // CT-A6-1 ratchet fix: filter by the line's own PARTY reference (type_reference_id — the
+        // same column TaskPayablePositionResolver, SupplierLedgerStatementSource and
+        // AccountingController::filterLedgers() already key a party on), never by matching
+        // journal_entries.name (free text) against Supplier::name — two suppliers sharing a display
+        // name, or a renamed supplier, silently mismatched under the old lookup.
+        //
+        // CT-A7-3 (finding R3-10b): the SAME `$supplierId` used to be applied to the RECEIVABLE
+        // query as well. `type_reference_id` on a receivable line is a CLIENT id, and a client and
+        // a supplier are different parties sharing one integer space — so filtering this screen by
+        // supplier #5 silently filtered the receivable half down to CLIENT #5's rows and presented
+        // them as that supplier's. Each side now filters on its own party, and only its own.
         if ($supplierId) {
-            // CT-A6-1 ratchet fix: filter by the line's own PARTY reference
-            // (type_reference_id — the same column TaskPayablePositionResolver,
-            // SupplierLedgerStatementSource and AccountingController::filterLedgers() already key
-            // a party on), never by matching journal_entries.name (free text) against
-            // Supplier::name — two suppliers sharing a display name, or a renamed supplier,
-            // silently mismatched under the old lookup.
             $payableQuery->where('type_reference_id', $supplierId);
-            $receivableQuery->where('type_reference_id', $supplierId);
+        }
+
+        if ($clientId) {
+            $receivableQuery->where('type_reference_id', $clientId);
         }
 
         $transitionBanner = $ledgerSource->transitionBanner($companyId);
@@ -974,6 +985,7 @@ class ReportController extends Controller
             'endDate' => $endDate,
             'branchId' => $branchId,
             'supplierId' => $supplierId,
+            'clientId' => $clientId,
             'branches' => $branches,
             'suppliers' => $suppliers,
             'accountPayable' => $accountPayable,

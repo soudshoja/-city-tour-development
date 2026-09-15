@@ -103,8 +103,16 @@
                         <p>Filtered by Branch: {{ \App\Models\Branch::find($branchId)->name ?? 'Unknown Branch' }}</p>
                     @endif
                     @if ($supplierId)
-                        <p>Filtered by Supplier:
+                        <p>Filtered by Supplier (payables only):
                             {{ \App\Models\Supplier::find($supplierId)->name ?? 'Unknown Supplier' }}
+                        </p>
+                    @endif
+                    {{-- CT-A7-3 (R3-10b): the receivable half has its own party filter. The
+                         supplier filter above is applied to the PAYABLE query only — a supplier id
+                         and a client id are different parties sharing one integer space. --}}
+                    @if ($clientId)
+                        <p>Filtered by Client (receivables only):
+                            {{ \App\Models\Client::find($clientId)->full_name ?? 'Unknown Client' }}
                         </p>
                     @endif
                     @if ($selectedType)

@@ -122,6 +122,21 @@ class SupplierActivationService
                 'is_active' => true,
             ]);
 
+            // CT-A7-2. `SupplierCompany` extends Illuminate\...\Relations\Pivot, which declares
+            // `public $incrementing = false` — so on a row this call CREATES (as opposed to finds),
+            // Eloquent never reads back the auto-increment key and `$supplierCompany->id` is NULL,
+            // even though `supplier_companies` has a real `$table->id()`. Every FIRST activation of
+            // a supplier therefore minted its payable and cost leaves with
+            // `accounts.supplier_company_id = NULL`, and the leaf had no link back to its party at
+            // all. Re-reading the row by its natural key is the narrow fix; flipping $incrementing
+            // on a Pivot used across several relations is not this lane's change to make.
+            if ($supplierCompany->id === null) {
+                $supplierCompany = SupplierCompany::where('supplier_id', $supplier->id)
+                    ->where('company_id', $company->id)
+                    ->orderByDesc('id')
+                    ->first() ?? $supplierCompany;
+            }
+
             $data = [
                 'name' => $supplier->name,
                 'level' => 4,
@@ -130,6 +145,14 @@ class SupplierActivationService
                 'variance' => 0,
                 'company_id' => $company->id,
                 'supplier_company_id' => $supplierCompany->id,
+                // CT-A7-2: the party link the REST of this codebase reads —
+                // `BankPaymentController::resolveSupplierBankDetail()` (the PV screen's own
+                // supplier-bank auto-select) and, since CT-A7-2, `voucherPartyRef()`, which is what
+                // puts the supplier on a payment voucher's payable leg so the supplier filter on
+                // the creditors and unpaid-AP screens shows the payments as well as the invoices
+                // (R3-10a). It was never stamped here; the pivot id above was the only link, and
+                // (see the comment above) it was NULL on every first activation.
+                'supplier_id' => $supplier->id,
             ];
 
             // CT-D2b: PR #14's detection, unchanged in substance, moved off the log and onto a

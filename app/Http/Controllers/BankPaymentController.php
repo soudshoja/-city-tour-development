@@ -15,6 +15,7 @@ use App\Models\Refund;
 use App\Models\Role;
 use App\Models\Supplier;
 use App\Models\SupplierBankDetail;
+use App\Models\SupplierCompany;
 use App\Models\Transaction;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\ChequeImageStore;
@@ -807,7 +808,15 @@ class BankPaymentController extends Controller
                 purposeCode: '', accountId: $targetAccount->id, side: 'debit', amount: $amount,
                 currency: 'KWD', originalAmount: $amount, exchangeRate: 1.0,
                 transactionType: 'SUPPLIERDEBITED', description: $narration,
-                partyAccountRef: $bp->sub_type === 'BONUS' ? $bp->agent_id : null,
+                // CT-A7-2 (finding R3-10a). This used to read
+                // `$bp->sub_type === 'BONUS' ? $bp->agent_id : null` — so every SUPPLIER payment
+                // voucher posted its AP-side debit with `type_reference_id = NULL`, while every
+                // OTHER supplier feeder (SaleDraftBuilder, SupplierChargeLineBuilder,
+                // TaskIssuancePayableService, RefundPostingService, SupplierReassignDraftBuilder)
+                // stamps the supplier id. Filtering the creditors or unpaid-AP screen by that
+                // supplier then showed the INVOICES and hid the PAYMENTS, so the balance on screen
+                // was gross of everything ever paid.
+                partyAccountRef: $this->voucherPartyRef($bp, $targetAccount),
                 ledgerType: 'payable', partyName: $targetAccount->name,
                 chequeNo: $bp->cheque_no, chequeDate: $chequeDate, bankInfo: $bp->bank_info, authNo: $bp->auth_no,
                 reconciled: $reconciledFlag,
@@ -863,6 +872,52 @@ class BankPaymentController extends Controller
             sourceId: $bp->id,
             userId: Auth::id(),
         );
+    }
+
+    /**
+     * CT-A7-2 (finding R3-10a) — the PARTY a payment voucher's AP-side debit leg belongs to, in the
+     * same vocabulary every other supplier feeder already writes into
+     * `journal_entries.type_reference_id`: a SUPPLIER id, an AGENT id for a bonus payout.
+     *
+     * `bank_payments` carries no `supplier_id` of its own — a PV names an ACCOUNT
+     * (`target_account_id`), never a party — so the party is derived from the target leaf, using
+     * exactly the two columns that leaf is minted with:
+     *
+     *   - `accounts.supplier_id` — set on the legacy per-supplier leaves, and the same column
+     *     {@see self::resolveSupplierBankDetail()} already trusts to decide "is this a supplier
+     *     target?" on this very screen; and
+     *   - `accounts.supplier_company_id` -> `supplier_companies.supplier_id` — set by
+     *     {@see \App\Services\SupplierActivationService::activate()}, which is what mints a
+     *     supplier's payable leaf on this chart today and which populates the pivot, NOT
+     *     `accounts.supplier_id`.
+     *
+     * DELIBERATELY not widened to `accounts.client_id`: a client id and a supplier id are different
+     * parties sharing one integer space, and writing a client id onto a line marked
+     * `ledgerType: 'payable'` would manufacture the very collision R3-10b complains about on the
+     * other side (see CT-A7-3). A PV whose target carries neither supplier column keeps its
+     * pre-CT-A7 behaviour byte for byte — BONUS' agent id, else null — rather than guessing.
+     */
+    private function voucherPartyRef(BankPayment $bp, Account $targetAccount): ?int
+    {
+        if ($bp->sub_type === 'BONUS') {
+            return $bp->agent_id !== null ? (int) $bp->agent_id : null;
+        }
+
+        if ($targetAccount->supplier_id !== null && (int) $targetAccount->supplier_id > 0) {
+            return (int) $targetAccount->supplier_id;
+        }
+
+        if ($targetAccount->supplier_company_id !== null) {
+            $supplierId = SupplierCompany::query()
+                ->whereKey($targetAccount->supplier_company_id)
+                ->value('supplier_id');
+
+            if ($supplierId !== null && (int) $supplierId > 0) {
+                return (int) $supplierId;
+            }
+        }
+
+        return null;
     }
 
     /** The real, immediate bank outflow this document represents -- see class docblock's

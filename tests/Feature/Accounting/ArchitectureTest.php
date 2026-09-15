@@ -1702,4 +1702,347 @@ class ArchitectureTest extends TestCase
 
         return ['unlisted' => $unlisted, 'stale' => $stale];
     }
+
+    /**
+     * CT-A7-2 ratchet (finding **R3-10a**): **no AP-side engine line may be written with a null
+     * party.**
+     *
+     * `journal_entries.type_reference_id` is the PARTY column every party-scoped read on this
+     * codebase keys on — `AccountingController::filterLedgers()`, `SupplierLedgerStatementSource`,
+     * `TaskPayablePositionResolver`, and (since CT-A6-1) the supplier filter on the unpaid-AP and
+     * creditors screens. A payable line written without it is not merely untagged: it is INVISIBLE
+     * to every one of those reads while its sibling invoice lines are not, so the party's balance
+     * on screen is gross of whatever the untagged line did.
+     *
+     * VERIFY-CT-A56-R3 §3.3 measured exactly that shape:
+     * `BankPaymentController::buildVoucherDraft()` wrote every SUPPLIER payment voucher's payable
+     * debit with `partyAccountRef: $bp->sub_type === 'BONUS' ? $bp->agent_id : null`, so filtering
+     * the creditors screen by that supplier showed the invoices and hid the payments. CT-A7-2 fixed
+     * it; this ratchet is what stops the next payable feeder from repeating it.
+     *
+     * ── What the scan actually checks ───────────────────────────────────────────────────────────
+     * Every `new LineDraft(...)` call in `app/` whose argument list names `ledgerType: 'payable'`
+     * — i.e. the drafts that become AP-side rows — must pass a `partyAccountRef:` whose expression
+     * cannot evaluate to null. A missing argument is a violation; so is a literal `null`; and so is
+     * a conditional that can yield null (`$x ? null : $y`), because "sometimes tagged" is the same
+     * defect intermittently. `ledgerType` is the right discriminator rather than `purposeCode`:
+     * {@see \App\Services\Accounting\LedgerType} is what decides the legacy `type` column a party
+     * read filters on, and several AP lines name an explicit `accountId` with no purpose code at
+     * all (the reassignment feeder's debit legs, the PV's target leg).
+     *
+     * Same two-sided, shrink-only allow-list shape as every other rule in this file: an unlisted
+     * hit fails the build, and an allow-listed entry with NO hit fails it too (the fix landed —
+     * delete the line).
+     */
+    private const ALLOW_LISTED_NULL_PARTY_PAYABLE_LINES = [
+        // NOT an AP line at all. This is the `SERVICE_FEE_INCOME` CREDIT leg of an invoice-charge
+        // document — income, whose counter-leg two lines down is the client receivable and IS
+        // party-tagged. Its `ledgerType: 'payable'` is a pre-existing mislabel of the legacy `type`
+        // column, not a payable position: there is no supplier, and the fee is owed BY the client,
+        // not TO anyone. Correcting the label changes what the engine writes into a column several
+        // legacy screens filter on, which is a posting-convention change and not this lane's to
+        // make — tracked here instead so the ratchet still bites every genuine AP feeder.
+        'InvoiceController::addInvoiceChargeJournalEntries',
+    ];
+
+    public function test_no_ap_side_engine_line_is_written_with_a_null_party(): void
+    {
+        $result = $this->scanForNullPartyPayableLines();
+
+        $message = '';
+
+        if (! empty($result['unlisted'])) {
+            $message .= "AP-side LineDraft(s) found with a party that can be NULL (ledgerType: 'payable' "
+                .'with partyAccountRef missing, literally null, or conditionally null). '
+                .'`journal_entries.type_reference_id` is what every party-scoped AP read keys on — an '
+                .'untagged payable line is invisible to the supplier filter, the creditors screen and '
+                .'the supplier statement while its sibling invoice lines are not (R3-10a). Pass the '
+                .'party id the way the other supplier feeders do, or, if this is a deliberately-'
+                .'reviewed non-AP line, add it to ArchitectureTest::ALLOW_LISTED_NULL_PARTY_PAYABLE_LINES '
+                ."with a note:\n".implode("\n", $result['unlisted'])."\n";
+        }
+
+        if (! empty($result['stale'])) {
+            $message .= 'Allow-listed null-party payable line(s) with NO hit found (fixed — shrink the '
+                ."list; remove from ArchitectureTest::ALLOW_LISTED_NULL_PARTY_PAYABLE_LINES):\n"
+                .implode("\n", $result['stale']);
+        }
+
+        $this->assertTrue(empty($result['unlisted']) && empty($result['stale']), $message);
+    }
+
+    /**
+     * Mutation proof for the rule above, same construction as this file's other four: a synthetic
+     * tree carrying (a) an unlisted explicit `partyAccountRef: null` on a payable line, (b) an
+     * unlisted payable line with the argument omitted entirely, (c) an unlisted CONDITIONALLY-null
+     * party — the exact shape `BankPaymentController` shipped and the one a "it is set on the branch
+     * that matters" reading would wave through, (d) a payable line that is correctly tagged, and
+     * (e) a NON-payable line with a null party, which must NOT be reported.
+     */
+    public function test_the_null_party_payable_ratchet_actually_bites_a_synthetic_violation(): void
+    {
+        $root = sys_get_temp_dir().'/arch-null-party-payable-ratchet-mutation-'.uniqid();
+        mkdir($root, 0777, true);
+
+        file_put_contents($root.'/RogueExplicitNull.php', <<<'PHP'
+            <?php
+            class RogueExplicitNull
+            {
+                public function buildVoucherDraft($bp)
+                {
+                    return new LineDraft(
+                        purposeCode: '', accountId: 1, side: 'debit', amount: 1.0,
+                        partyAccountRef: null,
+                        ledgerType: 'payable',
+                    );
+                }
+            }
+            PHP);
+
+        file_put_contents($root.'/RogueMissing.php', <<<'PHP'
+            <?php
+            class RogueMissing
+            {
+                public function buildLines($x)
+                {
+                    return new LineDraft(
+                        purposeCode: 'SERVICE_PAYABLE', accountId: null, side: 'credit', amount: 2.0,
+                        ledgerType: 'payable',
+                    );
+                }
+            }
+            PHP);
+
+        file_put_contents($root.'/RogueConditional.php', <<<'PHP'
+            <?php
+            class RogueConditional
+            {
+                public function buildLines($bp)
+                {
+                    return new LineDraft(
+                        purposeCode: '', accountId: 3, side: 'debit', amount: 3.0,
+                        partyAccountRef: $bp->sub_type === 'BONUS' ? $bp->agent_id : null,
+                        ledgerType: 'payable',
+                    );
+                }
+            }
+            PHP);
+
+        file_put_contents($root.'/Clean.php', <<<'PHP'
+            <?php
+            class Clean
+            {
+                public function buildLines($task)
+                {
+                    return new LineDraft(
+                        purposeCode: 'SERVICE_PAYABLE', accountId: null, side: 'credit', amount: 4.0,
+                        partyAccountRef: $task->supplier_id,
+                        ledgerType: 'payable',
+                    );
+                }
+            }
+            PHP);
+
+        file_put_contents($root.'/NotPayable.php', <<<'PHP'
+            <?php
+            class NotPayable
+            {
+                public function buildLines($x)
+                {
+                    return new LineDraft(
+                        purposeCode: 'BANK_CHARGES_EXPENSE', accountId: null, side: 'debit', amount: 5.0,
+                        partyAccountRef: null,
+                        ledgerType: 'expense',
+                    );
+                }
+            }
+            PHP);
+
+        try {
+            $result = $this->scanForNullPartyPayableLines($root);
+
+            foreach ([
+                'RogueExplicitNull::buildVoucherDraft',
+                'RogueMissing::buildLines',
+                'RogueConditional::buildLines',
+            ] as $expected) {
+                $this->assertNotEmpty(
+                    array_filter($result['unlisted'], fn (string $hit) => str_contains($hit, $expected)),
+                    "The synthetic violation {$expected} was not detected — the scanner regressed."
+                );
+            }
+
+            foreach (['Clean::buildLines', 'NotPayable::buildLines'] as $mustNotFire) {
+                $this->assertEmpty(
+                    array_filter($result['unlisted'], fn (string $hit) => str_contains($hit, $mustNotFire)),
+                    "{$mustNotFire} is not a violation and must not be reported — the scanner over-fires."
+                );
+            }
+
+            $this->assertCount(3, $result['unlisted'], 'Exactly the three synthetic violations, nothing else.');
+
+            // Every real production allow-list entry is "stale" against this synthetic root, which
+            // proves the stale side is wired to the same list the production run checks.
+            $this->assertSame(self::ALLOW_LISTED_NULL_PARTY_PAYABLE_LINES, $result['stale']);
+        } finally {
+            array_map('unlink', glob($root.'/*.php'));
+            rmdir($root);
+        }
+    }
+
+    /**
+     * @param  ?string  $rootOverride  When given, a DIRECTORY to walk instead of the real `app/`
+     *                                 tree — used only by the mutation proof above.
+     * @return array{unlisted: string[], stale: string[]}
+     */
+    private function scanForNullPartyPayableLines(?string $rootOverride = null): array
+    {
+        $root = $rootOverride ?? base_path('app');
+
+        if (! is_dir($root)) {
+            return ['unlisted' => [], 'stale' => self::ALLOW_LISTED_NULL_PARTY_PAYABLE_LINES];
+        }
+
+        $unlisted = [];
+        $hitAllowListed = [];
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || strtolower($file->getExtension()) !== 'php') {
+                continue;
+            }
+
+            $source = file_get_contents($file->getRealPath());
+
+            if ($source === false) {
+                continue;
+            }
+
+            foreach ($this->lineDraftCalls($source) as [$position, $arguments]) {
+                if (preg_match('/ledgerType:\s*[\'"]payable[\'"]/', $arguments) !== 1) {
+                    continue;
+                }
+
+                $party = $this->namedArgumentValue($arguments, 'partyAccountRef');
+
+                // A party that is present AND cannot evaluate to null is the only clean shape.
+                if ($party !== null && preg_match('/\bnull\b/', $party) !== 1) {
+                    continue;
+                }
+
+                $key = $this->enclosingClassMethod($source, $position, $file->getRealPath());
+                $line = substr_count(substr($source, 0, $position), "\n") + 1;
+
+                if (in_array($key, self::ALLOW_LISTED_NULL_PARTY_PAYABLE_LINES, true)) {
+                    $hitAllowListed[$key] = true;
+                } else {
+                    $unlisted[] = $file->getRealPath().':'.$line.': '.$key
+                        .($party === null ? ' (partyAccountRef missing)' : ' (partyAccountRef can be null: '.trim($party).')');
+                }
+            }
+        }
+
+        sort($unlisted);
+
+        $stale = array_values(array_diff(self::ALLOW_LISTED_NULL_PARTY_PAYABLE_LINES, array_keys($hitAllowListed)));
+
+        return ['unlisted' => $unlisted, 'stale' => $stale];
+    }
+
+    /**
+     * Every `new LineDraft(...)` call in $source, as [byte offset of `new`, raw argument text].
+     * Parenthesis-balanced rather than regex-terminated, because an argument list legitimately
+     * contains nested calls (`config(...)`, `round(...)`, a `match (true) { ... }`).
+     *
+     * @return array<int, array{0: int, 1: string}>
+     */
+    private function lineDraftCalls(string $source): array
+    {
+        $calls = [];
+        $needle = 'new LineDraft(';
+        $length = strlen($source);
+        $offset = 0;
+
+        while (($position = strpos($source, $needle, $offset)) !== false) {
+            $open = $position + strlen($needle) - 1;
+            $depth = 0;
+            $end = null;
+
+            for ($i = $open; $i < $length; $i++) {
+                if ($source[$i] === '(') {
+                    $depth++;
+                } elseif ($source[$i] === ')') {
+                    $depth--;
+
+                    if ($depth === 0) {
+                        $end = $i;
+
+                        break;
+                    }
+                }
+            }
+
+            if ($end === null) {
+                break;
+            }
+
+            $calls[] = [$position, substr($source, $open + 1, $end - $open - 1)];
+            $offset = $end + 1;
+        }
+
+        return $calls;
+    }
+
+    /**
+     * The raw expression passed to named argument $name, or null when the argument is absent.
+     * Terminated on the first TOP-LEVEL comma so a ternary, a nested call or an array literal is
+     * captured whole.
+     */
+    private function namedArgumentValue(string $arguments, string $name): ?string
+    {
+        $position = strpos($arguments, $name.':');
+
+        if ($position === false) {
+            return null;
+        }
+
+        $rest = substr($arguments, $position + strlen($name) + 1);
+        $depth = 0;
+        $value = '';
+
+        for ($i = 0, $length = strlen($rest); $i < $length; $i++) {
+            $character = $rest[$i];
+
+            if ($character === '(' || $character === '[' || $character === '{') {
+                $depth++;
+            } elseif ($character === ')' || $character === ']' || $character === '}') {
+                $depth--;
+            } elseif ($character === ',' && $depth === 0) {
+                break;
+            }
+
+            $value .= $character;
+        }
+
+        return $value;
+    }
+
+    /** "Class::method" for the code at $position — the same attribution the other scanners use. */
+    private function enclosingClassMethod(string $source, int $position, string $realPath): string
+    {
+        $head = substr($source, 0, $position);
+
+        // Anchored at line start so `$model::class`, `'class' => ...` and prose in a docblock
+        // cannot be mistaken for a class declaration.
+        preg_match_all('/^\s*(?:final\s+|abstract\s+|readonly\s+)*class\s+([A-Za-z0-9_]+)/m', $head, $classMatches);
+        preg_match_all('/function\s+([A-Za-z0-9_]+)\s*\(/', $head, $methodMatches);
+
+        $class = empty($classMatches[1]) ? basename($realPath, '.php') : end($classMatches[1]);
+        $method = empty($methodMatches[1]) ? 'UNKNOWN' : end($methodMatches[1]);
+
+        return $class.'::'.$method;
+    }
 }

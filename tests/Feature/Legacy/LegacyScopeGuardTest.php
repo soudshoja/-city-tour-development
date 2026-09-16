@@ -451,6 +451,57 @@ class LegacyScopeGuardTest extends TestCase
     }
 
     /**
+     * **R4-4 — the ordering trap, enforced rather than documented.**
+     *
+     * The baseline is anchored per table to `max_id_at_capture`, and every post-condition compares
+     * `id <= max_id_at_capture`. Capture it AFTER provisioning and the load's own rows fall INSIDE
+     * the baseline — at which point every legitimate deletion the reversal performs reads as a
+     * baseline violation and **the reversal becomes structurally impossible.** Verification hit
+     * this on its first sibling run and nothing in the output explained it.
+     *
+     * MUTATION PROOF. Removing the `hasBaseline()`/`countExistingCompanyRows()` block from
+     * `LegacyScopeCommand::assertCompanyGate()` makes this test fail on the exit code (0 instead
+     * of 1) — and the baseline is then captured with the company's rows already inside it.
+     */
+    public function test_scope_refuses_to_capture_a_baseline_after_the_company_already_has_rows(): void
+    {
+        $this->seedCityTravelersBaseline();
+        $this->seedLegacyCompanyWithBranch('CO');
+
+        // The company exists AND owns rows. This is the state the procedure's step order exists to
+        // prevent, and it must now be refused rather than silently producing an unreversible load.
+        $this->assertGreaterThan(0, DB::table('branches')->where('company_id', self::FLOOR)->count());
+
+        $this->artisan('legacy:scope', ['--company' => self::FLOOR, '--apply' => true])
+            ->expectsOutputToContain('already owns rows')
+            ->assertExitCode(1);
+
+        $this->assertFalse(
+            app(\App\Services\Onboarding\Scope\LegacyCompanyGuard::class)
+                ->hasBaseline(LegacyLoadScope::forCompany(self::FLOOR)),
+            'a baseline was captured after the company already had rows'
+        );
+    }
+
+    /**
+     * The same gate must NOT fire on a re-run: `captureBaseline()` never overwrites an existing
+     * `pre_load` row, so running `legacy:scope --apply` again later is a legitimate no-op and
+     * blocking it would make the guard a nuisance rather than a protection.
+     */
+    public function test_scope_may_be_re_run_after_the_baseline_exists(): void
+    {
+        $this->seedCityTravelersBaseline();
+
+        // Correct order: scope first, on an empty company.
+        $this->artisan('legacy:scope', ['--company' => self::FLOOR, '--apply' => true])->assertExitCode(0);
+
+        $this->seedLegacyCompanyWithBranch('CO');
+
+        // Now the company has rows — but the baseline already exists, so this is a no-op, not a trap.
+        $this->artisan('legacy:scope', ['--company' => self::FLOOR, '--apply' => true])->assertExitCode(0);
+    }
+
+    /**
      * FINDING F5, second half. {@see \App\Services\Accounting\SequenceService::next()}
      * `firstOrCreate`s a `serial_schemas` row with `DEFAULT_MASK` for any combination that has
      * none — and on this company that mask renders the EIGHT-DIGIT branch id, overflowing

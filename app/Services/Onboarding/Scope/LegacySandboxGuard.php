@@ -66,6 +66,22 @@ final class LegacySandboxGuard
         $live = (string) DB::connection()->getDatabaseName();
         $declared = config('legacy_pilot.ct_scope.sandbox_database');
 
+        // ── R4-1, FIRST, before anything else ────────────────────────────────────────────────
+        // This loop used to live ONLY in mark(), and assertSandbox() — the method every
+        // destructive command actually calls — never consulted it. Two routes walked straight
+        // through the belt-and-braces as a result:
+        //
+        //   A6: the live name is on never_sandbox_databases, but env and marker agree -> OPEN.
+        //   A8: the marker row is inserted BY HAND rather than via mark() -> OPEN. And the marker
+        //       migration now puts `ct_legacy_sandbox` on EVERY database including production,
+        //       while `token` is verified against nothing, so mark() need never be called at all.
+        //
+        // Which left exactly one `.env` line and one `INSERT` between this pipeline and
+        // `citycomm_city-tour-test`. The check belongs on the method that guards the writes, and
+        // it belongs first: a forbidden name is refused before the question of what any env var or
+        // marker row claims is even asked.
+        $this->assertNotForbidden($live);
+
         if (! is_string($declared) || trim($declared) === '') {
             throw new LegacyScopeRefused(
                 'Refused: LEGACY_SANDBOX_DATABASE is not set, so this database has not been declared '.
@@ -111,6 +127,33 @@ final class LegacySandboxGuard
         }
     }
 
+    /**
+     * The forbidden-name check, in one place, called by BOTH {@see self::assertSandbox()} and
+     * {@see self::mark()}.
+     *
+     * It is a belt-and-braces over the marker mechanism, not the mechanism itself — but it is the
+     * belt that catches the single most damaging typo, and R4-1 showed what happens when it is
+     * fastened to only one of the two methods that need it.
+     *
+     * @throws LegacyScopeRefused
+     */
+    private function assertNotForbidden(string $live): void
+    {
+        /** @var list<string> $forbidden */
+        $forbidden = array_map('strval', (array) config('legacy_pilot.ct_scope.never_sandbox_databases', []));
+
+        foreach ($forbidden as $name) {
+            if ($name !== '' && $live === $name) {
+                throw new LegacyScopeRefused(
+                    "Refused: '{$live}' is on legacy_pilot.ct_scope.never_sandbox_databases. The ".
+                    'working development site and the live site are never sandboxes, whatever any '.
+                    'env var says and whatever any marker row claims — including a marker row '.
+                    'inserted by hand rather than through `legacy:sandbox --mark`.'
+                );
+            }
+        }
+    }
+
     public function isSandbox(): bool
     {
         try {
@@ -144,18 +187,10 @@ final class LegacySandboxGuard
             );
         }
 
-        /** @var list<string> $forbidden */
-        $forbidden = array_map('strval', (array) config('legacy_pilot.ct_scope.never_sandbox_databases', []));
-
-        foreach ($forbidden as $name) {
-            if ($name !== '' && $live === $name) {
-                throw new LegacyScopeRefused(
-                    "Refused: '{$live}' is on legacy_pilot.ct_scope.never_sandbox_databases. The ".
-                    'working development site and the live site are never sandboxes, whatever any '.
-                    'env var says.'
-                );
-            }
-        }
+        // Kept here as well as in assertSandbox(): stamping is a separate act from running, and
+        // both must refuse. See assertSandbox()'s own note for why having it ONLY here was the
+        // R4-1 defect.
+        $this->assertNotForbidden($live);
 
         if (! Schema::hasTable(self::MARKER_TABLE)) {
             throw new LegacyScopeRefused(

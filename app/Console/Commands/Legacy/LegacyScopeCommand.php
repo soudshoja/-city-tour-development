@@ -156,6 +156,45 @@ class LegacyScopeCommand extends Command
 
         $existing = DB::table('companies')->where('id', $scope->companyId)->first();
 
+        // ── R4-4, the ordering trap, now enforced instead of merely documented ────────────────
+        //
+        // The baseline this command captures is anchored per table to `max_id_at_capture`, and
+        // every later post-condition compares `id <= max_id_at_capture`. Capture it AFTER
+        // provisioning and Como's own rows fall INSIDE the baseline — at which point every
+        // legitimate deletion the reversal performs is itself a baseline violation, and
+        // **the reversal becomes structurally impossible.** Verification hit this on its first
+        // sibling run and nothing in the output explained it.
+        //
+        // The procedure's step order (scope, THEN provision) was always right; relying on an
+        // operator following it was not. This refuses if the target company already owns rows and
+        // no baseline has been captured yet.
+        //
+        // Scoped precisely: it fires only when there is no `pre_load` baseline. Re-running
+        // `legacy:scope --apply` later is a legitimate no-op — captureBaseline() never overwrites
+        // an existing pre_load row — and must not be blocked by this.
+        if (! app(LegacyCompanyGuard::class)->hasBaseline($scope)) {
+            $existingRows = $this->countExistingCompanyRows($scope);
+
+            if ($existingRows !== []) {
+                $detail = implode(', ', array_map(
+                    static fn ($t, $n) => "{$t}={$n}",
+                    array_keys($existingRows),
+                    $existingRows
+                ));
+
+                throw new LegacyScopeRefused(
+                    'Refused: company '.$scope->companyId.' already owns rows ('.$detail.') and no '.
+                    'pre-load baseline has been captured yet. This command must run BEFORE the '.
+                    'company is provisioned. The baseline is anchored per table to MAX(id) at '.
+                    'capture time, so capturing it now would place the load\'s own rows INSIDE the '.
+                    'baseline — every deletion the reversal later performs would then read as a '.
+                    'baseline violation and the reversal would be structurally impossible. Start '.
+                    'from a fresh sandbox, or accept that this load cannot be reversed and say so '.
+                    'explicitly somewhere a reviewer will see it.'
+                );
+            }
+        }
+
         if ($existing !== null && ! $scope->contains((int) $existing->id)) {
             throw new LegacyScopeRefused(
                 'Refused: company '.$scope->companyId.' already exists and its id is OUTSIDE the '.
@@ -164,6 +203,39 @@ class LegacyScopeCommand extends Command
                 'else\'s.'
             );
         }
+    }
+
+    /**
+     * Rows the target company already owns, per declared table. Used only by the R4-4 ordering
+     * check above, and deliberately counting rather than sampling: "already has rows" is the
+     * whole question.
+     *
+     * @return array<string,int>
+     */
+    private function countExistingCompanyRows(LegacyLoadScope $scope): array
+    {
+        $database = DB::connection()->getDatabaseName();
+        $out = [];
+
+        foreach ($scope->tables as $table) {
+            $hasCompany = DB::selectOne(
+                'SELECT 1 AS present FROM information_schema.COLUMNS
+                  WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?',
+                [$database, $table, 'company_id']
+            );
+
+            if ($hasCompany === null) {
+                continue;
+            }
+
+            $n = (int) DB::table($table)->where('company_id', $scope->companyId)->count();
+
+            if ($n > 0) {
+                $out[$table] = $n;
+            }
+        }
+
+        return $out;
     }
 
     /**

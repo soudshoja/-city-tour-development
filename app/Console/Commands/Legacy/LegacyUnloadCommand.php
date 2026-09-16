@@ -164,10 +164,26 @@ class LegacyUnloadCommand extends Command
 
             $message =
                 'There are '.$total.' row(s) inside the reserved band '.$scope->bandDescription().
-                ' that this load does NOT own: '.implode('; ', $lines).'. These are almost certainly '.
-                "City Travelers' own rows — the dev application mints into `users`, `agents` and ".
-                '`suppliers` continuously, and `legacy:scope --apply` raised those counters into the '.
-                'band. They are NEVER deleted by this command. ';
+                ' that this load does NOT own: '.implode('; ', $lines).'. They are NEVER deleted by '.
+                'this command. ';
+
+            // R4-4 (lower half). The list above reports what is UNOWNED — and the row that
+            // actually puts a reversal at risk is the opposite case: a row this load has WRONGLY
+            // taken ownership of, which by definition does not appear in an unowned list. A
+            // supplier linked to both this company and another is the worked example: the
+            // attribution rule reaches it, so it is "owned", so it is absent from the list, so
+            // nothing here names the one row that matters. Name it.
+            $shared = $this->wronglyOwnedRows($scope, $owned);
+
+            if ($shared !== []) {
+                $message .=
+                    'SEPARATELY, and more seriously: '.count($shared).' row(s) this load DOES claim '.
+                    'are also reachable from another company — '.implode('; ', $shared).'. That is a '.
+                    'MIS-ATTRIBUTION, not an R-CO4 scoping question, and it is why this reversal '.
+                    'cannot complete: deleting such a row would remove another company\'s data. It '.
+                    'does not appear in the unowned list above precisely because the pipeline thinks '.
+                    'it owns it. ';
+            }
 
             if (! $this->option('allow-unowned-in-band')) {
                 $this->error(
@@ -276,6 +292,46 @@ class LegacyUnloadCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Rows in the ledger that ANOTHER company can also reach — the mis-attributions.
+     *
+     * Deliberately a separate report from the unowned list: the two are opposites, and the
+     * dangerous one is this one. An unowned row is a row the pipeline correctly declines to touch.
+     * A wrongly-owned row is one it believes is its own, which is the shape that deleted
+     * `suppliers` id 5 and took company 1's `supplier_companies` row with it.
+     *
+     * Only `suppliers` is checked, and only through `supplier_companies`: that is the one
+     * multi-company join in the declared write set, it is the one that produced the finding, and
+     * a generic reachability walk here would be a heuristic pretending to be a proof. The real
+     * answer to this class of problem is the sandbox — see LegacySandboxGuard.
+     *
+     * @param  array<string, list<int>>  $owned
+     * @return list<string>
+     */
+    private function wronglyOwnedRows(LegacyLoadScope $scope, array $owned): array
+    {
+        $supplierIds = $owned['suppliers'] ?? [];
+
+        if ($supplierIds === [] || ! $this->tableExists('supplier_companies')) {
+            return [];
+        }
+
+        $rows = DB::table('supplier_companies')
+            ->whereIn('supplier_id', $supplierIds)
+            ->where('company_id', '<>', $scope->companyId)
+            ->whereNotNull('company_id')
+            ->get(['supplier_id', 'company_id']);
+
+        $out = [];
+
+        foreach ($rows->groupBy('supplier_id') as $supplierId => $links) {
+            $others = $links->pluck('company_id')->unique()->implode('/');
+            $out[] = "suppliers #{$supplierId} is also linked to company {$others}";
+        }
+
+        return $out;
     }
 
     /**

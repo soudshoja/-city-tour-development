@@ -9,6 +9,7 @@ use App\Services\Onboarding\Scope\LegacyRowLedger;
 use App\Services\Onboarding\Scope\LegacySandboxGuard;
 use App\Services\Onboarding\Scope\LegacyScopeRefused;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\Concerns\PreparesLegacyPilotFence;
 use Tests\TestCase;
@@ -194,8 +195,33 @@ class LegacyUnloadCommandTest extends TestCase
             $this->assertStringContainsString('has no `arm` row', $e->getMessage());
         }
 
-        $this->artisan('legacy:unload', ['--company' => self::FLOOR, '--apply' => true])
-            ->assertExitCode(1);
+        // R4-2, second attempt. `legacy:unload` has FIVE refusal paths and every one returns 1, so
+        // an exit-code assertion cannot tell which fired: removing the CALL to assertLoadExists()
+        // from handle() while leaving the method intact passed on the exit code alone.
+        //
+        // `->expectsOutputToContain(...)->assertExitCode(1)` did not fix it either, and the reason
+        // is worth writing down: `PendingCommand::run()` asserts the expected EXIT CODE first and
+        // verifies output expectations afterwards, so the mutation still reported
+        // "Expected status code 1 but received 0" and the message assertion never spoke.
+        //
+        // Running the command directly puts the message assertion FIRST, where it belongs, and
+        // collapsing whitespace makes it immune to Command::error()'s terminal-width wrapping —
+        // which is what forced the short fragment in the first place.
+        // Laravel's InteractsWithConsole mocks console output by default, which sends the
+        // command's writes to a mock instead of Artisan's buffer and leaves Artisan::output()
+        // empty. Turn it off for this one assertion.
+        $this->withoutMockingConsoleOutput();
+
+        $exitCode = Artisan::call('legacy:unload', ['--company' => self::FLOOR, '--apply' => true]);
+        $output = (string) preg_replace('/\s+/', ' ', Artisan::output());
+
+        $this->assertStringContainsString(
+            'no legacy load is recorded for company '.self::FLOOR,
+            $output,
+            'legacy:unload refused for some OTHER reason than the missing ct_scope_run row'
+        );
+        $this->assertStringContainsString('has no `arm` row', $output);
+        $this->assertSame(1, $exitCode);
 
         $this->assertSame(1, DB::table('companies')->where('id', self::FLOOR)->count());
     }
@@ -436,6 +462,70 @@ class LegacyUnloadCommandTest extends TestCase
         DB::table(LegacySandboxGuard::MARKER_TABLE)->update(['database_name' => $live]);
         $guard->assertSandbox();
         $this->assertTrue($guard->isSandbox());
+    }
+
+    /**
+     * **R4-1.** The forbidden-name list used to live ONLY in `mark()`. `assertSandbox()` — the
+     * method every destructive command actually calls — never consulted it, so two routes walked
+     * straight through:
+     *
+     *   A6: the live name is on `never_sandbox_databases`, but env and marker agree -> gate OPEN.
+     *   A8: the marker row is inserted BY HAND rather than through `mark()` -> gate OPEN. The
+     *       marker migration puts `ct_legacy_sandbox` on every database including production, and
+     *       `token` is verified against nothing, so `mark()` need never be called at all.
+     *
+     * Which left one `.env` line and one `INSERT` between this pipeline and
+     * `citycomm_city-tour-test`.
+     *
+     * This test constructs exactly the state that used to pass: a VALID env declaration, a VALID
+     * marker row naming this schema — inserted BY HAND, never via `mark()` — and the live name on
+     * the forbidden list. `test_marking_refuses_an_undeclared_or_forbidden_database()` covers
+     * `mark()` only, which is precisely why this survived.
+     *
+     * MUTATION PROOF. Removing `$this->assertNotForbidden($live)` from the top of
+     * `assertSandbox()` makes this test fail on the missing exception and on
+     * `Expected status code 1 but received 0` — i.e. the unload runs on a forbidden database.
+     */
+    public function test_a_forbidden_database_is_refused_even_with_a_valid_env_and_a_hand_inserted_marker(): void
+    {
+        $companyId = $this->loadComoCompany();
+        $live = DB::connection()->getDatabaseName();
+
+        // The state that used to pass. Note the marker is inserted by hand: mark() is never called.
+        DB::table(LegacySandboxGuard::MARKER_TABLE)->delete();
+        DB::table(LegacySandboxGuard::MARKER_TABLE)->insert([
+            'database_name' => $live,
+            'token' => 'hand-inserted-never-via-mark',
+            'note' => 'A8',
+            'marked_at' => now(),
+        ]);
+        config()->set('legacy_pilot.ct_scope.sandbox_database', $live);
+
+        // Sanity: without the forbidden list this IS a valid sandbox. If that stopped being true
+        // the test would pass for the wrong reason.
+        config()->set('legacy_pilot.ct_scope.never_sandbox_databases', []);
+        app(LegacySandboxGuard::class)->assertSandbox();
+
+        // Now put the live name on the list. Everything else is unchanged and still valid.
+        config()->set('legacy_pilot.ct_scope.never_sandbox_databases', ['citycomm_city-tour', $live]);
+
+        try {
+            app(LegacySandboxGuard::class)->assertSandbox();
+            $this->fail('Expected LegacyScopeRefused: the live database is on never_sandbox_databases.');
+        } catch (LegacyScopeRefused $e) {
+            $this->assertStringContainsString('never_sandbox_databases', $e->getMessage());
+            $this->assertStringContainsString('whatever any marker row claims', $e->getMessage());
+        }
+
+        $this->artisan('legacy:unload', [
+            '--company' => $companyId, '--apply' => true, '--allow-unowned-in-band' => true,
+        ])->assertExitCode(1);
+
+        $this->assertSame(
+            1,
+            DB::table('companies')->where('id', $companyId)->count(),
+            'the unload ran on a database named on never_sandbox_databases'
+        );
     }
 
     /**

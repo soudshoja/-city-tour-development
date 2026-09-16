@@ -5758,6 +5758,39 @@ class TaskController extends Controller
             ], 422);
         }
 
+        // ── CT-A7 ROUND 4, finding R4-1(a) — membership is not enough; it must be a LEAF ─────────
+        // R3-1 changed apSubtreeIds() from "descendants only" to "groups PLUS descendants", which is
+        // correct for READING (a payable can sit directly on an unsplit control, and a payables
+        // screen that skipped it would hide money). But this guard uses the same array to decide
+        // what may be WRITTEN to, and a group is never a legal write target: PostingService refuses
+        // any line whose account has children, whatever chose it. So from R3-1 until this commit the
+        // guard ADMITTED the AP group and handed it to the posting layer, which threw
+        // NonLeafAccountException — an uncaught 500 where round 2 had returned a clean 422.
+        //
+        // Leaf-ness is derived from "has children", the same test AccountResolver::isLeaf() and
+        // PostingService use — never from `accounts.is_group`, which CT-A1 §1.4 measured wrong on
+        // 613 accounts (566 flagged groups with no children, 47 flagged leaves that have children).
+        if (Account::withoutGlobalScopes()
+            ->where('parent_id', $paymentMethodAccount->id)
+            ->whereNull('deleted_at')
+            ->exists()
+        ) {
+            Log::error('Payee nomination refused: destination is a group account, not a leaf.', [
+                'event' => 'accounting.payee_nomination.refused',
+                'reason' => 'non_leaf_destination',
+                'task_id' => (int) $task->id,
+                'company_id' => $companyId,
+                'account_id' => (int) $paymentMethodAccount->id,
+                'account_name' => (string) $paymentMethodAccount->name,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The selected payee account is a group account. Choose one of its child '
+                    . 'accounts instead — a payable cannot be posted to a group.',
+            ], 422);
+        }
+
         // ENGINE PATH. Built and posted here rather than inside a $legacy-style closure because
         // this feeder's two paths return different shapes and the seam deliberately does not paper
         // over that (see PostingSeam's own docblock). The seam's routing decision is re-used

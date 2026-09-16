@@ -261,12 +261,52 @@ final class TaskPayablePositionResolver
             ->orderBy('je.account_id')
             ->get();
 
-        return $rows->map(fn ($r) => [
-            'account_id' => (int) $r->account_id,
-            'net_credit' => (float) $r->net_credit,
-            'party_ref' => $r->party_ref !== null ? (int) $r->party_ref : null,
-            'party_name' => $r->party_name !== null ? (string) $r->party_name : null,
-        ])->all();
+        // ── CT-A7 ROUND 4, finding R4-1(b) — a position on a GROUP is not a movable position ─────
+        // {@see \App\Services\Accounting\SupplierReassignDraftBuilder} turns every row this returns
+        // into `new LineDraft(accountId: $position['account_id'], side: 'debit')`, and
+        // {@see PostingService} refuses any line whose account has children. Before R3-1 this could
+        // not happen — `apSubtreeIds()` returned descendants only — but R3-1 added the GROUPS, for
+        // reading, and this method reads the same array to decide what to DEBIT. Company 2's
+        // money-bearing `463` is itself a group with 210 descendants, so "Update For Whom to Pay"
+        // would have built a debit against it and died on NonLeafAccountException.
+        //
+        // Skipped, and LOGGED rather than silently dropped: money sitting on a control group is a
+        // real chart problem an operator has to hear about, and the reassignment that quietly moved
+        // less than the task's whole payable would otherwise look like it worked.
+        $positions = [];
+
+        foreach ($rows as $row) {
+            $accountId = (int) $row->account_id;
+
+            $isGroup = Account::query()
+                ->withoutGlobalScopes()
+                ->where('parent_id', $accountId)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if ($isGroup) {
+                Log::warning('Skipping an open payable position that sits on a non-leaf account.', [
+                    'event' => 'accounting.payable_position.non_leaf_skipped',
+                    'task_id' => $taskId,
+                    'company_id' => $companyId,
+                    'account_id' => $accountId,
+                    'net_credit' => (float) $row->net_credit,
+                    'note' => 'a payable posted directly onto a control GROUP cannot be moved by a '
+                        .'reassignment, because the engine refuses a line against a non-leaf account',
+                ]);
+
+                continue;
+            }
+
+            $positions[] = [
+                'account_id' => $accountId,
+                'net_credit' => (float) $row->net_credit,
+                'party_ref' => $row->party_ref !== null ? (int) $row->party_ref : null,
+                'party_name' => $row->party_name !== null ? (string) $row->party_name : null,
+            ];
+        }
+
+        return $positions;
     }
 
     /**

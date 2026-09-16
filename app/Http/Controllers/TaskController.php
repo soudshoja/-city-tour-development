@@ -43,6 +43,7 @@ use App\Models\SupplierSurchargeReference;
 use App\Models\User;
 use App\Models\TaskPendingAction;
 use App\Services\Accounting\PostingSeam;
+use App\Services\Accounting\TaskPayablePositionResolver;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\RevenueRecognitionService;
 use App\Services\Accounting\SaleDraftBuilder;
@@ -5661,7 +5662,10 @@ class TaskController extends Controller
     {
         Log::info('Task ID: ' . $task->id . '. Updating journal entries for payment method account ID: ' . $payment_method_account_id);
 
-        $paymentMethodAccount = Account::find($payment_method_account_id);
+        $paymentMethodAccount = Account::withoutGlobalScopes()
+            ->whereKey($payment_method_account_id)
+            ->whereNull('deleted_at')
+            ->first();
 
         if (!$paymentMethodAccount) {
             Log::error('Payment method account not found for ID: ' . $payment_method_account_id);
@@ -5676,6 +5680,67 @@ class TaskController extends Controller
         $supplier = Supplier::find($task->supplier_id);
         $branchId = $this->getTaskBranchId($task);
         $companyId = (int) $task->company_id;
+
+        // ── CT-A7 ROUND 2, finding F4 — the nomination DESTINATION is now constrained ────────────
+        // This used to be a bare `Account::find()`, and `App\Models\Account` declares NO global
+        // scopes at all, so the destination was unchecked in both directions: any account of any
+        // company was nominatable. `TaskPayablePositionResolver::nominatedPayeeAccountIdsForCompany()`
+        // then plucks every account_id on the posted document straight into
+        // `LedgerSource::payableAccountIds()`. Round 1's docblock claimed the union "can never hide
+        // money", which is true and is not the whole claim: nominating a bank, an expense, a
+        // suspense account — or ANOTHER COMPANY'S account — INFLATES the payables total on the
+        // unpaid-AP screen, the creditors screen and the supplier statement.
+        //
+        // Two refusals, not warnings. A destination that cannot name a payable position is not a
+        // payable position, and refusing here is also what lets `payableAccountIds()` claim
+        // completeness BY CONSTRUCTION (finding F1): every account that can carry a payable is
+        // inside this subtree, so scanning the subtree reaches all of them.
+        //
+        // The cross-tenant half was already fatal deeper down — `PostingService::post()` throws
+        // CrossTenantAccountException — but only on the ENGINE path, and as an uncaught exception
+        // (a 500 with a stack trace) rather than a refusal. The legacy path below had no such
+        // check at all. This guard covers both paths, before anything posts.
+        //
+        // An empty AP subtree is a REFUSAL too, deliberately, rather than a skipped check: a chart
+        // with no `Accounts Payable` group has no payable position for a nomination to move, and
+        // silently allowing an unconstrained destination there would put exactly the hole F1 closes
+        // back into the union for that company. The legacy branch below already refuses such a
+        // chart a few lines later ('Liabilities account not found'), so this is not a new class of
+        // rejection — it is the same one, earlier and by name.
+        $apSubtreeIds = app(TaskPayablePositionResolver::class)->apSubtreeIds($companyId);
+
+        if ((int) $paymentMethodAccount->company_id !== $companyId) {
+            Log::error('Payee nomination refused: cross-company destination.', [
+                'event' => 'accounting.payee_nomination.refused',
+                'reason' => 'cross_company',
+                'task_id' => (int) $task->id,
+                'task_company_id' => $companyId,
+                'account_id' => (int) $paymentMethodAccount->id,
+                'account_company_id' => (int) $paymentMethodAccount->company_id,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The selected payee account belongs to a different company.',
+            ], 422);
+        }
+
+        if (!in_array((int) $paymentMethodAccount->id, $apSubtreeIds, true)) {
+            Log::error('Payee nomination refused: destination is not an accounts-payable account.', [
+                'event' => 'accounting.payee_nomination.refused',
+                'reason' => $apSubtreeIds === [] ? 'no_accounts_payable_group' : 'outside_ap_subtree',
+                'task_id' => (int) $task->id,
+                'company_id' => $companyId,
+                'account_id' => (int) $paymentMethodAccount->id,
+                'account_name' => (string) $paymentMethodAccount->name,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The selected payee account is not an Accounts Payable account, so a supplier '
+                    . 'payable cannot be moved onto it.',
+            ], 422);
+        }
 
         // ENGINE PATH. Built and posted here rather than inside a $legacy-style closure because
         // this feeder's two paths return different shapes and the seam deliberately does not paper

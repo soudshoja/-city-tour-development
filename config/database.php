@@ -106,6 +106,48 @@ return [
             ]) : [],
         ],
 
+        // CD-PORT (como-differential-test): the legacy-ledger import pipeline's QUARANTINED
+        // landing database, ported verbatim from Akeed-Ai `origin/main` (9316b1cc) where it was
+        // built for the legacy-ledger-pilot phase. Only the onboarding namespace
+        // (app/Services/Onboarding/**) and the legacy:* console commands ever open this
+        // connection; no request path reads it, and no application model is bound to it.
+        //
+        // It is a THIRD physical database, separate from both `mysql` (the app DB) and
+        // `mysql_map`. Every legacy:* command asserts the RESOLVED database name for this
+        // connection begins with "legacy_pilot" or "city_tour_test" before writing a single row
+        // (see App\Services\Onboarding\LegacyPathGuard::assertQuarantinedConnection()), so a
+        // misconfigured .env cannot land staged legacy rows in `citycomm_city-tour-test` or, far
+        // worse, in `citycomm_city-tour`. The fallback chain deliberately ends at
+        // DB_DATABASE_MAP rather than DB_DATABASE: an unset LEGACY_PILOT_DATABASE resolves to the
+        // second database, never to the app database, so the failure mode of a missing env key is
+        // "the guard refuses" rather than "the app database is written to".
+        //
+        // The tables in here are created two ways, neither of which touches the app migration
+        // chain: the seven migrations under database/migrations/legacy_pilot/ (run explicitly
+        // with `--path=database/migrations/legacy_pilot --database=legacy_pilot`, never picked up
+        // by a bare `php artisan migrate`, which globs database/migrations/*_*.php
+        // non-recursively), and the stg_* landing tables, which LegacyCsvLoader creates at
+        // runtime from each CSV's own header row.
+        'legacy_pilot' => [
+            'driver' => 'mysql',
+            'url' => env('DB_URL'),
+            'host' => env('LEGACY_PILOT_HOST', env('DB_HOST', '127.0.0.1')),
+            'port' => env('LEGACY_PILOT_PORT', env('DB_PORT', '3306')),
+            'database' => env('LEGACY_PILOT_DATABASE', env('DB_DATABASE_MAP', 'legacy_pilot')),
+            'username' => env('LEGACY_PILOT_USERNAME', env('DB_USERNAME_MAP', env('DB_USERNAME', 'root'))),
+            'password' => env('LEGACY_PILOT_PASSWORD', env('DB_PASSWORD_MAP', env('DB_PASSWORD', ''))),
+            'unix_socket' => env('DB_SOCKET', ''),
+            'charset' => env('DB_CHARSET', 'utf8mb4'),
+            'collation' => env('DB_COLLATION', 'utf8mb4_unicode_ci'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+            'options' => extension_loaded('pdo_mysql') ? array_filter([
+                PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+            ]) : [],
+        ],
+
         // P1 fix round 4 (BLOCKING #2 — .planning/P1-VERIFICATION-FINDINGS.json): a SECOND,
         // independent connection to the exact same physical database as `mysql` above — every
         // credential/host/database value below is read from the SAME env vars `mysql` uses, so

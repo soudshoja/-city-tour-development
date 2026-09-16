@@ -1598,9 +1598,13 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $bankAccount = Account::where('name', 'Bank Accounts')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A7 ROUND 4 (R4-3): same exposure as R3-1, one screen over. `accounts.name` is no more
+        // unique for this string than it is for 'Accounts Payable', and this was a bare ->first()
+        // with no ORDER BY. primaryGroupId() is name-agnostic, so it is a one-line conversion:
+        // deterministic, and it prefers the group whose subtree actually carries movement.
+        $bankAccount = Account::withoutGlobalScopes()->find(
+            app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Bank Accounts')
+        );
 
         if (!$bankAccount) {
             return redirect()->back()->with('error', 'Bank Accounts account not found.');
@@ -1636,9 +1640,13 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $gatewayAccount = Account::where('name', 'Payment Gateway')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A7 ROUND 4 (R4-3): same exposure as R3-1, one screen over. `accounts.name` is no more
+        // unique for this string than it is for 'Accounts Payable', and this was a bare ->first()
+        // with no ORDER BY. primaryGroupId() is name-agnostic, so it is a one-line conversion:
+        // deterministic, and it prefers the group whose subtree actually carries movement.
+        $gatewayAccount = Account::withoutGlobalScopes()->find(
+            app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Payment Gateway')
+        );
 
         if (!$gatewayAccount) {
             return redirect()->back()->with('error', 'Payment Gateway account not found.');

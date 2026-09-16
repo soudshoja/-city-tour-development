@@ -1464,9 +1464,8 @@ class ArchitectureTest extends TestCase
      * {@see self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS} fails the build (new regression, or an
      * already-fixed method lost its fix); an allow-listed method with NO hit also fails (stale
      * entry -- shrink the list, per the ratchet's own "shrink-only" mandate). The allow-list holds
-     * SIX pre-existing `ReportController` methods CT-A6 did not reach
-     * (`accountsReconciliationReport`, `getTotalBank`, `getGatewayReceivable`, `show`,
-     * `rangeSalesSuppliers`, `getAccountBalance`)
+     * FOUR pre-existing `ReportController` methods CT-A6 did not reach
+     * (`accountsReconciliationReport`, `show`, `rangeSalesSuppliers`, `getAccountBalance`)
      * -- CT-A6-1 fixed `unpaidaccountsPayableReceivableReport()`, `creditors()` and
      * `creditorsPdf()` (the three this lane's own scope named), and tracked the rest here — found
      * by actually running this scan against the real file, not by inspection alone — rather than
@@ -1480,23 +1479,37 @@ class ArchitectureTest extends TestCase
      *
      * CT-A7 ROUND 3 shrank it by three more -- `getAccounts`, `getPayableSupplier` and
      * `getReceivable` -- for finding R3-1: their `->first()` name anchors were the live fragility
-     * on company 2's chart. Ten entries at the start of this lane, six now.
+     * on company 2's chart. ROUND 4 (R4-3) shrank it by two more, `getTotalBank` ('Bank Accounts')
+     * and `getGatewayReceivable` ('Payment Gateway'), which carried the identical exposure on the
+     * bank and gateway screens. Ten entries at the start of this lane, FOUR now.
      */
     private const ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS = [
         // A reconciliation report walking the same hardcoded-name chain. Not named in CT-A6's
         // scope; tracked here so a future lane closing it can simply delete this line.
         'ReportController::accountsReconciliationReport',
-        // CT-A7 ROUND 3 (R3-1) shrank this list by THREE. `getAccounts`, `getPayableSupplier` and
-        // `getReceivable` resolved 'Accounts Payable'/'Accounts Receivable' by name with a bare
-        // `->first()` and no ORDER BY — the live fragility R3-1 names, on the very screens company
-        // 2's 14,205.62 would have dropped off. They now go through
-        // `NamedAccountGroupResolver::primaryGroupId()`, so their entries are DELETED. The ratchet
-        // is what found them: it failed as STALE the moment the lookups left, which is the
-        // shrink-only mandate working as designed rather than being remembered.
-        'ReportController::getTotalBank', // Account::where('name', 'Bank Accounts')
-        'ReportController::getGatewayReceivable', // Account::where('name', 'Payment Gateway')
-        'ReportController::show', // Account::where('name', 'clients')
-        'ReportController::rangeSalesSuppliers', // Liabilities -> Accounts Payable -> 'supplier' LIKE chain
+        // CT-A7 ROUND 3 (R3-1) shrank this list by THREE and ROUND 4 (R4-3) by two more, so it has
+        // gone ten -> six -> four across this lane. `getAccounts`, `getPayableSupplier`,
+        // `getReceivable`, `getTotalBank` and `getGatewayReceivable` all resolved a control account
+        // by name with a bare `->first()` and no ORDER BY — the live fragility R3-1 names — and all
+        // now go through `NamedAccountGroupResolver::primaryGroupId()`. The ratchet is what found
+        // each batch: it failed as STALE the moment the lookups left.
+        //
+        // The FOUR that remain were each re-checked in round 4, and each is listed for a reason
+        // rather than for lack of time:
+        //
+        //   `show` — `Account::where('name', 'clients')->first()` with NO `company_id` at all. It
+        //   carries the R3-1 exposure AND a cross-tenant one, but 'clients' (lower-case) matches
+        //   nothing on a CoaSeeder chart (the seeded account is 'Clients', 1351), so converting it
+        //   would be dressing up dead code as a fix. Tracked, not laundered.
+        'ReportController::show', // Account::where('name', 'clients') -- no company_id; matches nothing on a seeded chart
+        //   `rangeSalesSuppliers` — a genuine further instance: `where('name','Liabilities')` then a
+        //   `name = 'Accounts Payable' OR name LIKE '%accounts payable%'` node lookup. It is NOT
+        //   converted here because it also filters `where('root_id', $liabilities->id)`, and on
+        //   company 2 the money-bearing AP tree has `root_id` NULL — so this method would still miss
+        //   that tree with a perfect name resolver in front of it. That root_id divergence is the
+        //   very thing round 4 records for the owner's taxonomy ruling (see the PR body's log-only
+        //   section); fixing half of it here would hide the half that matters.
+        'ReportController::rangeSalesSuppliers', // Liabilities -> Accounts Payable -> 'supplier' LIKE chain, PLUS a root_id filter
         // A general-purpose private helper taking $accountName as a caller-supplied parameter —
         // every call site names its own hardcoded string, so fixing this one method requires
         // migrating all of its callers to pass a purpose code instead; out of this lane's scope.
@@ -1562,18 +1575,18 @@ class ArchitectureTest extends TestCase
         // (b) Shaped exactly like a real allow-listed entry -- proves the scanner matches allow-list
         // entries by "Class::method", not merely by filename.
         //
-        // CT-A7 ROUND 3: this used to name `getAccounts`, and when R3-1 fixed that method and its
-        // entry was deleted, THIS proof started reporting its own synthetic file as an unlisted
-        // violation. That is the ratchet and its proof both working -- the failure was real, not
-        // noise -- but it does mean the example has to track the list. `getTotalBank` is the
-        // longest-standing remaining entry (`Account::where('name', 'Bank Accounts')`).
+        // This example has to track the list, and has moved TWICE for that reason: ROUND 3 fixed
+        // `getAccounts` and ROUND 4 fixed `getTotalBank`, and each time this proof correctly started
+        // reporting its own synthetic file as an unlisted violation -- the ratchet and its proof
+        // both working. `show` is used now because it is the entry least likely to be fixed soon:
+        // its lookup matches nothing on a seeded chart, so there is nothing to convert.
         file_put_contents($controllersDir.'/ReportController.php', <<<'PHP'
             <?php
             class ReportController
             {
-                public function getTotalBank(Request $request)
+                public function show(Request $request)
                 {
-                    $account = Account::where('name', 'Bank Accounts')->first();
+                    $account = Account::where('name', 'clients')->first();
                     return $account;
                 }
             }
@@ -1616,12 +1629,12 @@ class ArchitectureTest extends TestCase
             );
 
             // Every REAL production allow-list entry is "stale" against this synthetic root except
-            // ReportController::getTotalBank, which fixture (b) above deliberately reproduces --
-            // proving the allow-list match is method-scoped, not merely file-scoped. (CT-A7 ROUND 3
-            // moved this from getAccounts, whose entry R3-1 deleted; see fixture (b)'s own note.)
+            // ReportController::show, which fixture (b) above deliberately reproduces -- proving the
+            // allow-list match is method-scoped, not merely file-scoped. (Moved from getAccounts in
+            // ROUND 3 and from getTotalBank in ROUND 4, as each was fixed; see fixture (b)'s note.)
             $expectedStale = array_values(array_diff(
                 self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS,
-                ['ReportController::getTotalBank']
+                ['ReportController::show']
             ));
             sort($expectedStale);
             $actualStale = $result['stale'];
@@ -1731,6 +1744,22 @@ class ArchitectureTest extends TestCase
      * two. {@see \App\Services\Accounting\NamedAccountGroupResolver} is now the single answer, and
      * this rule is what stops a fourth appearing next to it.
      *
+     * ── CT-A7 ROUND 4 (R4-2): the COLUMN is the smell, not the literal ─────────────────────────
+     * The first version of this rule matched `/['"]name['"]\s*,\s*['"]Accounts Payable['"]/` — the
+     * literal adjacent to the column. It was evadable four ways, and the most likely future
+     * regression site was ONE LINE from evading it, because `TaskPayablePositionResolver` holds
+     * `private const AP_GROUP_NAME = 'Accounts Payable';`:
+     *
+     *   - `where('name', self::SOME_CONST)`        — no literal at all (proven passing)
+     *   - `where(['name' => 'Accounts Payable'])`  — `=>` instead of `,`
+     *   - `whereIn('name', ['Accounts Payable'])`  — a `[` intervenes
+     *   - raw SQL in a string or heredoc
+     *
+     * So the rule now flags a NAME PREDICATE whatever its value: `where`/`orWhere`/`whereIn`/
+     * `whereNotIn`/`orWhereIn` keyed on `'name'`, the array form `where(['name' => ...])`, and a
+     * raw-SQL string containing `name =` / `name LIKE` / `name IN`. `'name' => $x` in an insert or
+     * update array is NOT a predicate and is not flagged (the raw pattern excludes `=>`).
+     *
      * Scoped to `app/Services/Accounting` — the engine's own directory, where this lane's
      * completeness argument lives. The controller tree is deliberately NOT in scope: it holds
      * dozens of pre-existing name-anchored lookups (`InvoiceController`, `RefundController`,
@@ -1742,16 +1771,57 @@ class ArchitectureTest extends TestCase
      * fails the build, and an allow-listed file with NO hit fails it too.
      */
     private const ALLOW_LISTED_CONTROL_NAME_ANCHOR_FILES = [
-        // EMPTY, and that is the outcome this rule was designed for rather than a gap in it.
-        // NamedAccountGroupResolver takes the name as a PARAMETER (`where('name', $name)`), so it
-        // never contains one of these literals and needs no exemption: the single permitted handler
-        // is permitted because it is name-AGNOSTIC, which is a stronger property than being
-        // allow-listed. A future file that hard-codes one of the two names gets reported, including
-        // the resolver itself if anyone ever inlines a literal into it.
+        // THE permitted handler. It anchors on `name` because that is its whole job, and it does it
+        // PLURALLY -- `where('name', $name)` with `pluck()`, seeding a BFS from every match.
+        // Listed, not exempted by cleverness: CT-A7 ROUND 4 (R4-2) removed the earlier claim that an
+        // empty allow-list made this rule "stronger than allow-listed". That was only true where the
+        // old pattern reached, and it did not reach far.
+        'Services/Accounting/NamedAccountGroupResolver.php',
+
+        // PRE-EXISTING, tracked. Three `Account::...->where('name', $x)` lookups, all with a
+        // `company_id` and all SINGULAR (`->first()`, `->exists()`, `->get()` then filtered):
+        //   :318 findOrCreate-style "does a child of this parent already carry this name?"
+        //   :470 resolve a parent by name, then filter the candidates by ancestor chain
+        //   :745 "does a ROOT account of this name already exist?" (a uniqueness check, so it is
+        //        correct for it to be name-based)
+        // None of them is a control-account anchor feeding a report, which is what R3-1 was about,
+        // and :318/:745 are existence checks where multiplicity is the thing being tested for. They
+        // are listed rather than converted because converting a mint/uniqueness path is a posting-
+        // convention change, not a report fix.
+        'Services/Accounting/AccountService.php',
+
+        // PRE-EXISTING, tracked, and NOT an `accounts` anchor at either site:
+        //   :220-221 `Supplier::where('name', $term)` -- a SUPPLIER free-text search, a different
+        //            table entirely;
+        //   :157     `whereHas('account.root', fn ($q) => $q->whereIn('name', ['Liabilities']))` --
+        //            a ROOT-name filter, not a control-account lookup. Still listed, because this
+        //            rule deliberately flags the COLUMN rather than the value (see below) and a
+        //            regex cannot tell which model a `where('name', ...)` hangs off.
+        'Services/Accounting/ReconciliationService.php',
     ];
 
-    /** The control-account names whose multiplicity is the whole point of this rule. */
-    private const CONTROL_ACCOUNT_NAMES = ['Accounts Payable', 'Accounts Receivable'];
+    /**
+     * The shapes that constitute a NAME PREDICATE. Deliberately value-blind (CT-A7 R4-2).
+     *
+     * The last one catches raw SQL, and excludes `=>` explicitly so that `'name' => $x` in an
+     * insert/update array — which is a WRITE, not a lookup — does not fire the rule.
+     */
+    private const NAME_PREDICATE_PATTERNS = [
+        // where('name', ...) / orWhere / whereIn / whereNotIn / orWhereIn -- reached by `->` on a
+        // builder OR by `::` straight off the model, which is how half this codebase starts a query.
+        '/(?:->|::)\s*(?:or)?[wW]here(?:Not)?(?:In)?\s*\(\s*[\'"]name[\'"]\s*[,)]/',
+        // where(['name' => ...]) -- the array form
+        '/(?:->|::)\s*(?:or)?[wW]here\s*\(\s*\[[^\]]*[\'"]name[\'"]\s*=>/s',
+    ];
+
+    /**
+     * The raw-SQL shape, applied ONLY to string literals and heredoc bodies (see
+     * {@see self::stringLiteralsIn()}). It cannot be run over the whole file: PHP's own
+     * `$account->name === $groupName` comparisons -- which `AccountResolver` uses several times to
+     * walk an ancestor chain in memory -- are not database predicates, and a whole-file match
+     * reported them. `=(?!>)` so an array arrow inside a string is not mistaken for equality.
+     */
+    private const RAW_SQL_NAME_PREDICATE = '/\bname\s*(?:=(?!>)|\s+(?:LIKE|IN)\b)/i';
 
     public function test_no_accounting_service_anchors_on_a_control_account_name(): void
     {
@@ -1778,10 +1848,17 @@ class ArchitectureTest extends TestCase
     }
 
     /**
-     * Mutation proof, same construction as this file's other rules: a synthetic tree carrying
-     * (a) an unlisted file anchoring on 'Accounts Payable', (b) an unlisted file anchoring on
-     * 'Accounts Receivable', and (c) a clean file that mentions the resolver but never compares a
-     * name — which must NOT be reported.
+     * Mutation proof. CT-A7 ROUND 4 (R4-2) rewrote it around the FOUR EVASIONS the earlier
+     * value-matching pattern let through — each is its own synthetic file, and the first one was
+     * *proven passing* by an adversarial verifier against the previous rule:
+     *
+     *   (a) `where('name', self::SOME_CONST)`        — no literal at all
+     *   (b) `where(['name' => 'Accounts Payable'])`  — `=>` instead of `,`
+     *   (c) `whereIn('name', ['Accounts Payable'])`  — a `[` intervenes
+     *   (d) raw SQL in a heredoc
+     *
+     * Plus two files that must NOT fire: one that only calls the resolver, and one that writes
+     * `'name' => $x` in an INSERT array, which is a write, not a predicate.
      */
     public function test_the_control_name_anchor_ratchet_actually_bites_a_synthetic_violation(): void
     {
@@ -1789,33 +1866,69 @@ class ArchitectureTest extends TestCase
         $dir = $root.'/Services/Accounting';
         mkdir($dir, 0777, true);
 
-        file_put_contents($dir.'/RogueAp.php', <<<'PHP'
+        // (a) THE EVASION THE VERIFIER PROVED: a constant, so no literal is adjacent to the column.
+        file_put_contents($dir.'/RogueConst.php', <<<'PHP'
             <?php
-            class RogueAp
+            class RogueConst
             {
+                private const AP_GROUP_NAME = 'Accounts Payable';
+
                 public function group(int $companyId)
                 {
-                    return Account::where('name', 'Accounts Payable')
-                        ->where('company_id', $companyId)
+                    return Account::where('company_id', $companyId)
+                        ->where('name', self::AP_GROUP_NAME)
                         ->value('id');
                 }
             }
             PHP);
 
-        file_put_contents($dir.'/RogueAr.php', <<<'PHP'
+        // (b) The array form: `=>` rather than `,`.
+        file_put_contents($dir.'/RogueArrayForm.php', <<<'PHP'
             <?php
-            class RogueAr
+            class RogueArrayForm
             {
                 public function group(int $companyId)
                 {
-                    return Account::where('company_id', $companyId)->where('name', 'Accounts Receivable')->first();
+                    return Account::where(['name' => 'Accounts Payable', 'company_id' => $companyId])->first();
                 }
             }
             PHP);
 
-        file_put_contents($dir.'/Clean.php', <<<'PHP'
+        // (c) whereIn: a `[` intervenes between the column and the value.
+        file_put_contents($dir.'/RogueWhereIn.php', <<<'PHP'
             <?php
-            class Clean
+            class RogueWhereIn
+            {
+                public function groups(int $companyId)
+                {
+                    return Account::where('company_id', $companyId)
+                        ->whereIn('name', ['Accounts Payable', 'Accounts Receivable'])
+                        ->get();
+                }
+            }
+            PHP);
+
+        // (d) Raw SQL in a heredoc.
+        file_put_contents($dir.'/RogueRawSql.php', <<<'PHP'
+            <?php
+            class RogueRawSql
+            {
+                public function group(int $companyId)
+                {
+                    $sql = <<<SQL
+                        SELECT id FROM accounts
+                         WHERE company_id = ? AND name = 'Accounts Payable'
+                    SQL;
+
+                    return DB::select($sql, [$companyId]);
+                }
+            }
+            PHP);
+
+        // Clean (i): only calls the resolver.
+        file_put_contents($dir.'/CleanCaller.php', <<<'PHP'
+            <?php
+            class CleanCaller
             {
                 public function group(int $companyId)
                 {
@@ -1824,27 +1937,53 @@ class ArchitectureTest extends TestCase
             }
             PHP);
 
+        // Clean (ii): `'name' => $x` in an INSERT array is a WRITE, not a predicate, and must not
+        // fire the rule -- otherwise every row this directory creates would be a violation.
+        file_put_contents($dir.'/CleanWriter.php', <<<'PHP'
+            <?php
+            class CleanWriter
+            {
+                public function record(int $companyId, string $label)
+                {
+                    return DB::table('accounting_audit_log')->insert([
+                        'company_id' => $companyId,
+                        'name' => $label,
+                        'created_at' => now(),
+                    ]);
+                }
+            }
+            PHP);
+
         try {
             $result = $this->scanForControlNameAnchors($root);
 
-            foreach (['RogueAp.php', 'RogueAr.php'] as $expected) {
-                $this->assertNotEmpty(
-                    array_filter($result['unlisted'], fn (string $hit) => str_contains($hit, $expected)),
-                    "The synthetic violation {$expected} was not detected — the scanner regressed."
+            foreach ([
+                'RogueConst.php' => 'a constant instead of a literal',
+                'RogueArrayForm.php' => 'the array form',
+                'RogueWhereIn.php' => 'whereIn',
+                'RogueRawSql.php' => 'raw SQL in a heredoc',
+            ] as $expected => $why) {
+                $this->assertContains(
+                    'Services/Accounting/'.$expected,
+                    $result['unlisted'],
+                    "EVASION NOT CAUGHT ({$why}): {$expected} must be reported. This is the shape the "
+                    .'pre-R4-2 value-matching pattern let through.'
                 );
             }
 
-            $this->assertEmpty(
-                array_filter($result['unlisted'], fn (string $hit) => str_contains($hit, 'Clean.php')),
-                'A file that only calls the resolver is not a violation — the scanner over-fires.'
-            );
+            foreach (['CleanCaller.php', 'CleanWriter.php'] as $mustNotFire) {
+                $this->assertNotContains(
+                    'Services/Accounting/'.$mustNotFire,
+                    $result['unlisted'],
+                    "{$mustNotFire} is not a name PREDICATE and must not be reported — the scanner over-fires."
+                );
+            }
 
-            $this->assertCount(2, $result['unlisted'], 'Exactly the two synthetic violations, nothing else.');
+            $this->assertCount(4, $result['unlisted'], 'Exactly the four evasions, nothing else.');
 
-            // The stale side is still exercised: it is wired to the same (currently empty) list the
-            // production run checks, so an entry added later without a matching hit fails there too.
+            // Every real production allow-list entry is "stale" against this synthetic root, which
+            // proves the stale side is wired to the same list the production run checks.
             $this->assertSame(self::ALLOW_LISTED_CONTROL_NAME_ANCHOR_FILES, $result['stale']);
-            $this->assertSame([], $result['stale'], 'the allow-list is empty by design — see its own note');
         } finally {
             array_map('unlink', glob($dir.'/*.php'));
             @rmdir($dir);
@@ -1894,18 +2033,25 @@ class ArchitectureTest extends TestCase
             // real anchor added to it later.
             $source = $this->sourceWithoutComments($source);
 
-            // A NAME COMPARISON, not a mention: `where('name', 'Accounts Payable')` and friends.
-            // The pattern requires the `'name'` column next to the string, so a constant holding
-            // the name is not an anchor either.
+            // A NAME PREDICATE, whatever its value (CT-A7 R4-2). See this rule's docblock for the
+            // four evasions the old value-matching pattern let through.
             $hit = false;
 
-            foreach (self::CONTROL_ACCOUNT_NAMES as $controlName) {
-                $pattern = '/[\'"]name[\'"]\s*,\s*[\'"]'.preg_quote($controlName, '/').'[\'"]/';
-
+            foreach (self::NAME_PREDICATE_PATTERNS as $pattern) {
                 if (preg_match($pattern, $source) === 1) {
                     $hit = true;
 
                     break;
+                }
+            }
+
+            if (! $hit) {
+                foreach ($this->stringLiteralsIn($source) as $literal) {
+                    if (preg_match(self::RAW_SQL_NAME_PREDICATE, $literal) === 1) {
+                        $hit = true;
+
+                        break;
+                    }
                 }
             }
 
@@ -1934,6 +2080,29 @@ class ArchitectureTest extends TestCase
         ));
 
         return ['unlisted' => $unlisted, 'stale' => $stale];
+    }
+
+    /**
+     * Every string literal and heredoc body in $source. Used to apply the raw-SQL name-predicate
+     * pattern to the only place raw SQL can live, rather than to the whole file.
+     *
+     * @return string[]
+     */
+    private function stringLiteralsIn(string $source): array
+    {
+        $literals = [];
+
+        foreach (token_get_all($source) as $token) {
+            if (! is_array($token)) {
+                continue;
+            }
+
+            if (in_array($token[0], [T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE], true)) {
+                $literals[] = $token[1];
+            }
+        }
+
+        return $literals;
     }
 
     /** PHP source with every comment and docblock removed, so a rule about code cannot fire on prose. */

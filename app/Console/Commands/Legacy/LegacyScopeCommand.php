@@ -77,6 +77,13 @@ class LegacyScopeCommand extends Command
             // before-picture. Round 1 had these checks but no caller on the deployed path and no
             // stored baseline, so after a load there was nothing left to compare against.
             if ($apply) {
+                // Asked BEFORE capturing: captureBaseline() never overwrites an existing pre_load
+                // row (that write-once property is what stops a re-run re-arming the R4-4 ordering
+                // trap), so afterwards there is no way to tell whether this run captured the
+                // baseline or preserved one. Saying "baseline captured" either way is a small lie
+                // that would matter to anyone reading the output to find out what just happened.
+                $baselineExisted = $company->hasBaseline($scope);
+
                 $baseline = $company->captureBaseline($scope);
                 $census = $band->captureCensus($scope);
             }
@@ -119,9 +126,12 @@ class LegacyScopeCommand extends Command
         $this->recordRun($scope, 'arm', $report);
 
         $this->line(sprintf(
-            'baseline captured: %d table fingerprint(s) + %d table row count(s), persisted to '.
-            'legacy_pilot.ct_scope_fingerprint. Every legacy:* write command now compares against '.
+            '%s: %d table fingerprint(s) + %d table row count(s) in '.
+            'legacy_pilot.ct_scope_fingerprint. Every legacy:* write command compares against '.
             'them on completion and refuses on a difference.',
+            ($baselineExisted ?? false)
+                ? 'baseline already captured — preserved'
+                : 'baseline captured',
             count($baseline ?? []),
             count($census ?? [])
         ));

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\CoaLinkageChange;
+use App\Services\Accounting\BeforeImageOwnership;
 use App\Services\Accounting\TaskPayablePositionResolver;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -725,13 +726,14 @@ class BackfillSupplierLeaf extends Command
      */
     private function ownerOf(array $pairs): string
     {
-        foreach ($pairs as $pair) {
-            if (str_starts_with($pair, 'journal_entries.')) {
-                return 'php artisan accounting:backfill-payable-party --rollback=<that run id>';
-            }
-        }
-
-        return 'php artisan accounting:coa-linkage --rollback=<that run id>';
+        // ── CT-A9 T3 ──────────────────────────────────────────────────────────────────────────
+        // Was `str_starts_with($pair, 'journal_entries.')` -> backfill-payable-party. That was true
+        // while exactly one command wrote that table. `accounting:repair-currency-label` now writes
+        // `journal_entries.currency` and `journal_entries.exchange_rate`, so the prefix test would
+        // have sent an operator holding a LABEL-repair run id to the PARTY-repair command — which
+        // would then (correctly) refuse it, leaving them bounced between two commands neither of
+        // which owns their run. The map is keyed on the full pair and lives in one place now.
+        return 'php artisan '.BeforeImageOwnership::commandFor($pairs).' --rollback=<that run id>';
     }
 
     /** @return int[] */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Models\CoaLinkageChange;
+use App\Services\Accounting\BeforeImageOwnership;
 use App\Services\Accounting\TaskPayablePositionResolver;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -409,9 +410,20 @@ class BackfillPayablePartyReference extends Command
 
     private function rollback(string $runId): int
     {
+        // ── CT-A9 T3 — filter on the PAIR, not on `subject_table` alone ────────────────────────
+        // CT-A8 made the OWNERSHIP CHECK below key on (subject_table, column_name), but this
+        // SELECT still matched every `journal_entries` before-image in the run. That was correct
+        // only while this command was the sole writer of that table. CT-A9 added
+        // `accounting:repair-currency-label`, which records `journal_entries.currency` and
+        // `journal_entries.exchange_rate` — and without this `whereIn`, rolling back a label repair
+        // by the wrong command would have walked those rows, compared `type_reference_id` against a
+        // currency code, and (finding no match) reported every one of them as "left alone" while
+        // exiting FAILURE. Worse, a run that mixed both would have restored a currency string INTO
+        // `type_reference_id`. The pair is the key everywhere now, reads included.
         $rows = DB::table('coa_linkage_changes')
             ->where('run_id', $runId)
             ->where('subject_table', self::SUBJECT_TABLE)
+            ->where('column_name', self::COLUMN)
             ->whereNull('rolled_back_at')
             ->orderBy('id')
             ->get();
@@ -433,7 +445,11 @@ class BackfillPayablePartyReference extends Command
             //     nothing must not report success.
             $anyForRun = DB::table('coa_linkage_changes')->where('run_id', $runId);
 
-            if ((clone $anyForRun)->where('subject_table', self::SUBJECT_TABLE)->exists()) {
+            // CT-A9 T3: keyed on the pair for the same reason the SELECT above is. Without the
+            // column filter, a run that belongs ENTIRELY to accounting:repair-currency-label would
+            // answer "every recorded line was already rolled back" and exit 0 — the exact
+            // false-success CT-A7 R3-3 made this guard symmetric to prevent.
+            if ((clone $anyForRun)->where('subject_table', self::SUBJECT_TABLE)->where('column_name', self::COLUMN)->exists()) {
                 $this->line("Run {$runId}: every recorded line was already rolled back. Nothing to do.");
 
                 return self::SUCCESS;
@@ -443,6 +459,11 @@ class BackfillPayablePartyReference extends Command
             // writer — `accounting:backfill-supplier-leaf` — records `accounts.supplier_id`
             // before-images, so "not journal_entries" no longer implies "coa-linkage owns it", and
             // sending an operator to the wrong command is the failure this guard exists to prevent.
+            //
+            // CT-A9 T3: the hand-rolled two-branch answer became a five-way question the moment two
+            // more commands started writing here, so the map moved to one place —
+            // {@see \App\Services\Accounting\BeforeImageOwnership}. One table, one map; a pair
+            // nobody claims is reported as unclaimed rather than guessed at.
             $foreignPairs = (clone $anyForRun)
                 ->distinct()
                 ->get(['subject_table', 'column_name'])
@@ -455,9 +476,7 @@ class BackfillPayablePartyReference extends Command
                     "Run '{$runId}' contains before-images this command does not own and must not restore."
                 );
                 $this->line('  Run contains before-images for: '.$foreignPairs->implode(', '));
-                $this->line('  Undo it with: '.($foreignPairs->contains('accounts.supplier_id')
-                    ? 'php artisan accounting:backfill-supplier-leaf --rollback='.$runId
-                    : 'php artisan accounting:coa-linkage --rollback='.$runId));
+                $this->line('  Undo it with: '.BeforeImageOwnership::rollbackHint($foreignPairs->all(), $runId));
                 $this->line('  Nothing was restored.');
 
                 return self::FAILURE;

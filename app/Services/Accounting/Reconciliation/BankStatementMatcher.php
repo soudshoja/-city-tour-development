@@ -8,6 +8,7 @@ use App\Models\BankStatementImport;
 use App\Models\BankStatementImportLine;
 use App\Models\JournalEntry;
 use App\Models\ReconciliationProposal;
+use App\Support\ReportDateRange;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -228,8 +229,12 @@ final class BankStatementMatcher
         // Tier 3: amount + date window. ±$windowDays INCLUSIVE both ends (boundary test: day 4 is
         // excluded). Closest-within-tolerance wins (T8 RV-4 pattern), ties keep the lower id.
         $valueDate = Carbon::parse($line->value_date);
-        $windowStart = $valueDate->copy()->subDays($windowDays)->toDateString();
-        $windowEnd = $valueDate->copy()->addDays($windowDays)->toDateString();
+        // CT-A13: both ends were bare `Y-m-d` strings. The upper one widened to 00:00:00, so a
+        // ledger line posted at, say, 14:20 on the LAST day of the window was outside it — the
+        // window was ±3 days on paper and (+2 days 00:00:00) in fact. A statement row that should
+        // have matched came back `unmatched` and landed in the exceptions report instead.
+        $windowStart = ReportDateRange::start($valueDate->copy()->subDays($windowDays)->toDateString());
+        $windowEnd = ReportDateRange::end($valueDate->copy()->addDays($windowDays)->toDateString());
 
         $candidates = $baseQuery()
             ->where(DB::raw('COALESCE(posting_date, transaction_date)'), '>=', $windowStart)
@@ -508,7 +513,12 @@ final class BankStatementMatcher
      */
     public function reconciliationReport(BankStatementImport $import): array
     {
-        $asOf = $import->statement_to?->toDateString() ?? now()->toDateString();
+        // CT-A13: `->toDateString()` hands this predicate a bare `Y-m-d`, which MySQL widens to
+        // 00:00:00 — so the bank reconciliation's `ledger_balance` (and therefore `difference`,
+        // the number the whole screen exists to drive to zero) omitted every journal line posted
+        // after midnight on the statement's own closing day. Normalising the BOUND keeps the
+        // predicate sargable; see App\Support\ReportDateRange.
+        $asOf = ReportDateRange::end($import->statement_to?->toDateString() ?? now()->toDateString());
 
         $totals = JournalEntry::withoutGlobalScopes()
             ->where('company_id', $import->company_id)

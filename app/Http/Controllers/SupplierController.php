@@ -24,7 +24,6 @@ use App\Models\SystemLog;
 use App\Models\Task;
 use App\Models\SupplierSurcharge;
 use App\Models\SupplierSurchargeReference;
-use DateTime;
 use Exception;
 use Generator;
 use GuzzleHttp\Client;
@@ -783,7 +782,13 @@ class SupplierController extends Controller
 
     public function getTotalDebitCredit($supplierId, $endDate)
     {
-        $endDate = new DateTime($endDate);
+        // CT-A13: this was `new DateTime($endDate)` against a bare `Y-m-d` route segment
+        // (/total-ledger/{supplierId}/date/{endDate}), which widens to 00:00:00 and drops every
+        // journal line posted after midnight on the cutoff day out of a SUPPLIER BALANCE. It is
+        // the CT-A12 defect on a screen CT-A12 did not reach: the bound is built with \DateTime
+        // rather than Carbon, and the predicate is a DB::raw() COALESCE, so neither the reading
+        // sweep's Carbon shapes nor the census ratchet's string-literal column regex saw it.
+        $endDate = ReportDateRange::end($endDate);
         $supplier = Supplier::with('tasks')->findOrFail($supplierId);
         $taskIds = $supplier->tasks->pluck('id')->toArray();
 

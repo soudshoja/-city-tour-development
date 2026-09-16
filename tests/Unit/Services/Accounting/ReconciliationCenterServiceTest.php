@@ -18,6 +18,7 @@ use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
+use PHPUnit\Framework\Attributes\Group;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -527,8 +528,25 @@ class ReconciliationCenterServiceTest extends AccountingTestCase
      * company and is a design decision outside this lane. It is what made
      * `test_gap_explanation_does_not_double_count…` stale, so it is worth a named test rather than
      * a note.
+     *
+     * ── WHY THE NAME SHOUTS (CT-A10 verify, 27-3) ───────────────────────────────────────────────
+     * Docblocks do not appear in test output; METHOD NAMES do. Under `--testdox`, in a coverage
+     * report, or in a grep of test names, a neutral name here would read as an intended invariant
+     * and be indistinguishable from a guarantee. Hence `KNOWN_DEFECT` in the name, `@group
+     * known-defect` so the class can be listed with
+     * `php artisan test --group=known-defect`, and a first assertion message that leads with the
+     * same words.
+     *
+     * **EXIT CONDITION — delete this test when the gap queries are ledger-source-restricted.** Its
+     * green records a bug, not correctness.
+     *
+     * The marker is lower-case on purpose: `KNOWN_DEFECT` renders in `--testdox` as
+     * "k n o w n d e f e c t", one letter at a time, which defeats the point of putting it in the
+     * name. `documented_defect_ct_a10_3` greps as one token and reads as a sentence in the output.
+     * The group is an ATTRIBUTE rather than `@group`, which PHPUnit 11 deprecates and 12 removes.
      */
-    public function test_a_mid_cutover_row_reports_a_book_balance_of_zero_against_a_real_gap(): void
+    #[Group('known-defect')]
+    public function test_documented_defect_ct_a10_3_a_mid_cutover_row_reports_book_zero_against_a_real_gap(): void
     {
         [$company, $branch] = $this->makeCompany();
         $bank = $this->accountByCode($company->id, '1201');
@@ -549,7 +567,9 @@ class ReconciliationCenterServiceTest extends AccountingTestCase
             ->firstWhere('key', 'bank:'.$bank->id);
 
         $this->assertEqualsWithDelta(0.000, $row['book_balance'], 0.001,
-            'the BALANCE half reads the legacy branch, which holds none of these lines');
+            'DOCUMENTED DEFECT (CT-A10-3), not a guarantee: the BALANCE half reads the legacy branch, '
+                .'which holds none of these lines. This test passing records the bug; it does not fix it. '
+                .'Delete this test when the gap queries are ledger-source-restricted.');
         $this->assertEqualsWithDelta(155.000, $row['gap'], 0.001,
             'the GAP half is unrestricted and counts every one of them');
         $this->assertEqualsWithDelta(-155.000, $row['confirmed_balance'], 0.001,

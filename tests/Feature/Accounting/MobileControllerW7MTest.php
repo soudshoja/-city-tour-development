@@ -48,6 +48,41 @@ class MobileControllerW7MTest extends AccountingTestCase
      */
 
     /**
+     * ── 27-1: THE PARITY PIN, KEPT ──────────────────────────────────────────────────────────────
+     * `assertReachedAccountingPath()` below deliberately accepts {200, 500}, which is right for the
+     * two tests that care about the LEDGER — but on its own it would retire something W7.M actually
+     * claimed: that this cutover preserves HEAD's observable behaviour **byte for byte**, including
+     * the 500 that HEAD's per-task catch returns for the pre-existing `status='Assigned'` ENUM
+     * defect. Without a pin somewhere, the day that defect is fixed the suite would silently start
+     * accepting 200 and nobody would be told the behaviour had changed.
+     *
+     * So the guarantee is kept here rather than dropped, in one assertion, deliberately separate
+     * from the ledger tests so that a change in HTTP behaviour and a change in POSTING behaviour
+     * fail in different places and say different things.
+     *
+     * **When this goes red, it is NOT necessarily a regression.** A 200 here means someone fixed the
+     * ENUM defect, which is a good thing: update this test, and W7.M's parity claim is then formally
+     * superseded rather than quietly lost. A 401/403 means authorisation broke, which IS a
+     * regression — and the ledger tests will say so too.
+     */
+    public function test_update_invoice_still_returns_500_from_the_pre_existing_assigned_enum_defect(): void
+    {
+        // Runs the ON-path test's whole body rather than a copy of its fixture, so the pin can
+        // never drift from the request it is pinning. assertReachedAccountingPath() records the
+        // status it saw.
+        $this->test_update_invoice_on_path_reverses_the_old_sale_and_posts_a_new_balanced_one();
+
+        $this->assertSame(
+            500,
+            $this->lastReachedStatus,
+            'W7.M parity pin: HEAD returns 500 here because of the pre-existing status=\'Assigned\' ENUM '
+                .'defect, caught by updateInvoice()\'s own per-task catch. A 200 means that defect has been '
+                .'fixed — update this test and record that W7.M\'s byte-for-byte parity claim is superseded. '
+                .'A 401/403 means authorisation broke (CT-F29), which is a real regression.'
+        );
+    }
+
+    /**
      * CT-A10 — assert the CONTRACT, not the symptom.
      *
      * These two tests exist to prove what `updateInvoice()` does to the LEDGER. The HTTP status is
@@ -63,9 +98,13 @@ class MobileControllerW7MTest extends AccountingTestCase
      * Everything else about the outcome is asserted on the ledger rows below, which is where the
      * behaviour under test actually lives.
      */
+    /** The status {@see self::assertReachedAccountingPath()} last observed — read by the 27-1 parity pin. */
+    private ?int $lastReachedStatus = null;
+
     private function assertReachedAccountingPath(\Illuminate\Testing\TestResponse $response): void
     {
         $status = $response->getStatusCode();
+        $this->lastReachedStatus = $status;
 
         $this->assertNotContains($status, [401, 403], sprintf(
             'the caller must be authorised to update this invoice (CT-F29 userMayManageInvoice); got %d, '

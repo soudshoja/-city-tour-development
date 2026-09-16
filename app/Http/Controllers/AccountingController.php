@@ -32,6 +32,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Support\ReportDateRange;
 
 /**
  * ── W7.A (w7-brief.md §W7.A) — the three raw-write "manual JV" screens closed ────────────────────
@@ -288,9 +289,12 @@ class AccountingController extends Controller
         }
 
         // Build the query with conditional filters
+        // CT-A12: `$toDate` is a bare `Y-m-d` from the request and `transaction_date` is a
+        // `datetime`, so `<= '2026-09-30'` meant `<= '2026-09-30 00:00:00'` and dropped every
+        // entry timed after midnight on the last day the user asked for.
         $ledgersQuery = JournalEntry::query()
-            ->when($fromDate, fn ($query) => $query->where('transaction_date', '>=', $fromDate))
-            ->when($toDate, fn ($query) => $query->where('transaction_date', '<=', $toDate))
+            ->when($fromDate, fn ($query) => $query->where('transaction_date', '>=', ReportDateRange::start($fromDate)))
+            ->when($toDate, fn ($query) => $query->where('transaction_date', '<=', ReportDateRange::end($toDate)))
             ->when($parsedAccount['account_id'], fn ($query) => $query->where('account_id', $parsedAccount['account_id']))
             ->when($branchId, callback: fn ($query) => $query->where('branch_id', $branchId));
 

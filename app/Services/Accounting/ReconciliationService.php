@@ -12,6 +12,8 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Carbon\CarbonInterface;
+use App\Support\ReportDateRange;
 
 /**
  * W5.X (w5-brief.md §W5.X item 3: "reconcile / declineReconcile / fetchPaymentsByDate actions moved
@@ -120,8 +122,30 @@ final class ReconciliationService
      * @param  int[]  $branchIds
      * @return Collection<int, array<string, mixed>>
      */
-    public function fetchPaymentsByDate(int $companyId, array $branchIds, string $from, string $to, ?string $supplierName = null): Collection
+    /**
+     * CT-A12: this method normalises its own date bounds.
+     *
+     * Both callers passed the request's bare `Y-m-d` straight through to a `whereBetween` on
+     * `journal_entries.transaction_date` — a `datetime` — so the last day of any reconciliation
+     * range was truncated at 00:00:00.
+     *
+     * The fix is HERE rather than at each call site, and that is deliberate. A first attempt
+     * normalised in the two controllers and narrowed the parameter to `CarbonInterface`; this file
+     * declares `strict_types=1`, so that would have thrown a TypeError in
+     * `ReconciliationServiceTest`, which passes `toDateString()`. Owning the normalisation inside
+     * the API it belongs to keeps every existing caller working AND makes it impossible for a third
+     * caller to reintroduce the defect.
+     */
+    public function fetchPaymentsByDate(int $companyId, array $branchIds, string|CarbonInterface $from, string|CarbonInterface $to, ?string $supplierName = null): Collection
     {
+        // CT-A12: normalised HERE rather than at each caller, because this is a report-range API
+        // and there is no reason a third caller should have to know. Both bounds meet
+        // `journal_entries.transaction_date`, a `datetime`, so a bare `Y-m-d` upper bound truncated
+        // the last day of every reconciliation range at 00:00:00 and the screen quietly showed a
+        // shorter period than the one the user asked for.
+        $from = ReportDateRange::start($from);
+        $to = ReportDateRange::end($to);
+
         $accountIds = $this->resolveSupplierAccountIds($companyId, $supplierName);
 
         $totalsByAccountQuery = DB::table('journal_entries')

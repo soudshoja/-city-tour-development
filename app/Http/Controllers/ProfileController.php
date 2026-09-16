@@ -568,7 +568,13 @@ class ProfileController extends Controller
     /**
      * Get commissions grouped by invoice
      */
-    private function getCommissionsByInvoice($agent, $start, $end, $commissionAccountId)
+    /**
+     * CT-A12: `$start`/`$end` are typed `Carbon` so the contract is visible. Both are already
+     * normalised by the caller (`edit()` builds them with startOfMonth()/endOfmonth()), and
+     * `transaction_date` is a `datetime` — an un-normalised bound here would truncate the last day
+     * of the commission period.
+     */
+    private function getCommissionsByInvoice($agent, Carbon $start, Carbon $end, $commissionAccountId)
     {
         $query = Invoice::with(['invoiceDetails.task'])
             ->where('agent_id', $agent->id)
@@ -631,7 +637,8 @@ class ProfileController extends Controller
     /**
      * Get commissions grouped by task
      */
-    private function getCommissionsByTask($agent, $start, $end, $commissionAccountId)
+    /** CT-A12: typed for the same reason as getCommissionsByInvoice() — see its docblock. */
+    private function getCommissionsByTask($agent, Carbon $start, Carbon $end, $commissionAccountId)
     {
         $query = InvoiceDetail::with(['task', 'invoice.agent.branch'])
             ->whereHas('invoice', fn($q) => $q->where('agent_id', $agent->id)

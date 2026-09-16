@@ -7,6 +7,7 @@ use App\Models\JournalEntry;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Log;
+use App\Support\ReportDateRange;
 
 class JournalEntryController extends Controller
 {
@@ -422,8 +423,10 @@ class JournalEntryController extends Controller
         $dateFrom = $request->input('date_from');
         $dateTo = $request->input('date_to');
         // Fetch filtered entries
+        // CT-A12: bare `Y-m-d` request input against a `datetime` column — the exported PDF was
+        // missing every entry timed after midnight on `date_to`.
         $journalEntries = JournalEntry::where('account_id', $accountId)
-            ->whereBetween('transaction_date', [$dateFrom, $dateTo])
+            ->whereBetween('transaction_date', [ReportDateRange::start($dateFrom), ReportDateRange::end($dateTo)])
             ->get();
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('journal_entries.pdf', [

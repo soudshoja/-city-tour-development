@@ -183,6 +183,20 @@ or the ratchet is decorative.
    — ten pre-existing, individually-named hits elsewhere in that same file are allow-listed as a
    tracked, shrink-only gap (CT-A6-1); a repo-wide sweep found dozens more in `AccountingController.php`
    alone, a separate, much larger remediation this ratchet does not yet cover.
+7. **No bare `Y-m-d` bound against a `datetime`/`timestamp` column.** A report range built as
+   `whereBetween('transaction_date', [$from, '2026-09-30'])` silently truncates the last day at
+   `00:00:00`, because MySQL widens the bare date. Measured on LIVE: **678 transactions carrying
+   KWD 156,661.492**, 497 journal lines and 18 tasks fall after midnight on a month end, and 49.1 %
+   of all transactions carry a non-midnight `transaction_date`. Bounds are normalised with
+   `App\Support\ReportDateRange` (`start()` / `end()`), never by wrapping the COLUMN — `whereDate()`
+   and `DATE(col)` are correct but non-sargable, and `journal_entries` is the largest table these
+   reports touch. `DateRangeBoundaryRatchetTest` enforces it and is **scoped by a property, not a
+   list**: the at-risk column set is derived from the migrations on every run, a bound is accepted
+   when the source shows it carries a time (including via an earlier assignment or a `Carbon`-typed
+   parameter), and moving cutoffs like `now()->subDays(7)` are out of scope by construction. It
+   ships with a synthetic twin AND a **replay** against the real pre-fix source of every repaired
+   site — the replay is what caught the scanner's own case-sensitive regex missing
+   `supplier_pay_date`.
 
 Running the accounting suites: **chunk `tests/Feature/Accounting` into groups of ~32 files.** A
 single-process run of all 128 files reports hundreds of phantom failures — one test leaking an open

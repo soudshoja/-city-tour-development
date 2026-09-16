@@ -38,6 +38,7 @@ use App\Services\Accounting\NamedAccountGroupResolver;
 use App\Services\Accounting\GeneralLedgerService;
 use App\Services\Accounting\BalanceSheetService;
 use App\Exceptions\Accounting\UnmappedPurposeException;
+use App\Support\ReportDateRange;
 
 class ReportController extends Controller
 {
@@ -937,7 +938,13 @@ class ReportController extends Controller
 
         $transitionBanner = $ledgerSource->transitionBanner($companyId);
 
+        // CT-A12: this branch used `$endDate` RAW — the bare `Y-m-d` straight off the request —
+        // while the two branches below it normalise. So "end date only, no start date" truncated
+        // the last day at 00:00:00 and the other two range shapes did not, on the same screen.
+        // Found by the census ratchet, not by reading: the both-set branch below looks correct and
+        // is, which is exactly how this one stayed invisible.
         if ($startDate == null && $endDate !== null) {
+            $endDate = ReportDateRange::end($endDate);
             $payableQuery->where('transaction_date', '<=', $endDate);
             $receivableQuery->where('transaction_date', '<=', $endDate);
         }
@@ -1115,7 +1122,13 @@ class ReportController extends Controller
             $receivableQuery->where('type_reference_id', $clientId);
         }
 
+        // CT-A12: this branch used `$endDate` RAW — the bare `Y-m-d` straight off the request —
+        // while the two branches below it normalise. So "end date only, no start date" truncated
+        // the last day at 00:00:00 and the other two range shapes did not, on the same screen.
+        // Found by the census ratchet, not by reading: the both-set branch below looks correct and
+        // is, which is exactly how this one stayed invisible.
         if ($startDate == null && $endDate !== null) {
+            $endDate = ReportDateRange::end($endDate);
             $payableQuery->where('transaction_date', '<=', $endDate);
             $receivableQuery->where('transaction_date', '<=', $endDate);
         }
@@ -1191,8 +1204,11 @@ class ReportController extends Controller
 
     public function accountsReconciliationReport(Request $request)
     {
-        $from = $request->input('from', Carbon::now()->startOfMonth()->toDateString());
-        $to = $request->input('to', Carbon::now()->endOfMonth()->toDateString());
+        // CT-A12: both are bare `Y-m-d` strings (from the request or from toDateString()) and
+        // both meet `datetime` columns below, so the upper bound must be widened to end-of-day or
+        // the last day of the range is truncated at 00:00:00.
+        $from = ReportDateRange::start($request->input('from', Carbon::now()->startOfMonth()->toDateString()));
+        $to = ReportDateRange::end($request->input('to', Carbon::now()->endOfMonth()->toDateString()));
 
         $request->merge(['from' => $from, 'to' => $to])->validate([
             'from' => 'required|date',
@@ -4193,10 +4209,15 @@ class ReportController extends Controller
         $branches = Branch::where('company_id', $companyId)->get();
 
         // Get unbalanced transactions
+        // CT-A12: the bounds are normalised HERE, not inside findUnbalancedTransactions(),
+        // because that method takes its Carbons literally and PeriodCloseChecklistService already
+        // hands it correct ones. `Carbon::parse('2026-09-30')` is MIDNIGHT, so this panel used to
+        // be filtered to a narrower range than the totals above it (generate() normalises its own
+        // bounds) — the screen could report "no unbalanced documents" for a day that has one.
         $unbalancedTransactions = $service->findUnbalancedTransactions(
             $companyId,
-            Carbon::parse($dateFrom),
-            Carbon::parse($dateTo)
+            ReportDateRange::start($dateFrom),
+            ReportDateRange::end($dateTo)
         );
 
         // CT-A6-2: same transition banner every other engine/legacy-source-restricted report
@@ -4252,10 +4273,15 @@ class ReportController extends Controller
         );
 
         $company = Company::find($companyId);
+        // CT-A12: the bounds are normalised HERE, not inside findUnbalancedTransactions(),
+        // because that method takes its Carbons literally and PeriodCloseChecklistService already
+        // hands it correct ones. `Carbon::parse('2026-09-30')` is MIDNIGHT, so this panel used to
+        // be filtered to a narrower range than the totals above it (generate() normalises its own
+        // bounds) — the screen could report "no unbalanced documents" for a day that has one.
         $unbalancedTransactions = $service->findUnbalancedTransactions(
             $companyId,
-            Carbon::parse($dateFrom),
-            Carbon::parse($dateTo)
+            ReportDateRange::start($dateFrom),
+            ReportDateRange::end($dateTo)
         );
 
         $pdf = Pdf::loadView('reports.pdf.trial-balance', [

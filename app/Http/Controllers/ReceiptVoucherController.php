@@ -2178,6 +2178,7 @@ class ReceiptVoucherController extends Controller
         $payments = $this->reconciliation->fetchPaymentsByDate(
             (int) $user->company->id,
             [(int) $user->branch->id],
+            // CT-A12: normalised inside fetchPaymentsByDate(); see its docblock.
             $request->from,
             $request->to,
             $request->get('supplier'),

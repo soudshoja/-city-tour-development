@@ -470,6 +470,20 @@ class BackfillSupplierLeaf extends Command
             $refused
         ));
 
+        // A8-4: `--limit` pages leaves in `id` order (see the `orderBy('id')` above), and on the
+        // real chart the low-id end is refusal-heavy — a small `--limit` during a staged rollout
+        // can legitimately see zero derivable leaves and read as if the command is broken, when it
+        // has simply not reached the id range where evidence exists yet. Only when `--limit` was
+        // actually given: an unbounded run considering everything and still deriving nothing is a
+        // real, different finding (§5.4's zero-evidence/multi-supplier leaves), not a paging one.
+        if ($limit !== null && $stamped === 0) {
+            $this->line(sprintf(
+                '  %d considered, 0 derivable — leaves are processed in id order and the low-id end is '
+                    .'refusal-heavy; raise --limit to reach further into the chart.',
+                $considered
+            ));
+        }
+
         foreach ($refusals as $line) {
             $this->line($line);
         }
@@ -504,7 +518,11 @@ class BackfillSupplierLeaf extends Command
      * Soft-deleted TASKS are deliberately kept as evidence. A deleted task is still the document
      * that put the payable on the leaf, and — the property that actually decides it — including
      * more evidence can only ever RAISE the distinct-supplier count, which can only ever turn an
-     * accept into a refusal. Every judgement call in this method is resolved in that direction.
+     * accept into a refusal. Every judgement call in this method is resolved in that direction,
+     * with one deliberate, test-pinned exception: the `t.company_id = je.company_id` join above
+     * DROPS a line whose task points at a foreign company, which LOWERS the count rather than
+     * raising it — a foreign task is not evidence about THIS company's leaf at all, so excluding
+     * it is a correctness fix, not a hedge against the rule.
      *
      * @param  int[]  $leafIds
      * @return array<int, int[]> leaf id => sorted, distinct supplier ids

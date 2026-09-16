@@ -986,6 +986,44 @@ class BackfillSupplierLeafTest extends AccountingTestCase
     }
 
     /**
+     * A8-4: `--limit` pages in `id` order and the low-id end of a real chart is refusal-heavy
+     * (CoaSeeder's own seeded control leaves, which carry no posted lines, sort before anything a
+     * fixture or a real supplier ever mints). A small `--limit` can legitimately see zero derivable
+     * leaves and, without a hint, read exactly like the command breaking. The extra summary line is
+     * gated on BOTH halves of that condition — `--limit` was actually given, AND nothing was
+     * derivable — never on either alone.
+     */
+    public function test_the_limit_paging_hint_appears_only_when_limit_is_used_and_nothing_was_derivable(): void
+    {
+        $hint = 'considered, 0 derivable — leaves are processed in id order';
+
+        // (1) POSITIVE: --limit given, the leaf(ves) it reaches are refused (no evidence posted to
+        // anything yet) — the hint must appear, naming the SAME count the summary line reports.
+        $this->artisan('accounting:backfill-supplier-leaf', [
+            '--company' => $this->companyId, '--apply' => true, '--limit' => 1,
+        ])->expectsOutputToContain('1 candidate leaf/leaves considered, 0 derivable')
+            ->expectsOutputToContain('1 '.$hint)
+            ->assertExitCode(0);
+
+        // (2) NEGATIVE — no --limit at all: an unbounded run considering everything and still
+        // deriving nothing is a real, different finding (genuinely unattributable leaves), not a
+        // paging artifact, and must not be misreported as one.
+        $this->artisan('accounting:backfill-supplier-leaf', ['--company' => $this->companyId, '--apply' => true])
+            ->doesntExpectOutputToContain($hint)
+            ->assertExitCode(0);
+
+        // (3) NEGATIVE — --limit given, but this time large enough to reach a leaf with real
+        // evidence, so something IS derivable: the hint must not appear just because --limit was
+        // present.
+        $this->historicalApLine($this->cleanLeafId, 0.0, 100.0, $this->makeTask($this->supplierAId));
+
+        $this->artisan('accounting:backfill-supplier-leaf', [
+            '--company' => $this->companyId, '--apply' => true, '--limit' => 1000,
+        ])->doesntExpectOutputToContain($hint)
+            ->assertExitCode(0);
+    }
+
+    /**
      * ── MUTATION PROOF M-A8-PAGING ──────────────────────────────────────────────────────────────
      * REFUSED leaves stay NULL forever, so a loop that re-queried `supplier_id IS NULL` would hand
      * back the same refused batch and spin until the process was killed. Paging is by

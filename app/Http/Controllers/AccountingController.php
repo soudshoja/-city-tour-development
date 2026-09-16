@@ -1151,20 +1151,54 @@ class AccountingController extends Controller
             $companies = Company::all();
         }
 
-        $parentIds = Account::where('name', 'Accounts Payable')->pluck('id');
-        $suppliers = Account::whereIn('parent_id', $parentIds)->get();
+        // ── CT-A7 ROUND 2, finding F6 — company scope ───────────────────────────────────────────
+        // These three queries carried NO `company_id` at all: the two account lookups pulled every
+        // tenant's `Accounts Payable` / `Accounts Receivable` children into this screen's dropdowns,
+        // and the journal lookup pulled every tenant's payable and expense lines. Its own siblings
+        // `createPayableDetail()` and `createReceivableDetail()` scope by `getCompanyId($user)`;
+        // this one was simply never brought in line.
+        //
+        // It matters more since CT-A7-2 than it did before: this dropdown is what populates
+        // `bank_payments.target_account_id`, and `BankPaymentController::voucherPartyRef()` now
+        // READS that account to decide the PARTY stamped on a payable line. A foreign account
+        // reachable from the picker is a foreign party reachable into this company's ledger.
+        //
+        // The method is still unreachable in practice (no route names this action and
+        // `resources/views/accounting/bank-payment/create.blade.php` does not exist — see this
+        // class's own notes and BankPaymentIntegrityTest's docblock), so this is a latent leak
+        // being closed, not an exploited one. With no company selected the screen now offers
+        // NOTHING rather than everything, which is the same failure direction its siblings take.
+        $companyId = getCompanyId($user);
 
-        // CT-A3 E7 (CT-F31) fix — see createPayableDetail()'s identical fix above for the rationale.
-        $JournalEntrysPayable = JournalEntry::whereIn('type', [
-            ...LedgerType::payableFilterValues(),
-            ...LedgerType::expenseFilterValues(),
-        ])
-            ->orderByDesc('created_at')  // Sort by date in descending order
-            ->get()
-            ->groupBy('type');
+        $suppliers = collect();
+        $clients = collect();
+        $JournalEntrysPayable = collect();
 
-        $parentIdClients = Account::where('name', 'Accounts Receivable')->pluck('id');
-        $clients = Account::whereIn('parent_id', $parentIdClients)->get();
+        if ($companyId) {
+            $parentIds = Account::where('name', 'Accounts Payable')
+                ->where('company_id', $companyId)
+                ->pluck('id');
+            $suppliers = Account::where('company_id', $companyId)
+                ->whereIn('parent_id', $parentIds)
+                ->get();
+
+            // CT-A3 E7 (CT-F31) fix — see createPayableDetail()'s identical fix above for the rationale.
+            $JournalEntrysPayable = JournalEntry::where('company_id', $companyId)
+                ->whereIn('type', [
+                    ...LedgerType::payableFilterValues(),
+                    ...LedgerType::expenseFilterValues(),
+                ])
+                ->orderByDesc('created_at')  // Sort by date in descending order
+                ->get()
+                ->groupBy('type');
+
+            $parentIdClients = Account::where('name', 'Accounts Receivable')
+                ->where('company_id', $companyId)
+                ->pluck('id');
+            $clients = Account::where('company_id', $companyId)
+                ->whereIn('parent_id', $parentIdClients)
+                ->get();
+        }
 
         return view('accounting.bank-payment.create', compact('companies', 'suppliers', 'clients', 'JournalEntrysPayable'));
     }

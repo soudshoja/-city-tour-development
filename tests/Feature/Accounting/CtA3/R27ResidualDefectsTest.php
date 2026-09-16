@@ -314,12 +314,37 @@ class R27ResidualDefectsTest extends AccountingTestCase
 
         $before = Transaction::withoutGlobalScopes()->where('company_id', $company->id)->count();
 
+        // The catch here used to be `catch (\Throwable $e)` with an EMPTY body, with the
+        // $this->fail() INSIDE the try. $this->fail() throws
+        // PHPUnit\Framework\AssertionFailedError, which IS a Throwable -- so the empty catch
+        // swallowed it, and a refund that posted successfully read as a PASS. The test could
+        // not fail on the one thing it exists to catch.
+        //
+        // Narrowing the catch is not sufficient on its own: AssertionFailedError extends
+        // PHPUnit\Framework\Exception, which extends \RuntimeException, and \RuntimeException is
+        // exactly what this path throws (RefundPostingService::postCrnForDetail()'s
+        // "no positive original_invoice_price to reverse" guard). So the fail() moves OUT of
+        // the try -- nothing inside it can be swallowed -- and the refusal is additionally
+        // pinned by message, so a DIFFERENT RuntimeException cannot pass for it.
+        $posted = false;
+
         try {
             app(RefundPostingService::class)->post($refund->fresh(), null);
-            $this->fail('An unexpected refusal must still abort the whole refund.');
-        } catch (\Throwable $e) {
-            // expected
+            $posted = true;
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString(
+                'has no positive original_invoice_price to reverse',
+                $e->getMessage(),
+                'The refund must be refused for the REASON this test is about, not by some other '
+                .'RuntimeException that happens to be thrown first.'
+            );
         }
+
+        $this->assertFalse(
+            $posted,
+            'An unexpected refusal must still abort the whole refund -- post() must throw, not '
+            .'return.'
+        );
 
         $this->assertSame(
             $before,

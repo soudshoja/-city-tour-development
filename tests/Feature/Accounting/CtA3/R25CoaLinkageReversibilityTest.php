@@ -7,6 +7,7 @@ namespace Tests\Feature\Accounting\CtA3;
 use App\Models\Account;
 use App\Models\Charge;
 use App\Models\Company;
+use App\Exceptions\Accounting\UnmappedPurposeException;
 use App\Services\Accounting\AccountResolver;
 use Database\Seeders\AccountTypeSeeder;
 use Database\Seeders\CoaSeeder;
@@ -503,7 +504,12 @@ class R25CoaLinkageReversibilityTest extends AccountingTestCase
         try {
             app(AccountResolver::class)->resolve('REFUND_PAYOUT_CASH_BANK', $company->id);
             $this->fail('A freshly seeded chart must NOT auto-map the refund payout — that is wave 2 §4.7.');
-        } catch (Throwable $e) {
+        } catch (UnmappedPurposeException $e) {
+            // This catch used to be `catch (Throwable $e)`, which also catches the
+            // PHPUnit\Framework\AssertionFailedError thrown by the $this->fail() above it. The
+            // follow-up assertion happened to save it (AssertionFailedError's message does not
+            // contain the purpose code), but only incidentally -- the oracle was wider than the
+            // thing it meant to prove. Narrowed to the exception the resolver actually raises.
             $this->assertStringContainsString('REFUND_PAYOUT_CASH_BANK', $e->getMessage());
         }
     }

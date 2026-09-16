@@ -24,6 +24,7 @@ use App\Models\Transaction;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\ChequeImageStore;
 use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\LegacyLineCurrencyColumns;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PaymentIdempotencyKey;
 use App\Services\Accounting\PostedDocument;
@@ -1367,11 +1368,24 @@ class ReceiptVoucherController extends Controller
                     'description' => $line->description,
                     'debit' => $line->side === 'debit' ? $line->amount : 0,
                     'credit' => $line->side === 'credit' ? $line->amount : 0,
-                    'name' => $displayName,
+                    // ── CT-A9 T2 — OFF/ON PARTY parity ────────────────────────────────────────
+                    // Was `'name' => $displayName`, which dropped `LineDraft::$partyName` on the
+                    // floor: every line of an engine-OFF receipt carried the DOCUMENT's display
+                    // name, while the same document posted with the engine on carries the line's
+                    // own party (`PostingService::post()` step 8:
+                    // `$line->partyName ?? $account->name`). `journal_entries.name` is what the
+                    // client/supplier statement screens print, so the OFF path was erasing the
+                    // per-line party on exactly the rows a statement is built from. Same fallback
+                    // as the ON path, with $displayName kept as the last resort because this
+                    // writer has no resolved Account object in hand (it has $accountId only).
+                    'name' => $line->partyName ?? $displayName,
                     'type' => $line->transactionType,
                     'type_reference_id' => $line->partyAccountRef,
-                    'currency' => $line->currency,
-                    'exchange_rate' => $line->exchangeRate,
+                    // ── CT-A9 T2 — OFF/ON currency parity ─────────────────────────────────────
+                    // Was `'currency' => $line->currency, 'exchange_rate' => $line->exchangeRate`
+                    // and nothing else — the same two-of-four gap CT-FX-EXPOSURE §5.4 item 2 found
+                    // on BankPaymentController's twin. See {@see LegacyLineCurrencyColumns}.
+                    ...LegacyLineCurrencyColumns::for($line),
                     'amount' => $line->amount,
                     'voucher_number' => $number,
                     'cheque_no' => $line->chequeNo,
@@ -2282,8 +2296,39 @@ class ReceiptVoucherController extends Controller
                 return ['status' => 'error', 'message' => 'Receivable and income amounts do not match; refusing to post an unbalanced document.'];
             }
 
-            $currency = $task->currency ?? 'KWD';
-            $exchangeRate = (float) ($task->exchange_rate ?? 1.0);
+            // ── CT-A9 T1 — this import posts BASE-CURRENCY lines, and says so ──────────────────
+            // Every amount below comes from a KWD document column: $sellAmount from
+            // `invoices.amount`, $bookingAmount from `invoice_partials.amount`, and the commission
+            // pair further down from `invoice_details`. Nothing on this path converts anything, so
+            // under the posting convention (LineDraft.php:139-142 — `amount` is LOCAL,
+            // `original_amount` is FOREIGN, the rate is base-per-foreign applied by
+            // multiplication) these lines are base-currency lines whose rate is 1.000000.
+            //
+            // What was here before was two reads of a column that does not exist and a rate that
+            // belongs to something else:
+            //
+            //     $currency     = $task->currency ?? 'KWD';              // `tasks` HAS NO `currency` COLUMN
+            //     $exchangeRate = (float) ($task->exchange_rate ?? 1.0); // the TASK's source rate
+            //
+            // `tasks` has never had a `currency` column (its FX columns are `exchange_currency`,
+            // `original_currency`, `original_price`, `exchange_rate`), so `$task->currency` is null
+            // on every row that has ever existed and the `?? 'KWD'` branch always won — the same
+            // phantom read that, with a `?? 'USD'` fallback, stamped 4,553 KWD ledger lines 'USD'
+            // on live (CT-FX-EXPOSURE-2026-09-16.md §5.1). The base currency is read from config
+            // now, because that is where it actually lives.
+            //
+            // The rate was the live defect. `tasks.exchange_rate` is the rate the TASK's supplier
+            // cost was priced at; it is not a property of this receipt's KWD receivable. Pairing it
+            // with base-currency amounts produced a line with originalAmount === amount and a rate
+            // of, say, 0.340000, which PostingService step 3f refused outright — so the FIRST
+            // receipt raised against any foreign-sourced task after `accounting.engine.enabled`
+            // went true would have failed the whole import (CT-FX-EXPOSURE §5.4 item 1). CT-A9
+            // fixes it at both ends: step 3f no longer refuses a consistent base line over a
+            // redundant rate (it normalises and warns, ruling R-CT10), and this feeder no longer
+            // supplies one. Same discipline as TaskIssuancePayableService.php:222-225, which posts
+            // "honestly base-currency at rate 1.0" whenever it cannot vouch for an FC triple.
+            $currency = (string) config('accounting.engine.base_currency', 'KWD');
+            $exchangeRate = 1.0;
             $docDate = $invoice->invoice_date ? Carbon::parse($invoice->invoice_date) : Carbon::now();
 
             $saleLines = [

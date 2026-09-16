@@ -824,22 +824,117 @@ final class PostingService
                 $lineCurrency = strtoupper(trim($line->currency));
                 $baseCurrency = strtoupper($this->baseCurrency);
 
+                // ── CT-A9 T1 / ruling R-CT10 — what the rate is a fact ABOUT ────────────────────
+                // The persisted rate for this line. On a base-currency line it is 1.000000 BY
+                // DEFINITION and is therefore DERIVED here rather than taken from the draft; on a
+                // foreign line it is the draft's, unchanged. Step 8 writes THIS, not
+                // `$line->exchangeRate`, so `journal_entries.exchange_rate = 1.000000` on every
+                // base-currency line the engine has ever written stays true by construction.
+                $lineExchangeRate = $line->exchangeRate;
+
                 if ($lineCurrency === $baseCurrency) {
-                    if (
-                        abs($originalAmount - $amount) > $this->balanceTolerance
-                        || abs($line->exchangeRate - 1.0) > 0.000001
-                    ) {
+                    // ── The rule, from the convention, stated ───────────────────────────────────
+                    // `debit`/`credit` are LOCAL (base, KWD). `original_amount` is the FOREIGN face
+                    // value. The rate is base-units-per-one-foreign-unit and is applied by
+                    // MULTIPLICATION, foreign -> local (LineDraft.php:139-142; the identity below
+                    // and CT-FX-EXPOSURE-2026-09-16.md §1.3, where engine-posted EGP 1,239.000 ×
+                    // 0.006301 = KWD 7.807 reproduces it exactly from the data).
+                    //
+                    // It follows that on a line whose currency IS the base currency there is no
+                    // foreign face value and therefore NO CONVERSION: `original_amount` is the same
+                    // number as `amount`, and the rate is 1.000000. The one fact such a line can be
+                    // wrong about is its AMOUNTS, and that is what is asserted here.
+                    //
+                    // ── Why the rate is no longer part of the refusal (CT-A9 T1) ───────────────
+                    // This branch used to refuse on `originalAmount !== amount` OR
+                    // `exchangeRate !== 1.0`. The second half was a live defect, not a guard:
+                    // `ReceiptVoucherController::importReceiptSale()` paired base-currency amounts
+                    // (`$invoice->amount`, `$invoicePartial->amount` — both already KWD) with the
+                    // SOURCE TASK's `exchange_rate`, so every receipt raised against a task sourced
+                    // in a foreign currency arrived here as a fully self-consistent base-currency
+                    // line (originalAmount === amount) carrying a stray 0.340000, and the whole
+                    // receipt refused with FcConsistencyException the moment
+                    // `accounting.engine.enabled` went true (CT-FX-EXPOSURE §5.4 item 1).
+                    //
+                    // Refusing there is a FALSE refusal: the line's amounts agree, its currency
+                    // says base, and the rate it carries is a fact about the TASK's source pricing,
+                    // not about this line. The engine's job is to make the invariant true on disk,
+                    // and the invariant (CT-FX-EXPOSURE §8.1 rule 3) is that a base-currency line
+                    // carries `exchange_rate = 1.000000`. So: normalise to 1.000000, WARN, and post.
+                    //
+                    // Writing the caller's 0.340000 through instead would be strictly worse — that
+                    // is precisely how the ~20 legacy `'exchange_rate' => $task->exchange_rate ??
+                    // 1.00` sites manufactured a ledger where 74.3 % of lines carry a rate that
+                    // describes nothing. Normalising is enforcement, not indulgence.
+                    //
+                    // ── What this deliberately does NOT do ─────────────────────────────────────
+                    // It does not touch the FOREIGN branch. A line that CLAIMS a foreign currency
+                    // is taken at its word: `amount === originalAmount` with a rate ≠ 1 on a line
+                    // tagged 'USD' is indistinguishable from the real defect (a foreign figure
+                    // typed into the local field — task 15993: amount 368.000, originalAmount
+                    // 368.000, rate 0.340000, which implies 125.120), and that shape MUST keep
+                    // refusing. It is the refusal that found task 15993 in the first place
+                    // (TaskIssuancePayableService.php:197-202). A KWD amount wearing a 'USD'
+                    // sticker is repaired where the evidence lives — in the LABEL
+                    // (`accounting:repair-currency-label`) — not by teaching the engine to guess
+                    // that a currency code means something other than what it says.
+                    if (abs($originalAmount - $amount) > $this->balanceTolerance) {
                         throw new FcConsistencyException(
                             $line->currency,
                             $this->baseCurrency,
                             $amount,
                             $originalAmount,
                             $line->exchangeRate,
-                            "DocumentDraft::\$lines[{$index}]: base-currency line must have "
-                            .'originalAmount === amount and exchangeRate === 1.0.'
+                            sprintf(
+                                'DocumentDraft::$lines[%d]: base-currency line must have '
+                                .'originalAmount (%.3f) === amount (%.3f); there is no conversion '
+                                .'on a base-currency line.',
+                                $index,
+                                $originalAmount,
+                                $amount
+                            )
                         );
                     }
+
+                    if (abs($line->exchangeRate - 1.0) > 0.000001) {
+                        // Reported, never silent: "a feeder handed a base-currency line a rate"
+                        // is a smell worth seeing on the 'accounting' channel, in the same shape
+                        // and on the same channel as TaskIssuancePayableService's own
+                        // `accounting.supplier_payable.fx_inconsistent`.
+                        Log::warning('accounting.fx.base_line_rate_normalised', [
+                            'company_id' => $draft->companyId,
+                            'doc_type' => $draft->docType,
+                            'idempotency_key' => $draft->idempotencyKey,
+                            'line_index' => $index,
+                            'account_id' => $account->id,
+                            'currency' => $line->currency,
+                            'base_currency' => $this->baseCurrency,
+                            'amount' => $amount,
+                            'supplied_exchange_rate' => $line->exchangeRate,
+                            'persisted_exchange_rate' => 1.0,
+                            'ruling' => 'R-CT10',
+                        ]);
+                    }
+
+                    $lineExchangeRate = 1.0;
                 } else {
+                    // ── ABSENT vs ZERO (CT-A9 T1, ruled) ───────────────────────────────────────
+                    // `journal_entries.exchange_rate` is `NOT NULL DEFAULT 0.000000`, so "no rate
+                    // was supplied" and "the rate is zero" are THE SAME VALUE and cannot be told
+                    // apart — not here, and not by any later reader. This engine rules that BOTH
+                    // REFUSE on a line that claims a non-base currency, and the message says so by
+                    // name rather than pretending the distinction was made.
+                    //
+                    // Why refusing, and not the two alternatives:
+                    //   - Defaulting a missing rate to 1.0 is the `?? 1.00` fallback that wrote
+                    //     4,553 'USD'-stamped rows at rate 1 in the first place. "No rate" must
+                    //     never silently become "rate 1".
+                    //   - Treating 0 as "no rate, skip the check" is what RealisedFxService does
+                    //     (`.php:96-100`), and it is why that service silently drops 74.3 % of the
+                    //     live ledger. A guard that skips is not a guard.
+                    // Refusing is also the reversible choice (the R-CT6 default's own rationale):
+                    // an operator who meant a rate supplies one; a foreign line posted without one
+                    // is money on the ledger that can never be converted, reconciled or revalued.
                     if ($line->exchangeRate <= 0) {
                         throw new FcConsistencyException(
                             $line->currency,
@@ -848,9 +943,19 @@ final class PostingService
                             $originalAmount,
                             $line->exchangeRate,
                             "DocumentDraft::\$lines[{$index}]: exchangeRate must be > 0 for non-base "
-                            ."currency '{$line->currency}'."
+                            ."currency '{$line->currency}'. A rate of 0.000000 is the column's own "
+                            .'default, so "no rate supplied" and "rate zero" are the same value here '
+                            .'and both refuse; supply the rate this amount was converted at.'
                         );
                     }
+
+                    // CT-A9 T1, CHECKED AND NOT ADDED: "a foreign line must carry a foreign
+                    // originalAmount > 0" needs no branch here. Step 3b above already refuses
+                    // `$originalAmount <= 0` for EVERY line, foreign or base, by name
+                    // (NonNegativeAmountException, "a zero-amount line has no real double-entry
+                    // meaning"). A second guard here would be unreachable, and an unreachable
+                    // guard reads as protection that is not there. Pinned by CtA9\\
+                    // FcBaseCurrencyRuleTest::test_a_foreign_line_with_no_foreign_amount_is_already_refused_by_step_3b().
 
                     // P1 FIX ROUND (MEDIUM finding): assert amount and originalAmount actually
                     // agree via exchangeRate — previously a structurally-valid-but-semantically-
@@ -896,6 +1001,9 @@ final class PostingService
                     'credit' => $credit,
                     'amount' => $amount,
                     'originalAmount' => $originalAmount,
+                    // CT-A9 T1: DERIVED above, not copied from the draft — 1.000000 on a
+                    // base-currency line whatever the feeder supplied. Step 8 writes this.
+                    'exchangeRate' => $lineExchangeRate,
                 ];
             }
 
@@ -1432,7 +1540,11 @@ final class PostingService
                     // LedgerType's own class docblock for the full mapping table and rationale.
                     'type' => LedgerType::resolve($line->ledgerType, $line->transactionType),
                     'currency' => $line->currency,
-                    'exchange_rate' => $line->exchangeRate,
+                    // CT-A9 T1 / R-CT10: the rate step 3f DERIVED, not the one the feeder handed
+                    // in. Identical to `$line->exchangeRate` on every foreign line; forced to
+                    // 1.000000 on every base-currency line, where the rate is 1 by definition and
+                    // a feeder-supplied value is a fact about something else (see step 3f).
+                    'exchange_rate' => $r['exchangeRate'],
                     'amount' => $r['amount'],
                     // W5.P fix: was hardcoded 0 -- see LineDraft's own "W5.P FIX ROUND" docblock.
                     // Falls back to 0 for every feeder that doesn't set this (unchanged behaviour).

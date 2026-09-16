@@ -61,9 +61,16 @@ use Illuminate\Support\Str;
  * `--rollback={runId}` is owned by THIS command, not by `accounting:coa-linkage --rollback`. That
  * is deliberate: the linkage command's own docblock says it is *forbidden from moving money* and
  * its restore phases only understand `accounts` and `system_accounts`. Rather than teach it to
- * write `journal_entries`, `CoaLinkage::rollbackRun()` now REFUSES a run id whose rows belong to
+ * write `journal_entries`, `CoaLinkage::rollbackRun()` REFUSES a run id whose rows belong to
  * another command and names the command that owns them — so an operator who types the wrong one
  * gets told, instead of a silent partial undo reported as complete.
+ *
+ * CT-A7 ROUND 3 (R3-3): that guard is now SYMMETRIC. This command used to answer a run id it did
+ * not own with a warning and exit **0**, so typing the two commands the wrong way round produced a
+ * success code in one direction and a refusal in the other. It exits **1** now, naming
+ * `accounting:coa-linkage --rollback`, and it also exits 1 on a run id nobody recorded — an undo
+ * that undid nothing is not a success. A repeat undo of a run this command HAS fully rolled back
+ * still exits 0, because there really is nothing left to do.
  *
  * Nothing here touches `debit`, `credit`, `account_id` or any header column: no money moves, no
  * document changes, and the trial balance is byte-identical before and after. `type_reference_id`
@@ -76,7 +83,8 @@ class BackfillPayablePartyReference extends Command
                             {--dry-run : Report the full change list without writing anything (the default whenever --apply is absent)}
                             {--apply : Actually write the party references}
                             {--rollback= : Undo a previous --apply run by its run id}
-                            {--limit= : Cap the number of rows considered per company, for a staged rollout}';
+                            {--limit= : Cap the number of rows considered per company, for a staged rollout}
+                            {--batch-size=500 : Rows per transaction. One batch = one transaction = one commit.}';
 
     protected $description = 'CT-A7 F2 — stamp journal_entries.type_reference_id on historical accounts-payable lines written without a party (R3-10a), derived from the line\'s own account. Dry-run by default; records a per-row before-image; refuses to guess.';
 
@@ -120,8 +128,10 @@ class BackfillPayablePartyReference extends Command
         $totalStamped = 0;
         $totalRefused = 0;
 
+        $batchSize = max(1, (int) $this->option('batch-size'));
+
         foreach ($companyIds as $companyId) {
-            [$stamped, $refused] = $this->processCompany($companyId, $positions, $apply, $runId, $limit);
+            [$stamped, $refused] = $this->processCompany($companyId, $positions, $apply, $runId, $limit, $batchSize);
             $totalStamped += $stamped;
             $totalRefused += $refused;
         }
@@ -150,8 +160,46 @@ class BackfillPayablePartyReference extends Command
         return self::SUCCESS;
     }
 
-    /** @return array{0: int, 1: int} [stamped, refused] */
-    private function processCompany(int $companyId, TaskPayablePositionResolver $positions, bool $apply, string $runId, ?int $limit): array
+    /**
+     * ── The SELECTION PREDICATE, stated exactly (CT-A7 R3, sizing) ──────────────────────────────
+     * In SQL terms, for one company:
+     *
+     *   SELECT je.id, je.account_id
+     *     FROM journal_entries je
+     *    WHERE je.company_id        = :companyId
+     *      AND je.deleted_at       IS NULL
+     *      AND je.type_reference_id IS NULL
+     *      AND je.account_id IN (:apSubtreeIds)     -- NamedAccountGroupResolver::subtreeIds(
+     *                                               --   company, 'Accounts Payable'), plural since R3-1
+     *      AND je.id > :lastSeenId
+     *    ORDER BY je.id
+     *    LIMIT :batchSize
+     *
+     * Note what is NOT in it. There is no `transactions.doc_type` filter and no
+     * `reference_type = 'Payment'` filter: an audit sized the repair with
+     * `journal_entries.type='payable' AND transactions.reference_type='Payment'` as a proxy for
+     * "payment voucher" and got 24,143 unstamped rows / 3,863,850.577 of movement against 9,097
+     * already stamped. This command's own predicate is WIDER in one direction (any AP-subtree row,
+     * not only `type='payable'`, and not only `reference_type='Payment'`) and NARROWER in another
+     * (only rows inside the AP subtree). That is deliberate: the repair is defined by WHERE THE
+     * ROW SITS, not by what kind of document produced it, because the derivation reads the
+     * ACCOUNT. `doc_type` could not be used as the filter in any case — the audit confirmed it
+     * holds JV/INV/REV/DBN/RV/NULL and has no first-class payment-voucher value.
+     *
+     * ── Volume ──────────────────────────────────────────────────────────────────────────────────
+     * At ~24k rows a single transaction wrapping the whole company would hold row locks on
+     * `journal_entries` for the length of the run and make a mid-run failure all-or-nothing. It
+     * does not: the work is paged by `id` in `--batch-size` batches (default 500), and EACH BATCH
+     * IS ITS OWN TRANSACTION containing that batch's before-images and its writes together. A crash
+     * leaves whole committed batches behind and the rest untouched, which is exactly the state a
+     * re-run resumes from — stamped rows are out of scope by definition.
+     *
+     * Paging is by `id > :lastSeenId` rather than by re-querying `IS NULL`: REFUSED rows stay NULL
+     * forever, so a pure `IS NULL` loop would hand back the same refused batch and spin.
+     *
+     * @return array{0: int, 1: int} [stamped, refused]
+     */
+    private function processCompany(int $companyId, TaskPayablePositionResolver $positions, bool $apply, string $runId, ?int $limit, int $batchSize): array
     {
         $apSubtree = $positions->apSubtreeIds($companyId);
 
@@ -161,75 +209,78 @@ class BackfillPayablePartyReference extends Command
             return [0, 0];
         }
 
-        $query = DB::table('journal_entries')
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->whereNull(self::COLUMN)
-            ->whereIn('account_id', $apSubtree)
-            ->orderBy('id');
-
-        if ($limit !== null) {
-            $query->limit($limit);
-        }
-
-        $rows = $query->get(['id', 'account_id', 'debit', 'credit', 'transaction_id']);
-
-        if ($rows->isEmpty()) {
-            $this->line("company {$companyId}: nothing to do.");
-
-            return [0, 0];
-        }
-
-        $partyByAccount = $this->derivePartyPerAccount($companyId, $rows->pluck('account_id')->unique()->all());
-
         $stamped = 0;
         $refusedRows = 0;
         $refusedAccounts = [];
+        $partyByAccount = [];
+        $lastId = 0;
+        $considered = 0;
 
-        $writes = [];
+        while (true) {
+            $take = $batchSize;
 
-        foreach ($rows as $row) {
-            $party = $partyByAccount[(int) $row->account_id] ?? null;
+            if ($limit !== null) {
+                $take = min($take, $limit - $considered);
 
-            if ($party === null) {
-                $refusedRows++;
-                $refusedAccounts[(int) $row->account_id] = ($refusedAccounts[(int) $row->account_id] ?? 0) + 1;
+                if ($take <= 0) {
+                    break;
+                }
+            }
 
+            $rows = DB::table('journal_entries')
+                ->where('company_id', $companyId)
+                ->whereNull('deleted_at')
+                ->whereNull(self::COLUMN)
+                ->whereIn('account_id', $apSubtree)
+                ->where('id', '>', $lastId)
+                ->orderBy('id')
+                ->limit($take)
+                ->get(['id', 'account_id']);
+
+            if ($rows->isEmpty()) {
+                break;
+            }
+
+            $considered += $rows->count();
+            $lastId = (int) $rows->last()->id;
+
+            // Derived once per account for the whole run, not once per row: at 24k rows over a few
+            // hundred supplier leaves this is the difference between a few hundred queries and
+            // tens of thousands.
+            $unknown = $rows->pluck('account_id')->unique()
+                ->reject(fn ($id) => array_key_exists((int) $id, $partyByAccount))->all();
+
+            if ($unknown !== []) {
+                $partyByAccount += $this->derivePartyPerAccount($companyId, $unknown)
+                    + array_fill_keys(array_map('intval', $unknown), null);
+            }
+
+            $writes = [];
+
+            foreach ($rows as $row) {
+                $party = $partyByAccount[(int) $row->account_id] ?? null;
+
+                if ($party === null) {
+                    $refusedRows++;
+                    $refusedAccounts[(int) $row->account_id] = ($refusedAccounts[(int) $row->account_id] ?? 0) + 1;
+
+                    continue;
+                }
+
+                $writes[] = ['id' => (int) $row->id, 'party' => $party];
+                $stamped++;
+            }
+
+            if (! $apply || $writes === []) {
                 continue;
             }
 
-            $writes[] = ['id' => (int) $row->id, 'party' => $party];
-            $stamped++;
-        }
-
-        $this->line(sprintf(
-            'company %d: %d line(s) derivable, %d refused across %d account(s).',
-            $companyId,
-            $stamped,
-            $refusedRows,
-            count($refusedAccounts)
-        ));
-
-        foreach ($refusedAccounts as $accountId => $count) {
-            $name = DB::table('accounts')->where('id', $accountId)->value('name');
-            $this->line(sprintf(
-                '  REFUSED account #%d (%s): %d line(s) — neither accounts.supplier_id nor a '
-                    .'supplier_companies pairing names a supplier. Nothing stamped; nothing guessed.',
-                $accountId,
-                $name ?? 'unknown',
-                $count
-            ));
-        }
-
-        if (! $apply || $writes === []) {
-            return [$stamped, $refusedRows];
-        }
-
-        DB::transaction(function () use ($writes, $companyId, $runId) {
-            foreach (array_chunk($writes, 500) as $chunk) {
+            // ONE BATCH = ONE TRANSACTION. Before-images first, in the same transaction as the
+            // writes they describe, so a crash can never leave a stamped row with no way back.
+            DB::transaction(function () use ($writes, $companyId, $runId) {
                 $beforeImages = [];
 
-                foreach ($chunk as $write) {
+                foreach ($writes as $write) {
                     $beforeImages[] = [
                         'run_id' => $runId,
                         'company_id' => $companyId,
@@ -246,11 +297,9 @@ class BackfillPayablePartyReference extends Command
                     ];
                 }
 
-                // Before-image FIRST, in the same transaction as the write it describes: a crash
-                // between the two must not be able to leave a stamped row with no way back.
                 DB::table('coa_linkage_changes')->insert($beforeImages);
 
-                foreach ($chunk as $write) {
+                foreach ($writes as $write) {
                     DB::table('journal_entries')
                         ->where('id', $write['id'])
                         // Re-asserted at write time: if anything stamped this row between the read
@@ -258,8 +307,34 @@ class BackfillPayablePartyReference extends Command
                         ->whereNull(self::COLUMN)
                         ->update([self::COLUMN => $write['party'], 'updated_at' => now()]);
                 }
-            }
-        });
+            });
+        }
+
+        if ($considered === 0) {
+            $this->line("company {$companyId}: nothing to do.");
+
+            return [0, 0];
+        }
+
+        $this->line(sprintf(
+            'company %d: %d line(s) considered, %d derivable, %d refused across %d account(s).',
+            $companyId,
+            $considered,
+            $stamped,
+            $refusedRows,
+            count($refusedAccounts)
+        ));
+
+        foreach ($refusedAccounts as $accountId => $count) {
+            $name = DB::table('accounts')->where('id', $accountId)->value('name');
+            $this->line(sprintf(
+                '  REFUSED account #%d (%s): %d line(s) — neither accounts.supplier_id nor a '
+                    .'supplier_companies pairing names a supplier. Nothing stamped; nothing guessed.',
+                $accountId,
+                $name ?? 'unknown',
+                $count
+            ));
+        }
 
         return [$stamped, $refusedRows];
     }
@@ -330,10 +405,48 @@ class BackfillPayablePartyReference extends Command
             ->get();
 
         if ($rows->isEmpty()) {
-            $this->warn("No un-rolled-back {$runId} changes recorded for this command.");
-            $this->line('  Run ids are echoed by every --apply run and stored in coa_linkage_changes.run_id.');
+            // ── CT-A7 ROUND 3, finding R3-3 — make the ownership guard SYMMETRIC ────────────────
+            // `accounting:coa-linkage --rollback <a backfill run id>` already refuses with exit 1
+            // and names this command. The reverse direction did not: it filtered on
+            // subject_table='journal_entries', found nothing, printed "No un-rolled-back ...
+            // recorded for this command" and returned exit 0. An operator who typed the wrong
+            // direction got a SUCCESS code and could reasonably believe the undo ran.
+            //
+            // Three distinct outcomes now, and only one of them is success:
+            //   - every recorded row is already rolled back -> SUCCESS, because a repeated undo of
+            //     the same run really has left nothing to do (idempotent, same as re-running
+            //     --apply);
+            //   - the run id belongs to ANOTHER command -> FAILURE, naming that command;
+            //   - the run id is not recognised at all -> FAILURE, because an undo that undid
+            //     nothing must not report success.
+            $anyForRun = DB::table('coa_linkage_changes')->where('run_id', $runId);
 
-            return self::SUCCESS;
+            if ((clone $anyForRun)->where('subject_table', self::SUBJECT_TABLE)->exists()) {
+                $this->line("Run {$runId}: every recorded line was already rolled back. Nothing to do.");
+
+                return self::SUCCESS;
+            }
+
+            $foreignTables = (clone $anyForRun)->distinct()->pluck('subject_table');
+
+            if ($foreignTables->isNotEmpty()) {
+                $this->error(
+                    "Run '{$runId}' contains before-images this command does not own and must not restore."
+                );
+                $this->line('  Run contains before-images for: '.$foreignTables->implode(', '));
+                $this->line('  Undo it with: php artisan accounting:coa-linkage --rollback='.$runId);
+                $this->line('  Nothing was restored.');
+
+                return self::FAILURE;
+            }
+
+            $this->error("Run '{$runId}' is not a run id this command recorded.");
+            $this->line('  Run ids are echoed by every --apply run and stored in coa_linkage_changes.run_id.');
+            $this->line('  If it came from the chart-repair command, undo it with: '
+                .'php artisan accounting:coa-linkage --rollback='.$runId);
+            $this->line('  Nothing was restored.');
+
+            return self::FAILURE;
         }
 
         $restored = 0;

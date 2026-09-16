@@ -415,4 +415,121 @@ class BackfillPayablePartyF2Test extends AccountingTestCase
     {
         $this->assertSame(1, $this->backfill(['--apply' => true, '--dry-run' => true]));
     }
+
+    // ── CT-A7 ROUND 3 ───────────────────────────────────────────────────────────────────────────
+
+    /**
+     * R3-3 — the ownership guard is SYMMETRIC now. `coa-linkage --rollback <backfill run>` already
+     * refused with exit 1; this direction used to print a warning and return exit **0**, so an
+     * operator who typed the two commands the wrong way round got a success code and could believe
+     * the undo had run.
+     */
+    public function test_rolling_back_a_linkage_run_id_here_exits_non_zero_and_names_the_owner(): void
+    {
+        Artisan::call('accounting:coa-linkage', ['--company' => $this->companyId, '--apply' => true]);
+
+        $linkageRunId = (string) DB::table('coa_linkage_changes')
+            ->where('subject_table', '!=', 'journal_entries')
+            ->orderByDesc('id')->value('run_id');
+
+        $this->assertNotSame('', $linkageRunId, 'the fixture needs a real coa-linkage run id');
+
+        $this->artisan('accounting:backfill-payable-party', ['--rollback' => $linkageRunId])
+            ->expectsOutputToContain('Run contains before-images for:')
+            ->expectsOutputToContain('accounting:coa-linkage --rollback')
+            ->expectsOutputToContain('Nothing was restored.')
+            ->assertExitCode(1);
+    }
+
+    /** R3-3 — an undo that undid nothing must not report success. */
+    public function test_an_unrecognised_run_id_exits_non_zero(): void
+    {
+        $this->artisan('accounting:backfill-payable-party', ['--rollback' => 'NOT-A-REAL-RUN-ID'])
+            ->expectsOutputToContain('is not a run id this command recorded')
+            ->assertExitCode(1);
+    }
+
+    /**
+     * R3-3 — but a REPEAT undo of a run this command really did fully roll back is success: there
+     * genuinely is nothing left to do, the same way a second --apply is a no-op.
+     */
+    public function test_a_repeat_rollback_of_a_fully_undone_run_exits_zero(): void
+    {
+        $this->historicalApLine($this->supplierLeafId, 60.0, 0.0);
+        $this->backfill(['--apply' => true]);
+
+        $runId = (string) DB::table('coa_linkage_changes')
+            ->where('subject_table', 'journal_entries')->value('run_id');
+
+        $this->assertSame(0, Artisan::call('accounting:backfill-payable-party', ['--rollback' => $runId]));
+
+        $this->artisan('accounting:backfill-payable-party', ['--rollback' => $runId])
+            ->expectsOutputToContain('already rolled back')
+            ->assertExitCode(0);
+    }
+
+    /**
+     * VOLUME (CT-A7 R3, sizing). An audit sized the real repair at ~24k unstamped rows, so a single
+     * transaction wrapping a whole company is not an option: it would hold row locks for the length
+     * of the run and make a mid-run failure all-or-nothing. Each `--batch-size` batch is its own
+     * transaction, so a partial run leaves whole committed batches behind and a re-run resumes from
+     * exactly there.
+     *
+     * Proved by RESUMING rather than by inspecting the transaction: three rows, one row per run.
+     */
+    public function test_a_partial_run_is_resumable_and_idempotent(): void
+    {
+        $lines = [
+            $this->historicalApLine($this->supplierLeafId, 10.0, 0.0),
+            $this->historicalApLine($this->supplierLeafId, 20.0, 0.0),
+            $this->historicalApLine($this->supplierLeafId, 30.0, 0.0),
+        ];
+
+        $this->backfill(['--apply' => true, '--limit' => 1, '--batch-size' => 1]);
+        $this->assertSame(1, $this->stampedCount($lines), 'the first bounded run stamps exactly one');
+
+        $this->backfill(['--apply' => true, '--limit' => 1, '--batch-size' => 1]);
+        $this->assertSame(2, $this->stampedCount($lines), 'the second resumes where the first stopped');
+
+        $this->backfill(['--apply' => true, '--batch-size' => 1]);
+        $this->assertSame(3, $this->stampedCount($lines), 'an unbounded run finishes the rest');
+
+        $this->assertSame(
+            3,
+            DB::table('coa_linkage_changes')->where('subject_table', 'journal_entries')->count(),
+            'one before-image per row, across three separate runs — no duplicates from resuming'
+        );
+    }
+
+    /**
+     * THE PAGING TRAP. Refused rows stay NULL forever, so a loop that re-queried `IS NULL` would
+     * hand back the same refused batch and spin. Paging is by `id > :lastSeenId` instead. With a
+     * batch size of 1 and a refused row FIRST, a derivable row after it must still be reached.
+     */
+    public function test_a_refused_row_does_not_stall_the_paging(): void
+    {
+        $refused = $this->historicalApLine($this->pooledLeafId, 0.0, 300.0);
+        $derivable = $this->historicalApLine($this->supplierLeafId, 60.0, 0.0);
+
+        $this->assertLessThan($derivable, $refused, 'the refused row must come FIRST by id');
+
+        $this->backfill(['--apply' => true, '--batch-size' => 1]);
+
+        $this->assertNull($this->partyOf($refused), 'the refused row is still refused');
+        $this->assertSame(
+            $this->supplierId,
+            $this->partyOf($derivable),
+            'and the derivable row AFTER it was still reached — a re-querying IS NULL loop would have '
+            .'spun on the refused batch forever'
+        );
+    }
+
+    /** @param int[] $lineIds */
+    private function stampedCount(array $lineIds): int
+    {
+        return DB::table('journal_entries')
+            ->whereIn('id', $lineIds)
+            ->whereNotNull('type_reference_id')
+            ->count();
+    }
 }

@@ -33,8 +33,7 @@ use Tests\Support\AccountingTestCase;
  * CT-A7 ROUND 2, finding **F4** — the R-CT8 payee nomination destination was UNCONSTRAINED.
  *
  * `TaskController::updateJournalPaymentMethod()` resolved it with a bare
- * `Account::find($payment_method_account_id)`. `Account` declares no global scopes at all, so that
- * lookup had **no company check and no AP-subtree check**, and
+ * `Account::find($payment_method_account_id)`, which had **no AP-subtree check at all**, and
  * `TaskPayablePositionResolver::nominatedPayeeAccountIdsForCompany()` then plucked every
  * `account_id` on the resulting document unconditionally into `payableAccountIds()`.
  *
@@ -236,8 +235,19 @@ class NominationDestinationF4Test extends AccountingTestCase
     }
 
     /**
-     * ATTACK — nominate ANOTHER COMPANY'S AP leaf. `Account` has no global scopes, so before F4
-     * this resolved happily and pulled a different tenant's account into this company's payables.
+     * ATTACK — nominate ANOTHER COMPANY'S AP leaf.
+     *
+     * CT-A7 ROUND 3 (R3-2) corrects what an earlier version of this docblock said. `Account` DOES
+     * carry a global company scope, through `use App\Traits\BelongsToCompany`
+     * (`app/Models/Account.php:11`). It binds only in some states, though (`app/Helper/helper.php`
+     * lines 6-43): an ADMIN always binds because `getCompanyId()` falls back to
+     * `session('company_id', 1)`; a COMPANY user binds unless linked to no company; BRANCH, AGENT,
+     * ACCOUNTANT without a branch/company and any unknown role yield null; and an unauthenticated
+     * context — a console command, a queued job, a seeder — does not bind at all. This test drives
+     * the controller DIRECTLY, with no authenticated user, which is one of the states in which the
+     * scope is a no-op. Before F4 the nomination resolved happily there and the cross-tenant
+     * account was caught only much later, as an uncaught `CrossTenantAccountException` from
+     * `PostingService::post()` — a 500, not a refusal, and only on the engine path.
      */
     public function test_another_companys_account_is_refused(): void
     {

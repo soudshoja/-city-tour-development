@@ -5682,9 +5682,25 @@ class TaskController extends Controller
         $companyId = (int) $task->company_id;
 
         // ── CT-A7 ROUND 2, finding F4 — the nomination DESTINATION is now constrained ────────────
-        // This used to be a bare `Account::find()`, and `App\Models\Account` declares NO global
-        // scopes at all, so the destination was unchecked in both directions: any account of any
-        // company was nominatable. `TaskPayablePositionResolver::nominatedPayeeAccountIdsForCompany()`
+        // This used to be a bare `Account::find()`, and there was no AP-subtree check at all, so a
+        // bank, an expense or a suspense account was nominatable.
+        //
+        // `App\Models\Account` DOES carry a global company scope -- via `use App\Traits\
+        // BelongsToCompany` (app/Models/Account.php:11), whose bootBelongsToCompany() registers
+        // addGlobalScope('company', ...). CT-A7 ROUND 3 (R3-2) corrects an earlier version of this
+        // comment that asserted the opposite; that claim was wrong and would have had a future
+        // reader make a scoping decision on it. What is true is WHEN it binds (see
+        // app/Helper/helper.php:6-43):
+        //
+        //   - ADMIN            -> always binds; getCompanyId() falls back to session('company_id', 1)
+        //   - COMPANY          -> binds, UNLESS the user is linked to no company (then null)
+        //   - BRANCH / AGENT / ACCOUNTANT with no branch or company, and any unknown role -> null
+        //   - unauthenticated  -> does not bind at all (console commands, queued jobs, seeders)
+        //
+        // A null company id makes the scope a no-op, so "scoped model" is not by itself a tenant
+        // guarantee here, and this method is reachable in states where it does not bind.
+        //
+        // `TaskPayablePositionResolver::nominatedPayeeAccountIdsForCompany()`
         // then plucks every account_id on the posted document straight into
         // `LedgerSource::payableAccountIds()`. Round 1's docblock claimed the union "can never hide
         // money", which is true and is not the whole claim: nominating a bank, an expense, a

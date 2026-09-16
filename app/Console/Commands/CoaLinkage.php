@@ -471,12 +471,39 @@ class CoaLinkage extends Command
         // This command must NOT learn to restore `journal_entries`: its own class docblock is that
         // the linkage command is forbidden from moving money, and the ledger's before-images belong
         // to the command that wrote them. So: refuse, and name the owner.
-        $foreignTables = $rows->pluck('subject_table')
+        //
+        // ── CT-A8 — the discriminator is the PAIR (subject_table, column_name) ─────────────────
+        // `subject_table` alone stopped being enough the moment a command started writing a
+        // DIFFERENT COLUMN of a table this one owns. `accounting:backfill-supplier-leaf` writes
+        // `accounts.supplier_id` before-images, and under the old check they were "ours": phase 3
+        // would reach them, find `supplier_id` is not in CoaLinkageChange::REVERSIBLE_COLUMNS, and
+        // report `column 'supplier_id' is not reversible` — which is FALSE. It is perfectly
+        // reversible; it just is not reversible BY THIS COMMAND. An operator reading that was being
+        // told their undo was impossible when the right answer was "you typed the wrong command".
+        //
+        // `supplier_id` must NOT simply be added to REVERSIBLE_COLUMNS the way CT-A4b added `code`.
+        // `code` is a classification column and this command already rewrites classification;
+        // `supplier_id` is a PARTY ATTRIBUTION, and this class's own docblock is that the linkage
+        // command is forbidden from moving money or the party on it. The rule stays: rows belong to
+        // the command that wrote them, and each names the other.
+        $ownedPairs = [];
+
+        foreach (['accounts', 'system_accounts'] as $table) {
+            foreach (array_merge(
+                CoaLinkageChange::REVERSIBLE_COLUMNS,
+                ['account_id', CoaLinkageChange::ROW_CREATED, CoaLinkageChange::ROW_DELETED, CoaLinkageChange::ROW_SWEPT]
+            ) as $column) {
+                $ownedPairs[$table.'.'.$column] = true;
+            }
+        }
+
+        $foreignPairs = $rows
+            ->map(fn ($row) => $row->subject_table.'.'.$row->column_name)
             ->unique()
-            ->reject(fn ($table) => in_array($table, ['accounts', 'system_accounts'], true))
+            ->reject(fn ($pair) => isset($ownedPairs[$pair]))
             ->values();
 
-        if ($foreignTables->isNotEmpty()) {
+        if ($foreignPairs->isNotEmpty()) {
             $this->error(sprintf(
                 "Run '%s' contains before-images this command does not own and must not restore.",
                 $runId
@@ -484,10 +511,14 @@ class CoaLinkage extends Command
             // On line() rather than only on error(): this codebase's own test convention asserts
             // console text through $this->artisan()->expectsOutputToContain(), and error() goes to
             // STDERR (CT-A3-R3 §4.3 measured exactly that).
-            $this->line('  Run contains before-images for: '.$foreignTables->implode(', '));
+            $this->line('  Run contains before-images for: '.$foreignPairs->implode(', '));
 
-            if ($foreignTables->contains('journal_entries')) {
+            if ($foreignPairs->contains(fn ($pair) => str_starts_with((string) $pair, 'journal_entries.'))) {
                 $this->line('  Undo it with: php artisan accounting:backfill-payable-party --rollback='.$runId);
+            }
+
+            if ($foreignPairs->contains('accounts.supplier_id')) {
+                $this->line('  Undo it with: php artisan accounting:backfill-supplier-leaf --rollback='.$runId);
             }
 
             $this->line('  Nothing was restored.');

@@ -19,6 +19,7 @@ use App\Models\SupplierCompany;
 use App\Models\Transaction;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\ChequeImageStore;
+use App\Services\Accounting\TaskPayablePositionResolver;
 use App\Services\Accounting\DocumentDraft;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PostedDocument;
@@ -901,6 +902,21 @@ class BankPaymentController extends Controller
     {
         if ($bp->sub_type === 'BONUS') {
             return $bp->agent_id !== null ? (int) $bp->agent_id : null;
+        }
+
+        // CT-A7 ROUND 2, finding F5 (second half). A SUPPLIER party may only be derived for a
+        // target inside this company's Accounts Payable subtree. `accounts.supplier_company_id` is
+        // stamped on a supplier's COST leaf as well as its payable leaf (pre-existing, and
+        // deliberately left that way — see SupplierActivationService::activate()), so without this
+        // the fallback below would derive a supplier party for a voucher posted against an EXPENSE
+        // account and write it onto a line marked `ledgerType: 'payable'`. A party on a payable
+        // line has to be a payable party.
+        if (! in_array(
+            (int) $targetAccount->id,
+            app(TaskPayablePositionResolver::class)->apSubtreeIds((int) $bp->company_id),
+            true
+        )) {
+            return null;
         }
 
         if ($targetAccount->supplier_id !== null && (int) $targetAccount->supplier_id > 0) {

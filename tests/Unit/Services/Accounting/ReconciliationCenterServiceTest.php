@@ -17,6 +17,7 @@ use App\Services\TrialBalanceService;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Tests\Support\AccountingTestCase;
 
 /**
@@ -275,6 +276,17 @@ class ReconciliationCenterServiceTest extends AccountingTestCase
         $this->makeLine($chequeTxn, $company, $branch, $bank, 30.000, 0, $today, $company->id, reconciled: 0, chequeNo: 'CHQ-GAP-1');
         $this->makeLine($chequeTxn, $company, $branch, $income, 0, 30.000, $today, $company->id);
 
+        // ── CT-A10: the engine must be ON for this fixture's documents to be in scope ──────────
+        // `makeTransaction()` builds ENGINE-shaped documents (`doc_type` + `posting_date` both set),
+        // and CT-A56 R3-1 made LedgerSource::restrictJoinedTransactions() mode-dependent: engine ON
+        // reads engine rows, engine OFF reads their exact complement. Without this the BALANCE half
+        // of the row (opening/period_debit/period_credit/book) is computed over the legacy branch
+        // and comes back 0 while the GAP half still counts all three lines -- see
+        // test_a_mid_cutover_row_reports_a_book_balance_of_zero_against_a_real_gap() below, which
+        // pins that state deliberately. This test is about double-counting, not about the split.
+        config(['accounting.engine.enabled' => true]);
+        Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
+
         $grid = $this->service()->grid($company->id, $today, 'day');
         $row = collect($grid['rows'])->firstWhere('key', 'bank:'.$bank->id);
         $this->assertEqualsWithDelta(155.000, $row['book_balance'], 0.001, 'Sanity: BOOK must be the full 50+75+30.');
@@ -489,5 +501,59 @@ class ReconciliationCenterServiceTest extends AccountingTestCase
         $this->assertNotNull($item);
         $this->assertSame('0_30', $item['ageing_bucket'], 'A gateway line older than the settlement-lag window is a genuine unmatched/ageing item, never silently absorbed into timing.');
         $this->assertFalse($item['is_timing_difference']);
+    }
+
+    /**
+     * ── CT-A10 FINDING, PINNED ──────────────────────────────────────────────────────────────────
+     * A single grid row is computed from TWO sources that disagree about which ledger they read,
+     * and mid-cutover that produces a row which is internally incoherent.
+     *
+     *   - the BALANCE half (`opening_balance`, `period_debit`, `period_credit`, `book_balance`)
+     *     goes through {@see \App\Services\Accounting\LedgerSource}, which CT-A56 R3-1 made
+     *     MODE-DEPENDENT: engine ON reads engine rows, engine OFF reads their exact complement;
+     *   - the GAP half (`gap`, `counts.unmatched`, `counts.proposals`) queries `journal_entries`
+     *     directly — `JournalEntry::withoutGlobalScopes()->whereIn('account_id', …)` — with no
+     *     ledger-source restriction at all.
+     *
+     * So for a company mid-cutover — engine flag still OFF, engine documents already written, which
+     * is exactly where City Travelers sits — the same bank leaf reports **book_balance 0.000 against
+     * a gap of 155.000**, and `confirmed_balance` (derived as `book - gap`) comes out at
+     * **−155.000**: a negative confirmed bank balance for an account holding three positive debits.
+     *
+     * This test asserts that state rather than the arithmetic being "right", because it is what the
+     * code does today and it should not change silently. **It is reported, not fixed:** making the
+     * two halves agree means deciding whether the unmatched/gap queries should also be
+     * ledger-source-restricted, which changes what the reconciliation screen shows for every
+     * company and is a design decision outside this lane. It is what made
+     * `test_gap_explanation_does_not_double_count…` stale, so it is worth a named test rather than
+     * a note.
+     */
+    public function test_a_mid_cutover_row_reports_a_book_balance_of_zero_against_a_real_gap(): void
+    {
+        [$company, $branch] = $this->makeCompany();
+        $bank = $this->accountByCode($company->id, '1201');
+        $income = $this->accountByCode($company->id, '4110');
+        $today = Carbon::create(2026, 3, 15);
+
+        // Engine-shaped documents (doc_type + posting_date set) on a company whose engine is OFF.
+        $txn = $this->makeTransaction($company, $branch, $today);
+        $this->makeLine($txn, $company, $branch, $bank, 155.000, 0, $today, $company->id, reconciled: 0);
+        $this->makeLine($txn, $company, $branch, $income, 0, 155.000, $today, $company->id);
+
+        $this->assertFalse(
+            (bool) $company->fresh()->posting_engine_enabled,
+            'Precondition: this test is about the engine being OFF while engine documents exist.'
+        );
+
+        $row = collect($this->service()->grid($company->id, $today, 'day')['rows'])
+            ->firstWhere('key', 'bank:'.$bank->id);
+
+        $this->assertEqualsWithDelta(0.000, $row['book_balance'], 0.001,
+            'the BALANCE half reads the legacy branch, which holds none of these lines');
+        $this->assertEqualsWithDelta(155.000, $row['gap'], 0.001,
+            'the GAP half is unrestricted and counts every one of them');
+        $this->assertEqualsWithDelta(-155.000, $row['confirmed_balance'], 0.001,
+            'confirmed = book - gap, so the row reports a NEGATIVE confirmed balance on an account '
+                .'holding only positive debits — incoherent, and the reason this is pinned');
     }
 }

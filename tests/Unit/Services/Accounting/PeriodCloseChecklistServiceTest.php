@@ -16,6 +16,7 @@ use App\Services\Accounting\PeriodCloseChecklistService;
 use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\AccountingTestCase;
 
@@ -91,7 +92,23 @@ class PeriodCloseChecklistServiceTest extends AccountingTestCase
 
     // ── Documents balanced ──────────────────────────────────────────────────────────────────────
 
-    public function test_unbalanced_document_in_period_blocks(): void
+    /**
+     * ── RE-DERIVED BY CT-A10 ────────────────────────────────────────────────────────────────────
+     * This test built an ENGINE-shaped document (`doc_type` + `posting_date` both set) on a company
+     * whose engine is OFF, and expected the checklist to see it. That stopped being true when
+     * CT-A56 R3-1 made {@see \App\Services\Accounting\LedgerSource::restrictJoinedTransactions()}
+     * **mode-dependent**:
+     *
+     *     engine ON  -> read ENGINE rows  (`doc_type` AND `posting_date` both NOT NULL)
+     *     engine OFF -> read LEGACY rows  (either one NULL) -- the exact complement
+     *
+     * `makeCompany()` never enables the engine, so the checklist was taking the LEGACY branch and
+     * the fixture's engine-shaped document was out of scope BY DESIGN. The service was right; the
+     * fixture's document shape and its company's mode disagreed. The expectation was re-derived
+     * rather than the assertion flipped, and the rule is now pinned in BOTH modes plus the trap
+     * that caused the staleness.
+     */
+    public function test_unbalanced_engine_document_in_period_blocks_when_the_engine_is_on(): void
     {
         // NOT tracked for invariants -- this fixture deliberately posts an unbalanced document
         // (bypassing PostingService's own balance check via a raw forceCreate/JournalEntry write,
@@ -99,6 +116,8 @@ class PeriodCloseChecklistServiceTest extends AccountingTestCase
         // to exercise this check; AccountingTestCase::tearDown()'s C1 invariant would otherwise
         // fail this test for the exact condition it is testing.
         [$company, $branch] = $this->makeCompany(track: false);
+        $this->enableEngine($company);
+
         $date = Carbon::create(2026, 3, 15);
         $account = $this->resolver()->resolve('RECEIVABLE_CONTROL', $company->id);
 
@@ -111,6 +130,83 @@ class PeriodCloseChecklistServiceTest extends AccountingTestCase
         $this->assertFalse($result['can_close']);
         $codes = array_column($result['blocking'], 'code');
         $this->assertContains('documents_unbalanced', $codes);
+    }
+
+    /**
+     * The other half of the same rule: with the engine OFF the checklist reads LEGACY rows, and an
+     * unbalanced legacy document must block just as loudly. This is the case that actually applies
+     * to City Travelers today -- CT-D1b measured the legacy-only trial-balance residual drifting to
+     * -12,657.265 while the engine ledger stayed exact.
+     */
+    public function test_unbalanced_legacy_document_in_period_blocks_when_the_engine_is_off(): void
+    {
+        [$company, $branch] = $this->makeCompany(track: false);
+        $date = Carbon::create(2026, 3, 15);
+        $account = $this->resolver()->resolve('RECEIVABLE_CONTROL', $company->id);
+
+        $txn = $this->makeLegacyTransaction($company, $branch, $date);
+        $this->makeLine($txn, $company, $branch, $account, 100, 0, $date, $company->id);
+
+        $result = $this->service()->run($company->id, 2026, 3);
+
+        $this->assertFalse($result['can_close']);
+        $this->assertContains('documents_unbalanced', array_column($result['blocking'], 'code'));
+    }
+
+    /**
+     * ── THE TRAP, PINNED ────────────────────────────────────────────────────────────────────────
+     * The shape that made the old test stale, now asserted as the contract it actually is: while the
+     * engine is OFF the checklist reads legacy rows ONLY, so an engine-shaped document in the period
+     * is invisible to it and does NOT block.
+     *
+     * That is deliberate -- `restrictJoinedTransactions()` is written as an exact complement so no
+     * row can fall through both branches -- but it is worth stating out loud, because "the
+     * period-close checklist raised nothing" reads like a clean bill of health and is not one. A
+     * company mid-cutover, flag still off and engine documents already written, gets no warning
+     * about those documents from this screen.
+     */
+    public function test_an_engine_shaped_document_is_out_of_scope_while_the_engine_is_off(): void
+    {
+        [$company, $branch] = $this->makeCompany(track: false);
+        $date = Carbon::create(2026, 3, 15);
+        $account = $this->resolver()->resolve('RECEIVABLE_CONTROL', $company->id);
+
+        $txn = $this->makeTransaction($company, $branch, 'posted', $date);   // doc_type + posting_date set
+        $this->makeLine($txn, $company, $branch, $account, 100, 0, $date, $company->id);
+
+        $result = $this->service()->run($company->id, 2026, 3);
+
+        $this->assertNotContains(
+            'documents_unbalanced',
+            array_column($result['blocking'], 'code'),
+            'with the engine OFF the checklist reads LEGACY rows only -- an engine-shaped document is '
+                .'out of scope by design (LedgerSource::restrictJoinedTransactions), not missed'
+        );
+    }
+
+    private function enableEngine(Company $company): void
+    {
+        config(['accounting.engine.enabled' => true]);
+        Artisan::call('accounting:engine', ['company' => $company->id, '--enable' => true]);
+    }
+
+    /**
+     * A LEGACY document: `doc_type` and `posting_date` NULL, which is exactly the complement
+     * {@see \App\Services\Accounting\LedgerSource::restrictJoinedTransactions()} reads while the
+     * engine is off. Everything else matches {@see self::makeTransaction()}, so the two fixtures
+     * differ only in the discriminator.
+     */
+    private function makeLegacyTransaction(Company $company, Branch $branch, Carbon $date): Transaction
+    {
+        return Transaction::forceCreate([
+            'company_id' => $company->id, 'branch_id' => $branch->id,
+            'entity_id' => $company->id, 'entity_type' => 'company',
+            'transaction_type' => 'JV', 'amount' => 100, 'description' => 'Test legacy',
+            'reference_type' => 'Invoice', 'reference_number' => 'TSTL-'.substr(uniqid(), -8),
+            'name' => 'Test legacy', 'transaction_date' => $date,
+            'doc_type' => null, 'posting_date' => null, 'posting_status' => 'posted',
+            'total_debit' => 100, 'total_credit' => 100,
+        ]);
     }
 
     // ── No draft documents ──────────────────────────────────────────────────────────────────────

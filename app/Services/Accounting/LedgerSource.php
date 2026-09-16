@@ -251,19 +251,43 @@ final class LedgerSource
      * {@see \App\Services\Accounting\Statements\SupplierLedgerStatementSource} for the supplier
      * statement and its AP ageing buckets) gets the ruling without a per-screen edit.
      *
-     * The second half is derived from the POSTED DOCUMENT FAMILY
-     * ({@see TaskPayablePositionResolver::nominatedPayeeAccountIdsForCompany()}), NOT from an AP
-     * subtree walk — see that method's own docblock for why the bounded answer was chosen over the
-     * structural one.
+     * ── CT-A7 ROUND 2, finding F1 — and why the round-1 union was INCOMPLETE ────────────────────
+     * Round 1 unioned the purpose-resolved leaves with the reassignment-document family alone, and
+     * defended that as sufficient on a 0.000 measured shortfall. An adversarial verifier disproved
+     * it: {@see PostingService::targetAccountId()} is the R-CT8 seam ONLY for lines that resolve by
+     * `purposeCode`, and FOUR production writers build AP-side lines with an explicit `accountId`
+     * — `AccountingController::storePayableDetail()`, `::storeReceivableDetail()`,
+     * `::storeBankPayment()` and `BankPaymentController::buildVoucherDraft()` (the highest-volume
+     * AP writer). Through real HTTP routes: raw AP subtree 250.000, this screen 0.000. R3-9,
+     * reproduced after the round-1 fix. The live shortfall read 0.000 only because on the City
+     * Travelers chart the AP leaves carrying money happen to also be the 1,642 reassignment
+     * targets — one accountant using the Payable journal screen and the money is invisible again.
+     *
+     * The set is therefore now the union of THREE halves, and it is complete by CONSTRUCTION
+     * rather than by measurement (the argument in full is on
+     * {@see TaskPayablePositionResolver::apSubtreeIdsWithPostedMovement()}):
+     *
+     *   (a) the purpose-resolved control leaves — always, even at zero movement, so a quiet chart
+     *       does not lose the options in the screens' own account pickers;
+     *   (b) every account in the company's AP subtree THAT CARRIES POSTED MOVEMENT — any payable
+     *       line, however it resolved its account, lands inside that subtree, and an account with
+     *       no line contributes exactly 0.000, so this half cannot miss a KWD and cannot admit a
+     *       leaf the ledger never touched;
+     *   (c) the accounts R-CT8 reassignment documents actually posted to
+     *       ({@see TaskPayablePositionResolver::nominatedPayeeAccountIdsForCompany()}).
+     *
+     * (c) is KEPT rather than subsumed by (b), deliberately: finding F4 constrains nomination
+     * destinations to the AP subtree from now on, but HISTORICAL nominations were unconstrained, so
+     * a pre-F4 destination sitting OUTSIDE the subtree is reachable only through (c).
      *
      * @return list<int>
      */
     public function payableAccountIds(int $companyId, AccountResolver $resolver): array
     {
-        $ids = [$resolver->resolve('PAYABLE_CONTROL', $companyId)->id];
+        $ids = $this->purposeResolvedPayableAccountIds($companyId, $resolver);
 
-        foreach (config('accounting.purpose_codes.service_types', []) as $serviceType) {
-            $ids[] = $resolver->resolve('SERVICE_PAYABLE', $companyId, $serviceType)->id;
+        foreach ($this->payablePositions->apSubtreeIdsWithPostedMovement($companyId) as $moved) {
+            $ids[] = $moved;
         }
 
         foreach ($this->payablePositions->nominatedPayeeAccountIdsForCompany($companyId) as $nominated) {

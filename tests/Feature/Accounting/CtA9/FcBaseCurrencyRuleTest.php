@@ -35,7 +35,7 @@ use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
 /**
- * CT-A9 **T1** — what `journal_entries.exchange_rate` is a fact ABOUT (ruling **R-CT10**).
+ * CT-A9 **T1** — what `journal_entries.exchange_rate` is a fact ABOUT (ruling **R-CT13**).
  *
  * ── The defect ─────────────────────────────────────────────────────────────────────────────────
  * `PostingService::post()` step 3f used to refuse a base-currency line on
@@ -189,13 +189,70 @@ class FcBaseCurrencyRuleTest extends AccountingTestCase
     }
 
     /**
-     * Normalising is not the same as swallowing. R-CT10's whole defence is that the smell is still
+     * Normalising is not the same as swallowing. R-CT13's whole defence is that the smell is still
      * REPORTED — "a feeder handed a base-currency line a rate" is worth seeing on the 'accounting'
      * channel, in the same shape as `TaskIssuancePayableService`'s own
      * `accounting.supplier_payable.fx_inconsistent`. Asserted, because a claim in a docblock that
      * nothing checks is a claim that stops being true on the next refactor.
      */
     public function test_normalising_a_stray_rate_is_warned_not_swallowed(): void
+    {
+        $captured = $this->captureNormalisations(fn () => app(PostingService::class)->post(
+            $this->draft('KWD', 100.000, 100.000, 0.340000, 'ct-a9:t1:warns')
+        ));
+
+        $this->assertCount(1, $captured, 'ONE event per document, not one per line — it is the COUNT that an alert rule is written against');
+
+        $event = $captured[0];
+        $this->assertSame(2, $event['count'], 'both lines of the document are counted');
+        $this->assertSame(0, $event['expected_count'], 'the alert rule is "this event fired at all"');
+        $this->assertSame(1.0, $event['persisted_exchange_rate']);
+        $this->assertSame('R-CT13', $event['ruling']);
+        $this->assertSame($this->companyId, $event['company_id']);
+        $this->assertSame(0.340000, $event['lines'][0]['supplied_exchange_rate'], 'the per-line detail is carried, not lost');
+        $this->assertSame(0, $event['lines'][0]['line_index']);
+    }
+
+    /**
+     * ── THE COUNTED RATCHET (finding 22-1) ──────────────────────────────────────────────────────
+     * Two populations share the signature this branch normalises: (a) base amounts carrying a stray
+     * TASK rate — the case this fix exists for — and (b) a FOREIGN face value mislabelled as base
+     * currency, where the removed `rate !== 1.0` check was the only obstacle and the engine now
+     * posts a foreign number as base and merely warns. The engine cannot tell them apart, and (b)
+     * is not evidenced (CT-FX found the mislabelling running the other way, and its outlier test
+     * finds no foreign face value anywhere in the ledger).
+     *
+     * What makes (b) visible rather than silent is that the ONLY known feeder of shape (a) was
+     * fixed in this same change to stop supplying a rate. **So the expected count is ZERO**, and
+     * "this event fired at all" is a usable alert.
+     *
+     * THIS test is that expectation, pinned against the real receipt population: the import runs
+     * against a task carrying `exchange_rate = 0.340000` — the exact input that used to produce the
+     * shape — and must emit NOTHING. A feeder that started supplying a rate again (or a new one)
+     * breaks this test, which is the whole point of stating the expectation as a number.
+     */
+    public function test_the_fixed_receipt_import_emits_no_base_rate_normalisation(): void
+    {
+        // Runs the OTHER test's whole body rather than a copy of its fixture. Deliberate: the
+        // expectation being pinned is "THE KNOWN RECEIPT POPULATION emits zero", and a private
+        // helper that had drifted from the test everyone actually reads would pin a population
+        // that no longer exists. One fixture, two questions asked of it.
+        $captured = $this->captureNormalisations(function () {
+            $this->test_the_receipt_import_posts_for_a_foreign_sourced_task_with_the_engine_on();
+        });
+
+        $this->assertSame(
+            [],
+            $captured,
+            'the known receipt population must emit ZERO normalisations — any event here is a feeder nobody has looked at'
+        );
+    }
+
+    /**
+     * @param  callable():void  $work
+     * @return list<array<string, mixed>>
+     */
+    private function captureNormalisations(callable $work): array
     {
         $captured = [];
 
@@ -205,15 +262,9 @@ class FcBaseCurrencyRuleTest extends AccountingTestCase
             }
         });
 
-        app(PostingService::class)->post(
-            $this->draft('KWD', 100.000, 100.000, 0.340000, 'ct-a9:t1:warns')
-        );
+        $work();
 
-        $this->assertCount(2, $captured, 'one warning per line, not one per document');
-        $this->assertSame(0.340000, $captured[0]['supplied_exchange_rate']);
-        $this->assertSame(1.0, $captured[0]['persisted_exchange_rate']);
-        $this->assertSame('R-CT10', $captured[0]['ruling']);
-        $this->assertSame($this->companyId, $captured[0]['company_id']);
+        return $captured;
     }
 
     /** A base-currency line already at rate 1.0 is normal traffic and must NOT be warned about. */

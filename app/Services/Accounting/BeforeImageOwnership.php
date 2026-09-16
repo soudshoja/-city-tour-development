@@ -82,4 +82,35 @@ final class BeforeImageOwnership
     {
         return 'php artisan '.self::commandFor($pairs).' --rollback='.$runId;
     }
+
+    /**
+     * The `column_name` values one command owns on one subject table — the other half of the same
+     * map, for the SELECT rather than for the refusal message.
+     *
+     * CT-A9 verify (item 6): `RepairTaskFxConversion::rollback()` was the last before-image read
+     * still keyed on `subject_table` alone. Safe today, because nothing else writes `tasks` rows —
+     * but that is exactly the assumption `BackfillPayablePartyReference` was built on, and it
+     * stopped being true the moment a second command wrote `journal_entries`. Reading through the
+     * map means the next writer of `tasks` cannot silently widen an existing command's undo.
+     *
+     * @return string[]
+     */
+    public static function columnsOwnedBy(string $command, string $subjectTable): array
+    {
+        $columns = [];
+
+        foreach (self::OWNERS as $pair => $owner) {
+            if ($owner !== $command) {
+                continue;
+            }
+
+            [$table, $column] = explode('.', $pair, 2);
+
+            if ($table === $subjectTable) {
+                $columns[] = $column;
+            }
+        }
+
+        return $columns;
+    }
 }

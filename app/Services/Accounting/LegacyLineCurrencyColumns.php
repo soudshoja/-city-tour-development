@@ -23,7 +23,7 @@ namespace App\Services\Accounting;
  * built (`journal_entries.original_currency` is NULL on 99.88 % of the live ledger).
  *
  * ── Why a class and not four more array keys in each controller ────────────────────────────────
- * Because the rule is not "copy four fields". CT-A9 T1 (ruling R-CT10) made
+ * Because the rule is not "copy four fields". CT-A9 T1 (ruling R-CT13) made
  * `PostingService::post()` step 3f DERIVE the persisted rate rather than copy it: a base-currency
  * line carries `exchange_rate = 1.000000` whatever the feeder supplied, because on a base-currency
  * line the rate is 1 by definition and a supplied value is a fact about something else (the source
@@ -56,7 +56,7 @@ final class LegacyLineCurrencyColumns
 
         return [
             'currency' => $line->currency,
-            // R-CT10: 1.000000 on a base-currency line, whatever the feeder supplied.
+            // R-CT13: 1.000000 on a base-currency line, whatever the feeder supplied.
             'exchange_rate' => $isBase ? 1.0 : $line->exchangeRate,
             // PostingService step 8 writes `$line->currency` into BOTH `currency` and
             // `original_currency`; the OFF writers now do the same, so the pair agrees.

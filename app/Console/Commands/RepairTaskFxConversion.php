@@ -679,9 +679,18 @@ class RepairTaskFxConversion extends Command
     {
         $restorable = [self::COLUMN_TOTAL, self::COLUMN_PRICE];
 
+        // CT-A9 verify (item 6): keyed on the PAIR, like every other read into this table. This was
+        // the last one still filtering on `subject_table` alone — safe today, because nothing else
+        // writes `tasks` before-images, but that is precisely the assumption
+        // `BackfillPayablePartyReference` rested on until a second command started writing
+        // `journal_entries`. The owned columns come from the one map rather than from a literal
+        // here, so a future writer of `tasks` cannot silently widen this command's undo.
+        $ownedColumns = BeforeImageOwnership::columnsOwnedBy('accounting:repair-task-fx-conversion', self::SUBJECT_TABLE);
+
         $rows = DB::table('coa_linkage_changes')
             ->where('run_id', $runId)
             ->where('subject_table', self::SUBJECT_TABLE)
+            ->whereIn('column_name', $ownedColumns)
             ->whereNull('rolled_back_at')
             ->orderBy('id')
             ->get();
@@ -689,7 +698,7 @@ class RepairTaskFxConversion extends Command
         if ($rows->isEmpty()) {
             $anyForRun = DB::table('coa_linkage_changes')->where('run_id', $runId);
 
-            if ((clone $anyForRun)->where('subject_table', self::SUBJECT_TABLE)->exists()) {
+            if ((clone $anyForRun)->where('subject_table', self::SUBJECT_TABLE)->whereIn('column_name', $ownedColumns)->exists()) {
                 $this->line("Run {$runId}: every recorded task was already rolled back. Nothing to do.");
 
                 return self::SUCCESS;

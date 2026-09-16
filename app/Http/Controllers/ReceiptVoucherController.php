@@ -2324,7 +2324,7 @@ class ReceiptVoucherController extends Controller
             // receipt raised against any foreign-sourced task after `accounting.engine.enabled`
             // went true would have failed the whole import (CT-FX-EXPOSURE §5.4 item 1). CT-A9
             // fixes it at both ends: step 3f no longer refuses a consistent base line over a
-            // redundant rate (it normalises and warns, ruling R-CT10), and this feeder no longer
+            // redundant rate (it normalises and warns, ruling R-CT13), and this feeder no longer
             // supplies one. Same discipline as TaskIssuancePayableService.php:222-225, which posts
             // "honestly base-currency at rate 1.0" whenever it cannot vouch for an FC triple.
             $currency = (string) config('accounting.engine.base_currency', 'KWD');

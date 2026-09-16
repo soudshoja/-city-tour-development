@@ -49,7 +49,7 @@ use Tests\Support\AccountingTestCase;
  * PARTY fact, alongside the currency ones.
  *
  * ── Why the rate is not simply copied ──────────────────────────────────────────────────────────
- * CT-A9 T1 (ruling R-CT10) makes the ENGINE derive a base-currency line's rate as 1.000000 rather
+ * CT-A9 T1 (ruling R-CT13) makes the ENGINE derive a base-currency line's rate as 1.000000 rather
  * than copy the feeder's. Copying `$line->exchangeRate` into the OFF writers would therefore have
  * opened a FRESH drift on the same seam while closing the old one. Both writers go through
  * {@see LegacyLineCurrencyColumns}, which is the one implementation of that rule.
@@ -234,7 +234,7 @@ class SeamCurrencyParityTest extends AccountingTestCase
     /**
      * Both purpose-built OFF writers must go through the ONE implementation of the rule. A ratchet,
      * because a future writer that hand-rolled the four columns would pass the behavioural test
-     * above on the day it was written and drift the moment R-CT10 changed.
+     * above on the day it was written and drift the moment R-CT13 changed.
      */
     public function test_both_off_writers_use_the_single_currency_column_rule(): void
     {
@@ -258,7 +258,7 @@ class SeamCurrencyParityTest extends AccountingTestCase
     // ════════════════════════════════════════════════════════════════════════════════════════════
 
     /**
-     * R-CT10 applies on the OFF path too. A base-currency line carrying a stray rate is written at
+     * R-CT13 applies on the OFF path too. A base-currency line carrying a stray rate is written at
      * 1.000000, exactly as the engine writes it — otherwise closing the `original_*` gap would have
      * opened an `exchange_rate` one.
      */

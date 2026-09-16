@@ -1075,7 +1075,7 @@ class BankPaymentController extends Controller
                     // `original_currency`/`original_amount` when the engine was on and NULL when it
                     // was off (CT-FX-EXPOSURE-2026-09-16.md §5.4 item 2). One rule, one
                     // implementation — see {@see LegacyLineCurrencyColumns} for why this is a class
-                    // and not four more array keys (short version: R-CT10 makes the engine DERIVE
+                    // and not four more array keys (short version: R-CT13 makes the engine DERIVE
                     // the rate on a base-currency line, so copying the draft's would have opened a
                     // new drift while closing the old one).
                     ...LegacyLineCurrencyColumns::for($line),

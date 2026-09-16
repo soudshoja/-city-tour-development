@@ -459,6 +459,42 @@ class CoaLinkage extends Command
             return self::SUCCESS;
         }
 
+        // ── CT-A7 ROUND 2, finding F2 — ownership check ────────────────────────────────────────
+        // `coa_linkage_changes` is a SHARED before-image table (its own migration says so:
+        // "Present because the alternative -- encoding the table in the column name -- is what
+        // makes a second subject type need a migration later"), and `accounting:coa-duplicates`
+        // and `accounting:backfill-payable-party` both write into it under their own run ids.
+        // The three restore phases below understand `accounts` and `system_accounts` and nothing
+        // else, so before this check a run id belonging to another command would have had every
+        // one of its rows silently skipped while this method still printed "Undo this run in full".
+        //
+        // This command must NOT learn to restore `journal_entries`: its own class docblock is that
+        // the linkage command is forbidden from moving money, and the ledger's before-images belong
+        // to the command that wrote them. So: refuse, and name the owner.
+        $foreignTables = $rows->pluck('subject_table')
+            ->unique()
+            ->reject(fn ($table) => in_array($table, ['accounts', 'system_accounts'], true))
+            ->values();
+
+        if ($foreignTables->isNotEmpty()) {
+            $this->error(sprintf(
+                "Run '%s' contains before-images this command does not own and must not restore.",
+                $runId
+            ));
+            // On line() rather than only on error(): this codebase's own test convention asserts
+            // console text through $this->artisan()->expectsOutputToContain(), and error() goes to
+            // STDERR (CT-A3-R3 §4.3 measured exactly that).
+            $this->line('  Run contains before-images for: '.$foreignTables->implode(', '));
+
+            if ($foreignTables->contains('journal_entries')) {
+                $this->line('  Undo it with: php artisan accounting:backfill-payable-party --rollback='.$runId);
+            }
+
+            $this->line('  Nothing was restored.');
+
+            return self::FAILURE;
+        }
+
         $restored = 0;
         $mappingsRemoved = 0;
         $mappingsRestored = 0;

@@ -439,14 +439,25 @@ class BackfillPayablePartyReference extends Command
                 return self::SUCCESS;
             }
 
-            $foreignTables = (clone $anyForRun)->distinct()->pluck('subject_table');
+            // CT-A8: named by (subject_table, column_name), not by subject_table alone. A third
+            // writer — `accounting:backfill-supplier-leaf` — records `accounts.supplier_id`
+            // before-images, so "not journal_entries" no longer implies "coa-linkage owns it", and
+            // sending an operator to the wrong command is the failure this guard exists to prevent.
+            $foreignPairs = (clone $anyForRun)
+                ->distinct()
+                ->get(['subject_table', 'column_name'])
+                ->map(fn ($r) => $r->subject_table.'.'.$r->column_name)
+                ->unique()
+                ->values();
 
-            if ($foreignTables->isNotEmpty()) {
+            if ($foreignPairs->isNotEmpty()) {
                 $this->error(
                     "Run '{$runId}' contains before-images this command does not own and must not restore."
                 );
-                $this->line('  Run contains before-images for: '.$foreignTables->implode(', '));
-                $this->line('  Undo it with: php artisan accounting:coa-linkage --rollback='.$runId);
+                $this->line('  Run contains before-images for: '.$foreignPairs->implode(', '));
+                $this->line('  Undo it with: '.($foreignPairs->contains('accounts.supplier_id')
+                    ? 'php artisan accounting:backfill-supplier-leaf --rollback='.$runId
+                    : 'php artisan accounting:coa-linkage --rollback='.$runId));
                 $this->line('  Nothing was restored.');
 
                 return self::FAILURE;

@@ -44,6 +44,26 @@ use Illuminate\Support\Str;
  * So the command REPAIRS THE FOUR AND REFUSES THE THREE. It reports them by id for owner
  * disclosure, at KWD 1,133.79 across three documents.
  *
+ * ── What this command is NOT (CT-A9 verify — the narrowing) ───────────────────────────────────
+ * It is NOT "make `tasks.total` equal `original_total × exchange_rate`". That was the first cut's
+ * predicate and it was wrong: measured against the development database it flagged **130** tasks
+ * rather than 7, and **109 of the 130 would have RAISED** the booked total — a net **+KWD
+ * 6,148.524**, the opposite direction to the KWD 1,628.919 OVERstatement the lane exists to correct.
+ * Tasks fail that reconciliation for ordinary reasons (markup, tax, part amounts, later credits),
+ * and a repair tool that treats every one of them as a defect is not a repair tool.
+ *
+ * The signature it looks for is CT-FX's own: **the local figure IS the foreign figure** while the
+ * currency trades nowhere near parity. On the same population that returns **exactly 7**.
+ *
+ * ── Contemporaneity is TESTED, not assumed (CT-A9 verify) ─────────────────────────────────────
+ * The same dry run appeared to destroy the premise that `tasks.exchange_rate` is captured at task
+ * creation: 354 of 490 in-scope tasks carry a rate equal to TODAY's table rate to six decimals.
+ * {@see self::rateInForceAt()} has the full working, but the short version is that the appearance is
+ * an artefact of a static rate table — for USD, the one pair whose rate moved twice, **211 of 211
+ * tasks carry exactly the rate in force on their own creation date**, with the date ranges disjoint
+ * at exactly the two recorded changes. The premise holds, and it is now CHECKED per task rather than
+ * asserted: a task whose stored rate is not the rate in force the day it was created is REFUSED.
+ *
  * ── Detection is allowed to use today's rate. CORRECTION is not. ───────────────────────────────
  * This is the one distinction the whole command turns on, and it is why the three are refused
  * rather than silently "corrected":
@@ -109,13 +129,23 @@ class RepairTaskFxConversion extends Command
     public const OPERATOR_SUPPLIED_RATE = '__operator_supplied_rate__';
 
     /**
-     * How close `total / original_total` has to be to 1 before a task with NO recorded rate is
-     * called "the foreign figure, unconverted".
+     * How close `total / original_total` has to be to 1 before a task is called "the foreign figure,
+     * unconverted".
      *
-     * A DETECTION band only. It never scales a correction, and nothing is ever written on the
-     * strength of it — every task it catches is REFUSED. The seven CT-FX found sit at 1.000, 1.000,
-     * 1.000, 1.000, 1.000, 1.022 and 1.060; markup and tax are what put the last two above 1, which
-     * is why the band is not zero.
+     * ── This is now the FIRST GATE, not a late one (CT-A9 verify) ──────────────────────────────
+     * The first cut of this command did not gate on the signature at all: it flagged any task whose
+     * `total` failed to reconcile with `original_total × rate`. That is a different and much wider
+     * question, and the dry run showed how much wider — **130 tasks instead of 7, of which 109 would
+     * have moved the total UPWARD, a net +KWD 6,148.524, against a finding of KWD 1,628.919
+     * OVERstated.** Real tasks fail reconciliation for entirely ordinary reasons: markup, tax, a
+     * part amount, a later credit. "Does not reconcile" is not "was never converted".
+     *
+     * CT-FX's actual test is this one — the local figure IS (near enough) the foreign figure, while
+     * the currency trades nowhere near parity. Applied to the same 492-task population it returns
+     * **exactly 7**: CT-FX's seven, no more and no fewer.
+     *
+     * The band is not zero because markup and tax move the ratio a little: the seven sit at 1.000
+     * ×5, 1.022 and 1.060.
      */
     private const UNCONVERTED_RATIO_BAND = 0.10;
 
@@ -174,7 +204,7 @@ class RepairTaskFxConversion extends Command
         $limit = $this->option('limit') !== null ? max(0, (int) $this->option('limit')) : null;
         $batchSize = max(1, (int) $this->option('batch-size'));
 
-        $totals = ['repaired' => 0, 'estimated' => 0, 'refused' => 0, 'untestable' => 0];
+        $totals = ['repaired' => 0, 'estimated' => 0, 'refused' => 0, 'untestable' => 0, 'out_of_signature' => 0];
         $usedSupplied = [];
 
         foreach ($companyIds as $companyId) {
@@ -199,14 +229,15 @@ class RepairTaskFxConversion extends Command
         $this->newLine();
         $this->line(sprintf(
             '%s: %d task(s) %s on their own recorded rate, %d %s on an OPERATOR-SUPPLIED rate (ESTIMATE), '
-                .'%d refused (historical rate unrecoverable), %d untestable.',
+                .'%d refused, %d untestable, %d outside the unconverted signature.',
             $apply ? 'APPLIED' : 'DRY RUN',
             $totals['repaired'],
             $apply ? 'converted' : 'would be converted',
             $totals['estimated'],
             $apply ? 'converted' : 'would be converted',
             $totals['refused'],
-            $totals['untestable']
+            $totals['untestable'],
+            $totals['out_of_signature']
         ));
 
         if ($totals['estimated'] > 0) {
@@ -283,7 +314,7 @@ class RepairTaskFxConversion extends Command
         $base = $this->baseCurrency();
         $tableRates = $this->tableRates($companyId, $base);
 
-        $counts = ['repaired' => 0, 'estimated' => 0, 'refused' => 0, 'untestable' => 0];
+        $counts = ['repaired' => 0, 'estimated' => 0, 'refused' => 0, 'untestable' => 0, 'out_of_signature' => 0];
         $lastId = 0;
         $considered = 0;
         $reports = [];
@@ -310,7 +341,7 @@ class RepairTaskFxConversion extends Command
                 ->where('id', '>', $lastId)
                 ->orderBy('id')
                 ->limit($take)
-                ->get(['id', 'price', 'total', 'original_price', 'original_total', 'original_currency', 'exchange_currency', 'exchange_rate']);
+                ->get(['id', 'price', 'total', 'original_price', 'original_total', 'original_currency', 'exchange_currency', 'exchange_rate', 'created_at']);
 
             if ($rows->isEmpty()) {
                 break;
@@ -328,19 +359,69 @@ class RepairTaskFxConversion extends Command
                 $originalTotal = round((float) $row->original_total, 3);
                 $ownRate = (float) ($row->exchange_rate ?? 0);
                 $tolerance = max(0.01, abs($total) * 0.01);
+                $tableRate = $tableRates[$code] ?? null;
+
+                // ── GATE 1: THE UNCONVERTED SIGNATURE (CT-A9 verify — the narrowing) ───────────
+                // See the class docblock's "what this command is NOT" note. Everything below only
+                // runs for a task that LOOKS LIKE THE DEFECT, not for one that merely fails to
+                // reconcile.
+                $ratio = $originalTotal > 0 ? $total / $originalTotal : 0.0;
+
+                if (abs($ratio - 1.0) > self::UNCONVERTED_RATIO_BAND) {
+                    $counts['out_of_signature']++;
+
+                    continue;
+                }
+
+                // ── GATE 2: the reference rate has to be able to say anything at all ──────────
+                if ($tableRate === null || $tableRate <= 0) {
+                    $counts['untestable']++;
+                    $reports[] = sprintf('  UNTESTABLE task #%d (%s):', $taskId, $code);
+                    $reports[] = sprintf('    total %.3f is %.3fx original_total %.3f, but there is no %s row in',
+                        $total, $ratio, $originalTotal, $code);
+                    $reports[] = '    currency_exchanges, so "looks unconverted" has nothing to be measured against.';
+
+                    continue;
+                }
+
+                if (abs($tableRate - 1.0) <= self::MIN_RATE_DISTANCE_FROM_PARITY) {
+                    $counts['untestable']++;
+                    $reports[] = sprintf('  UNTESTABLE task #%d (%s):', $taskId, $code);
+                    $reports[] = sprintf('    the %s rate is %.6f, too near parity for "looks unconverted" to mean anything.',
+                        $code, $tableRate);
+
+                    continue;
+                }
+
+                // From here the task IS demonstrably unconverted. The only question left is
+                // whether a rate exists that may be used to convert it.
 
                 if ($ownRate > 0) {
                     // Supplying a rate for a task that HAS one is refused outright: the point of
                     // --historical-rate is the absence of evidence, and overriding evidence that
                     // exists is exactly the coaxing this command must not permit.
                     if (array_key_exists($taskId, $supplied)) {
-                        $reports[] = sprintf(
-                            '  REFUSED --historical-rate for task #%d:', $taskId
-                        );
-                        $reports[] = sprintf(
-                            '    it already carries its own recorded rate %.6f.', $ownRate
-                        );
+                        $reports[] = sprintf('  REFUSED --historical-rate for task #%d:', $taskId);
+                        $reports[] = sprintf('    it already carries its own recorded rate %.6f.', $ownRate);
                         $reports[] = '    A supplied rate may only stand in for a rate that does not exist.';
+
+                        continue;
+                    }
+
+                    // ── GATE 3: CONTEMPORANEITY, TESTED RATHER THAN ASSUMED (CT-A9 verify) ────
+                    // The stored rate is only evidence if it is the rate that was IN FORCE on the
+                    // day the task was created. That is reconstructible — see rateInForceAt() —
+                    // and a task carrying a rate the table never held on its own creation date is
+                    // carrying a number from somewhere this command cannot see. Refuse it.
+                    $inForce = $this->rateInForceAt($companyId, $code, (string) ($row->created_at ?? ''), $tableRate);
+
+                    if ($inForce !== null && abs($ownRate - $inForce) > 0.0000005) {
+                        $counts['refused']++;
+                        $reports[] = sprintf('  REFUSED task #%d (%s): its stored rate is NOT contemporaneous.', $taskId, $code);
+                        $reports[] = sprintf('    task created %s, stored rate %.6f, but the rate in force that day was %.6f',
+                            substr((string) ($row->created_at ?? '?'), 0, 10), $ownRate, $inForce);
+                        $reports[] = '    (reconstructed from currency_exchanges + exchange_rate_histories).';
+                        $reports[] = '    The rate came from somewhere this command cannot see. Nothing written; nothing guessed.';
 
                         continue;
                     }
@@ -348,7 +429,7 @@ class RepairTaskFxConversion extends Command
                     $expected = round($originalTotal * $ownRate, 3);
 
                     if (abs($total - $expected) <= $tolerance) {
-                        continue; // Consistent. Not a defect. Untouched and unreported.
+                        continue; // Consistent after all. Not a defect. Untouched and unreported.
                     }
 
                     $writes[] = $this->plan($row, $ownRate, $expected, false);
@@ -357,51 +438,14 @@ class RepairTaskFxConversion extends Command
                         '  REPAIRABLE task #%d (%s): total %.3f -> %.3f', $taskId, $code, $total, $expected
                     );
                     $reports[] = sprintf(
-                        '    original_total %.3f x its own rate %.6f; overstated by %.3f.',
-                        $originalTotal, $ownRate, $total - $expected
+                        '    original_total %.3f x its own rate %.6f (in force on %s); overstated by %.3f.',
+                        $originalTotal, $ownRate, substr((string) ($row->created_at ?? '?'), 0, 10), $total - $expected
                     );
 
                     continue;
                 }
 
-                // ── No recorded rate. Detection only from here down. ──────────────────────────
-                $tableRate = $tableRates[$code] ?? null;
-
-                if ($tableRate === null || $tableRate <= 0) {
-                    $counts['untestable']++;
-                    $reports[] = sprintf(
-                        '  UNTESTABLE task #%d (%s):', $taskId, $code
-                    );
-                    $reports[] = sprintf(
-                        '    no rate on the task and no %s row in currency_exchanges.', $code
-                    );
-                    $reports[] = '    Nothing can be said about this figure in either direction.';
-
-                    continue;
-                }
-
-                if (abs($tableRate - 1.0) <= self::MIN_RATE_DISTANCE_FROM_PARITY) {
-                    $counts['untestable']++;
-                    $reports[] = sprintf(
-                        '  UNTESTABLE task #%d (%s):', $taskId, $code
-                    );
-                    $reports[] = sprintf(
-                        '    the %s rate is %.6f, too near parity for "looks unconverted" to mean anything.',
-                        $code, $tableRate
-                    );
-
-                    continue;
-                }
-
-                $ratio = $originalTotal > 0 ? $total / $originalTotal : 0.0;
-
-                if (abs($ratio - 1.0) > self::UNCONVERTED_RATIO_BAND) {
-                    $counts['untestable']++;
-
-                    continue;
-                }
-
-                // Demonstrably unconverted, and the historical rate is unrecoverable.
+                // ── No recorded rate at all, and the figure is demonstrably unconverted. ──────
                 $suppliedRate = $supplied[$taskId] ?? null;
 
                 if ($suppliedRate === null) {
@@ -413,8 +457,8 @@ class RepairTaskFxConversion extends Command
                     $reports[] = sprintf(
                         '    while %s trades near %.6f — the figure was never converted.', $code, $tableRate
                     );
-                    $reports[] = '    The task carries NO rate and this system holds no effective-dated rate';
-                    $reports[] = '    history, so the rate on the day is UNRECOVERABLE.';
+                    $reports[] = '    The task carries NO rate, and this pair has no recorded rate change to';
+                    $reports[] = '    reconstruct one from, so the rate on the day is UNRECOVERABLE.';
                     $reports[] = '    Nothing written; nothing guessed. Owner disclosure required.';
 
                     continue;
@@ -488,10 +532,11 @@ class RepairTaskFxConversion extends Command
         }
 
         $this->line(sprintf(
-            'company %d: %d foreign-sourced task(s) with a true anchor considered; %d repairable, %d estimated, '
-                .'%d refused, %d untestable.',
+            'company %d: %d foreign-sourced task(s) with a true anchor considered; %d outside the unconverted '
+                .'signature (not this defect); %d repairable, %d estimated, %d refused, %d untestable.',
             $companyId,
             $considered,
+            $counts['out_of_signature'],
             $counts['repaired'],
             $counts['estimated'],
             $counts['refused'],
@@ -656,6 +701,84 @@ class RepairTaskFxConversion extends Command
 
         return $out;
     }
+
+    /**
+     * The rate that was IN FORCE for one pair on one date, reconstructed from today's
+     * `currency_exchanges` row walked backwards through `exchange_rate_histories`.
+     *
+     * ── Why this exists, and what it settled (CT-A9 verify) ─────────────────────────────────────
+     * The first cut of this command asserted that `tasks.exchange_rate` is "contemporaneous
+     * evidence, captured at task creation". A dry run against the development database appeared to
+     * demolish that: **354 of 490** in-scope tasks carry a rate equal to TODAY's table rate to six
+     * decimals, which looks exactly like a rate copied on later.
+     *
+     * It is not. `exchange_rate_histories` holds three rows, and two of them are USD:
+     *
+     *     2025-11-26 06:52:54   USD->KWD   0.305220 -> 0.340000   (manual)
+     *     2026-08-20 17:06:08   USD->KWD   0.340000 -> 0.310000   (manual)
+     *
+     * USD is therefore a natural experiment — the one pair whose rate moved twice. Grouping every
+     * USD task by the era its `created_at` falls in:
+     *
+     *     before 2025-11-26   81 tasks   ALL 0.305220   (2025-08-04 .. 2025-10-25)
+     *     between the two     92 tasks   ALL 0.340000   (2025-12-02 .. 2026-08-19)
+     *     after  2026-08-20   38 tasks   ALL 0.310000   (2026-08-21 .. 2026-09-16)
+     *
+     * **211 of 211, no exceptions, and the date ranges are disjoint at exactly the two changes.**
+     * So the stored rate IS captured at task creation. The 354 equalities are explained by the
+     * table being static: every pair except USD and AED has **zero** recorded changes, so for those
+     * pairs "the rate on the day" and "today's rate" are necessarily the same number, and equality
+     * is evidence of a rate that never moved rather than of a late copy.
+     *
+     * That is what makes this a real test rather than a proxy. Returns null when the date is
+     * unusable; a null NEVER refuses, because "we could not check" must not read as "we checked and
+     * it failed".
+     */
+    private function rateInForceAt(int $companyId, string $code, string $createdAt, float $todaysRate): ?float
+    {
+        $createdAt = trim($createdAt);
+
+        if ($createdAt === '') {
+            return null;
+        }
+
+        $rate = $todaysRate;
+
+        // Newest change first. Every change made AFTER the task was created is undone in turn, so
+        // what is left is the rate the table held on the day.
+        foreach ($this->rateChanges($companyId, $code) as $change) {
+            if (strcmp((string) $change->changed_at, $createdAt) > 0) {
+                $rate = (float) $change->old_rate;
+            }
+        }
+
+        return $rate > 0 ? $rate : null;
+    }
+
+    /**
+     * Recorded changes for one pair, newest first. Cached per (company, code) for the run — the
+     * whole table is three rows today, but the read is per task and this command walks hundreds.
+     *
+     * @return list<object>
+     */
+    private function rateChanges(int $companyId, string $code): array
+    {
+        $key = $companyId.'|'.$code;
+
+        if (! array_key_exists($key, $this->rateChangeCache)) {
+            $this->rateChangeCache[$key] = DB::table('exchange_rate_histories')
+                ->whereRaw('UPPER(TRIM(base_currency)) = ?', [$code])
+                ->whereRaw('UPPER(TRIM(exchange_currency)) = ?', [$this->baseCurrency()])
+                ->orderByDesc('changed_at')
+                ->get(['changed_at', 'old_rate', 'new_rate'])
+                ->all();
+        }
+
+        return $this->rateChangeCache[$key];
+    }
+
+    /** @var array<string, list<object>> */
+    private array $rateChangeCache = [];
 
     /**
      * Today's `currency_exchanges` rates, keyed by foreign code. Used for DETECTION ONLY — see the

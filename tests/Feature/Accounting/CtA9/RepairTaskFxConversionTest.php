@@ -66,6 +66,9 @@ class RepairTaskFxConversionTest extends AccountingTestCase
     /** A near-parity currency. UNTESTABLE — "looks unconverted" cannot mean anything there. */
     private int $nearParityId;
 
+    /** USD, unconverted shape, carrying a rate the table never held that day — REFUSED. */
+    private int $staleRateId;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -97,13 +100,23 @@ class RepairTaskFxConversionTest extends AccountingTestCase
         $this->tableRate('EUR', 0.353397);
         $this->tableRate('NPR', 0.950000);   // near parity
 
-        $this->ownRateUsdId = $this->task('USD', originalTotal: 368.000, total: 368.000, rate: 0.340000);
-        $this->ownRateUsdSmallId = $this->task('USD', originalTotal: 32.450, total: 32.450, rate: 0.305220);
+        // The real USD timeline. EUR and NPR get none, exactly as on the real data, where every
+        // pair but USD and AED has zero recorded changes.
+        $this->rateChange('USD', 0.305220, 0.340000, '2025-11-26 06:52:54');
+        $this->rateChange('USD', 0.340000, 0.310000, '2026-08-20 17:06:08');
+
+        // Two eras, two rates, each task carrying the rate in force the day it was created.
+        $this->ownRateUsdId = $this->task('USD', originalTotal: 368.000, total: 368.000, rate: 0.340000, createdAt: '2026-06-02 10:00:00');
+        $this->ownRateUsdSmallId = $this->task('USD', originalTotal: 32.450, total: 32.450, rate: 0.305220, createdAt: '2025-09-18 10:00:00');
         $this->noRateEurExactId = $this->task('EUR', originalTotal: 240.000, total: 240.000, rate: null);
         $this->noRateEurMarkupId = $this->task('EUR', originalTotal: 320.000, total: 339.261, rate: null);
-        $this->correctId = $this->task('USD', originalTotal: 100.000, total: 31.000, rate: 0.310000);
+        $this->correctId = $this->task('USD', originalTotal: 100.000, total: 31.000, rate: 0.310000, createdAt: '2026-09-01 10:00:00');
         $this->noTableRateId = $this->task('THB', originalTotal: 1000.000, total: 1000.000, rate: null);
         $this->nearParityId = $this->task('NPR', originalTotal: 500.000, total: 500.000, rate: null);
+
+        // A task carrying a rate the table NEVER held on its creation date — the contemporaneity
+        // gate's subject. Same unconverted shape as the repairable ones in every other respect.
+        $this->staleRateId = $this->task('USD', originalTotal: 500.000, total: 500.000, rate: 0.400000, createdAt: '2026-06-02 10:00:00');
     }
 
     // ── fixture helpers ─────────────────────────────────────────────────────────────────────────
@@ -121,7 +134,7 @@ class RepairTaskFxConversionTest extends AccountingTestCase
         ]);
     }
 
-    private function task(string $currency, float $originalTotal, float $total, ?float $rate): int
+    private function task(string $currency, float $originalTotal, float $total, ?float $rate, string $createdAt = '2026-06-02 10:00:00'): int
     {
         $id = (int) Task::factory()->create([
             'company_id' => $this->companyId,
@@ -132,7 +145,8 @@ class RepairTaskFxConversionTest extends AccountingTestCase
         ])->id;
 
         // Written raw so no model cast, fillable list or observer can quietly reshape the exact
-        // triple under test.
+        // triple under test. `created_at` is load-bearing now: the contemporaneity gate
+        // reconstructs the rate in force ON THAT DATE and refuses a task carrying anything else.
         DB::table('tasks')->where('id', $id)->update([
             'price' => $total,
             'total' => $total,
@@ -141,9 +155,35 @@ class RepairTaskFxConversionTest extends AccountingTestCase
             'original_currency' => $currency,
             'exchange_currency' => 'KWD',
             'exchange_rate' => $rate,
+            'created_at' => $createdAt,
         ]);
 
         return $id;
+    }
+
+    /**
+     * One recorded rate change, in the shape `exchange_rate_histories` really holds them.
+     *
+     * The fixture models the REAL USD timeline on the development database, because the
+     * contemporaneity gate is only meaningful against a pair whose rate actually moved:
+     *
+     *     2025-11-26   0.305220 -> 0.340000
+     *     2026-08-20   0.340000 -> 0.310000   (0.310000 is today's table rate)
+     */
+    private function rateChange(string $foreign, float $oldRate, float $newRate, string $changedAt): void
+    {
+        DB::table('exchange_rate_histories')->insert([
+            'currency_exchange_id' => (int) DB::table('currency_exchanges')
+                ->where('company_id', $this->companyId)->where('base_currency', $foreign)->value('id'),
+            'base_currency' => $foreign,
+            'exchange_currency' => 'KWD',
+            'old_rate' => $oldRate,
+            'new_rate' => $newRate,
+            'method' => 'manual',
+            'changed_at' => $changedAt,
+            'created_at' => $changedAt,
+            'updated_at' => $changedAt,
+        ]);
     }
 
     private function accountByCode(string $code): Account
@@ -232,6 +272,137 @@ class RepairTaskFxConversionTest extends AccountingTestCase
     }
 
     // ════════════════════════════════════════════════════════════════════════════════════════════
+    // THE NARROWING (CT-A9 verify) — the signature, and contemporaneity
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * ── MUTATION PROOF M-A9-SIGNATURE ───────────────────────────────────────────────────────────
+     * The first cut of this command flagged any task whose `total` failed to reconcile with
+     * `original_total × rate`. Against the real development database that returned **130 tasks
+     * instead of 7**, and **109 of the 130 would have RAISED** the booked total — a net
+     * **+KWD 6,148.524**, against a finding of KWD 1,628.919 OVERstated. Tasks fail reconciliation
+     * for entirely ordinary reasons.
+     *
+     * This test builds one of those ordinary tasks: a correctly-converted booking that then carries
+     * markup, so `total` is 40 % above `original_total × rate` and it fails reconciliation — but its
+     * local figure is nothing like its foreign figure, so it is NOT the defect. The widened
+     * predicate flags it; the signature predicate does not.
+     *
+     * The oracle is TWO-SIDED, so that a build which narrowed too far is caught by the same test:
+     * the marked-up task must be left alone AND the genuinely unconverted one must still be
+     * repaired, in the same run.
+     */
+    public function test_a_task_that_merely_fails_to_reconcile_is_not_this_defect(): void
+    {
+        // original_total 100 USD at the era rate 0.340000 implies 34.000; booked 47.600 (40 % markup).
+        // Fails `|total - original*rate| <= max(0.01, 1 %)` by a mile; ratio 0.476 is nowhere near 1.
+        $markedUp = $this->task('USD', originalTotal: 100.000, total: 47.600, rate: 0.340000, createdAt: '2026-06-02 10:00:00');
+
+        $this->assertSame(0, $this->repair(['--apply' => true]));
+
+        $this->assertSame('47.600', $this->totalOf($markedUp), 'markup is not a defect — the signature gate must exclude it');
+        $this->assertSame(
+            0,
+            DB::table('coa_linkage_changes')->where('subject_id', $markedUp)->count(),
+            'and it gets no before-image, because nothing was considered'
+        );
+
+        // The control, in the same run: a genuinely unconverted task IS still repaired.
+        $this->assertSame('125.120', $this->totalOf($this->ownRateUsdId));
+    }
+
+    /**
+     * The count the narrowing is calibrated against, expressed as a property rather than a number
+     * copied from a report: every task this command would convert has a local figure that IS
+     * (near enough) its foreign figure. Nothing outside that signature is ever written.
+     */
+    public function test_every_task_it_would_convert_carries_the_unconverted_signature(): void
+    {
+        $this->task('USD', originalTotal: 100.000, total: 47.600, rate: 0.340000, createdAt: '2026-06-02 10:00:00');
+        $this->task('USD', originalTotal: 200.000, total: 12.000, rate: 0.340000, createdAt: '2026-06-02 10:00:00');
+
+        $this->repair(['--apply' => true]);
+
+        $written = DB::table('coa_linkage_changes')
+            ->where('subject_table', 'tasks')->where('column_name', 'total')->pluck('subject_id');
+
+        $this->assertNotEmpty($written, 'fixture precondition: something was repaired');
+
+        foreach ($written as $taskId) {
+            $t = DB::table('tasks')->where('id', $taskId)->first(['original_total']);
+            $before = (float) DB::table('coa_linkage_changes')
+                ->where('subject_table', 'tasks')->where('column_name', 'total')
+                ->where('subject_id', $taskId)->value('before_value');
+
+            $this->assertLessThanOrEqual(
+                0.10,
+                abs($before / (float) $t->original_total - 1.0),
+                "task #{$taskId} was converted without carrying the unconverted signature"
+            );
+        }
+    }
+
+    /**
+     * ── MUTATION PROOF M-A9-CONTEMPORANEITY ─────────────────────────────────────────────────────
+     * The command converts on the task's own stored rate, and the whole justification for that is
+     * that the rate was captured when the task was created. A dry run appeared to destroy the
+     * premise — 354 of 490 in-scope tasks carry TODAY's table rate to six decimals — until the USD
+     * history showed why: every pair but USD and AED has never had its rate changed, so for them a
+     * contemporaneous capture and today's rate are necessarily the same number. On USD, the one
+     * pair that moved twice, **211 of 211 tasks carry exactly the rate in force on their own
+     * creation date**.
+     *
+     * So the premise holds — and it is now CHECKED rather than asserted. This test gives a task a
+     * rate the table never held on the day it was created (0.400000, when 0.340000 was in force) and
+     * requires a REFUSAL.
+     *
+     * The CONTROL is the point: `ownRateUsdSmallId` carries 0.305220, which is ALSO not today's
+     * 0.310000 — a naive "refuse anything that differs from today's rate" would refuse it too, and
+     * would have refused 354 perfectly good tasks. It must still be repaired, in the same run.
+     */
+    public function test_a_rate_the_table_never_held_that_day_is_refused(): void
+    {
+        $this->artisan('accounting:repair-task-fx-conversion', ['--company' => $this->companyId, '--apply' => true])
+            ->expectsOutputToContain('REFUSED task #'.$this->staleRateId.' (USD): its stored rate is NOT contemporaneous.')
+            ->expectsOutputToContain('stored rate 0.400000, but the rate in force that day was 0.340000')
+            ->assertExitCode(0);
+
+        $this->assertSame('500.000', $this->totalOf($this->staleRateId), 'nothing written for a rate we cannot vouch for');
+
+        // THE CONTROL — a rate that differs from TODAY's but WAS in force on the day is accepted.
+        $this->assertSame('9.904', $this->totalOf($this->ownRateUsdSmallId), 'an older era rate is still contemporaneous evidence');
+        $this->assertSame('125.120', $this->totalOf($this->ownRateUsdId));
+    }
+
+    /**
+     * The other half of the same control, stated directly: a pair with NO recorded change has one
+     * rate for its whole life, so today's rate IS the rate in force on any date and equality proves
+     * nothing either way. Such a task must not be refused for the equality alone.
+     */
+    public function test_equality_with_todays_rate_is_not_by_itself_a_refusal(): void
+    {
+        // EUR has no history row in this fixture, exactly as on the real data. Give a EUR task the
+        // table rate and the unconverted shape; it is repairable, not refused.
+        $eur = $this->task('EUR', originalTotal: 240.000, total: 240.000, rate: 0.353397, createdAt: '2026-01-12 10:00:00');
+
+        $this->repair(['--apply' => true]);
+
+        // 240.000 x 0.353397 = 84.815
+        $this->assertSame('84.815', $this->totalOf($eur), 'a static pair\'s rate is contemporaneous by construction');
+    }
+
+    /** Every untestable task now says WHY — the silent counter was a reporting gap. */
+    public function test_every_untestable_task_reports_a_reason(): void
+    {
+        $this->artisan('accounting:repair-task-fx-conversion', ['--company' => $this->companyId])
+            ->expectsOutputToContain('UNTESTABLE task #'.$this->noTableRateId)
+            ->expectsOutputToContain('there is no THB row in')
+            ->expectsOutputToContain('UNTESTABLE task #'.$this->nearParityId)
+            ->expectsOutputToContain('too near parity')
+            ->assertExitCode(0);
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
     // THE THREE THAT ARE NOT — AND CANNOT BE COAXED
     // ════════════════════════════════════════════════════════════════════════════════════════════
 
@@ -286,7 +457,7 @@ class RepairTaskFxConversionTest extends AccountingTestCase
     {
         $this->artisan('accounting:repair-task-fx-conversion', ['--company' => $this->companyId])
             ->expectsOutputToContain('UNTESTABLE task #'.$this->noTableRateId)
-            ->expectsOutputToContain('no rate on the task and no THB row in currency_exchanges')
+            ->expectsOutputToContain('there is no THB row in')
             ->assertExitCode(0);
 
         $this->assertSame('1000.000', $this->totalOf($this->noTableRateId));
@@ -468,7 +639,7 @@ class RepairTaskFxConversionTest extends AccountingTestCase
      */
     public function test_a_refused_task_does_not_stall_the_paging(): void
     {
-        $later = $this->task('USD', originalTotal: 315.000, total: 315.000, rate: 0.340000);
+        $later = $this->task('USD', originalTotal: 315.000, total: 315.000, rate: 0.340000, createdAt: '2026-06-02 10:00:00');
         $this->assertGreaterThan($this->noRateEurExactId, $later, 'the proof rests on this order');
 
         $this->repair(['--apply' => true, '--batch-size' => 1]);

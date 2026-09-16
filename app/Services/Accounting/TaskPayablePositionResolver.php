@@ -82,6 +82,17 @@ use Illuminate\Support\Facades\Log;
 final class TaskPayablePositionResolver
 {
     /**
+     * CT-A7 ROUND 3 (R3-1). The name this chart gives its accounts-payable structure, kept as a
+     * constant so the one string this class still cares about is stated once and is greppable.
+     * Resolving it is {@see NamedAccountGroupResolver}'s job, not this class's.
+     */
+    private const AP_GROUP_NAME = 'Accounts Payable';
+
+    public function __construct(
+        private readonly NamedAccountGroupResolver $namedGroups = new NamedAccountGroupResolver,
+    ) {}
+
+    /**
      * The leaf a who-to-pay nomination has moved this task's supplier payable onto, or null when
      * the task was never reassigned (the overwhelmingly common case, and the one in which every
      * caller must behave exactly as it did before R3).
@@ -338,9 +349,19 @@ final class TaskPayablePositionResolver
      *      `Accounts Payable` subtree. Purpose-resolved lines do, because PAYABLE_CONTROL and
      *      SERVICE_PAYABLE/{type} map there and `accounting:coa-linkage` asserts the root of every
      *      purpose it resolves. Operator-picked lines do, because every screen that offers an AP
-     *      account builds its dropdown from that subtree. R-CT8 nomination destinations do, because
-     *      finding F4 now constrains them to it
+     *      account offers only accounts that are IN it (see the clause-2 note below). R-CT8
+     *      nomination destinations do, because finding F4 now constrains them to it
      *      ({@see \App\Http\Controllers\TaskController::updateJournalPaymentMethod()}).
+     *
+     * CLAUSE 2, STATED ACCURATELY (CT-A7 R3-1). "Every screen that offers an AP account builds its
+     * dropdown from that subtree" was an overstatement and is corrected here rather than left to
+     * mislead: `AccountingController::createPayableDetail()` and `::createBankPayment()` do build
+     * theirs from the AP structure, but `::createReceivableDetail()`'s account list is every level
+     * 3/4/5 account in the company. The conclusion survives, for a different reason: what that
+     * screen can credit OUTSIDE the AP structure is client or tax liability, which is not a
+     * SUPPLIER payable and does not belong on these screens. What it credits INSIDE the structure
+     * is reached by clause 1 like everything else — which is exactly what the F1 attack test proves
+     * by crediting an AP leaf through that very route.
      *   2. An account with no posted journal line contributes exactly 0.000 to any total, so
      *      excluding it cannot lose money.
      *   ∴ (subtree ∩ moved) reaches every KWD of accounts payable. Complete by CONSTRUCTION.
@@ -352,11 +373,11 @@ final class TaskPayablePositionResolver
      * never admitted (asserted by
      * {@see \Tests\Feature\Accounting\CtA7\UnionCompletenessR2Test::test_an_ap_leaf_with_no_movement_is_not_admitted()}),
      * so the set is bounded by what the ledger did, not by the shape of the chart. The round-1
-     * "name-anchor purity" objection is WITHDRAWN as inconsistent: this class's own
-     * {@see self::apSubtreeIds()} already anchors on `Account::where('name', 'Accounts Payable')`
-     * and is already production code in the money path —
+     * "name-anchor purity" objection is WITHDRAWN as inconsistent: {@see self::apSubtreeIds()} is
+     * already production code in the money path —
      * {@see \App\Services\Accounting\SupplierReassignDraftBuilder} uses it to decide what a
-     * reassignment debits.
+     * reassignment debits — and the name anchor itself now lives in
+     * {@see NamedAccountGroupResolver}, plural and ratcheted (CT-A7 R3-1).
      *
      * ── Source-AGNOSTIC on purpose ─────────────────────────────────────────────────────────────
      * "Movement" here is any non-deleted `journal_entries` row, engine or legacy. This method
@@ -388,7 +409,26 @@ final class TaskPayablePositionResolver
     }
 
     /**
-     * Every account under the company's `Accounts Payable` (2100) group, walked structurally.
+     * Every account in the company's `Accounts Payable` STRUCTURE — the groups so named and
+     * everything below them.
+     *
+     * ── CT-A7 ROUND 3, finding R3-1 — the anchor moved out of this class ────────────────────────
+     * This used to read the group with
+     * `Account::where('name', 'Accounts Payable')->where('company_id', …)->value('id')` and walk
+     * from that one id. `accounts.name` has NO uniqueness constraint — `CoaController` validates it
+     * as `required|string|max:255` — so a second `Accounts Payable` is two clicks away, and
+     * `->value()` silently took one of them (with no ordering, not even deterministically) and hid
+     * the other's whole subtree. Measured through real HTTP routes: a supplier leaf under a second
+     * such group carrying 700.000 was in neither `apSubtreeIds()` nor `payableAccountIds()`, and
+     * the screen read 0.000 against a ledger holding 700.000.
+     *
+     * The lookup now lives in {@see NamedAccountGroupResolver}, which is plural by contract and is
+     * the only file under `app/Services/Accounting` permitted to anchor on one of these names (a
+     * two-sided ratchet in ArchitectureTest enforces that). The groups themselves are included as
+     * well as their descendants: on a chart that never split its control, a payable can be posted
+     * directly onto the group.
+     *
+     * Walked structurally.
      *
      * `accounts.is_group` is deliberately not consulted — CT-A1 §1.4 measured it wrong on 613
      * accounts (566 flagged as groups with no children, 47 flagged as leaves that have children),
@@ -403,43 +443,7 @@ final class TaskPayablePositionResolver
      */
     public function apSubtreeIds(int $companyId): array
     {
-        $apGroupId = Account::query()
-            ->withoutGlobalScopes()
-            ->where('company_id', $companyId)
-            ->whereNull('deleted_at')
-            ->where('name', 'Accounts Payable')
-            ->value('id');
-
-        if ($apGroupId === null) {
-            return [];
-        }
-
-        $all = [];
-        $frontier = [(int) $apGroupId];
-
-        // Bounded by the chart's real depth (5 levels on this COA); the guard exists only so a
-        // cyclic parent_id — which no constraint prevents — cannot spin forever.
-        for ($depth = 0; $depth < 12 && $frontier !== []; $depth++) {
-            $children = Account::query()
-                ->withoutGlobalScopes()
-                ->where('company_id', $companyId)
-                ->whereNull('deleted_at')
-                ->whereIn('parent_id', $frontier)
-                ->pluck('id')
-                ->map(fn ($id) => (int) $id)
-                ->all();
-
-            $children = array_values(array_diff($children, $all));
-
-            if ($children === []) {
-                break;
-            }
-
-            $all = array_merge($all, $children);
-            $frontier = $children;
-        }
-
-        return $all;
+        return $this->namedGroups->subtreeIds($companyId, self::AP_GROUP_NAME);
     }
 
     /**

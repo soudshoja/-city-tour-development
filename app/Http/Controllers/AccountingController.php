@@ -19,6 +19,7 @@ use App\Models\Supplier;
 use App\Models\Transaction;
 use App\Services\Accounting\DocumentDraft;
 use App\Services\Accounting\LineDraft;
+use App\Services\Accounting\NamedAccountGroupResolver;
 use App\Services\Accounting\PostedDocument;
 use App\Services\Accounting\PostingSeam;
 use App\Services\Accounting\PostingService;
@@ -634,13 +635,15 @@ class AccountingController extends Controller
         $JournalEntrysPayable = collect();
 
         if ($companyId) {
-            $accountsPayable = Account::where('name', 'Accounts Payable')
-                ->where('company_id', $companyId)
-                ->first();
+            // CT-A7 ROUND 3 (R3-1): was `->first()` plus getAllDescendantIds() on that ONE id.
+            // `accounts.name` has no uniqueness constraint (this controller validates it as
+            // `required|string|max:255`), so a second 'Accounts Payable' hid its whole subtree from
+            // this dropdown. Routed through NamedAccountGroupResolver, which seeds its walk from
+            // EVERY match -- the same single handling apSubtreeIds() and createBankPayment() now
+            // use. Three handlings of one lookup in one PR was the bug behind the bug.
+            $descendantIds = app(NamedAccountGroupResolver::class)->descendantIds($companyId, 'Accounts Payable');
 
-            if ($accountsPayable) {
-                $descendantIds = $this->getAllDescendantIds($accountsPayable->id);
-
+            if ($descendantIds !== []) {
                 $accounts = Account::where('company_id', $companyId)
                     ->whereIn('id', $descendantIds)
                     ->doesntHave('children')
@@ -905,10 +908,10 @@ class AccountingController extends Controller
         $JournalEntrysReceivable = collect();
 
         if ($companyId) {
-            $parentIds = Account::where('name', 'Accounts Payable')
-                ->where('company_id', $companyId)
-                ->pluck('id');
-            $suppliers = Account::whereIn('parent_id', $parentIds)->get();
+            // CT-A7 ROUND 3 (R3-1): one handling of this lookup, shared with apSubtreeIds(),
+            // createPayableDetail() and createBankPayment().
+            $parentIds = app(NamedAccountGroupResolver::class)->groupIds($companyId, 'Accounts Payable');
+            $suppliers = Account::where('company_id', $companyId)->whereIn('parent_id', $parentIds)->get();
 
             $JournalEntrysReceivable = JournalEntry::whereIn('type', ['receivable', 'income'])
                 ->where('company_id', $companyId)
@@ -917,10 +920,8 @@ class AccountingController extends Controller
                 ->get()
                 ->groupBy('type');
 
-            $parentIdClients = Account::where('name', 'Accounts Receivable')
-                ->where('company_id', $companyId)
-                ->pluck('id');
-            $clients = Account::whereIn('parent_id', $parentIdClients)->get();
+            $parentIdClients = app(NamedAccountGroupResolver::class)->groupIds($companyId, 'Accounts Receivable');
+            $clients = Account::where('company_id', $companyId)->whereIn('parent_id', $parentIdClients)->get();
 
             // Load branches
             $branches = Branch::where('company_id', $companyId)->get();
@@ -1175,9 +1176,11 @@ class AccountingController extends Controller
         $JournalEntrysPayable = collect();
 
         if ($companyId) {
-            $parentIds = Account::where('name', 'Accounts Payable')
-                ->where('company_id', $companyId)
-                ->pluck('id');
+            // CT-A7 ROUND 3 (R3-1): same single handling as apSubtreeIds() and
+            // createPayableDetail(). This site was already plural (round 2's F6 fix); it goes
+            // through the shared resolver so there is ONE answer to "which accounts are named
+            // this?", not three that can drift apart again.
+            $parentIds = app(NamedAccountGroupResolver::class)->groupIds($companyId, 'Accounts Payable');
             $suppliers = Account::where('company_id', $companyId)
                 ->whereIn('parent_id', $parentIds)
                 ->get();
@@ -1192,9 +1195,9 @@ class AccountingController extends Controller
                 ->get()
                 ->groupBy('type');
 
-            $parentIdClients = Account::where('name', 'Accounts Receivable')
-                ->where('company_id', $companyId)
-                ->pluck('id');
+            // CT-A7 ROUND 3 (R3-1): the AR side carries the identical name anchor and the
+            // identical absence of a constraint, so it gets the identical handling.
+            $parentIdClients = app(NamedAccountGroupResolver::class)->groupIds($companyId, 'Accounts Receivable');
             $clients = Account::where('company_id', $companyId)
                 ->whereIn('parent_id', $parentIdClients)
                 ->get();

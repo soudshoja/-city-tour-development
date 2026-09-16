@@ -1464,9 +1464,9 @@ class ArchitectureTest extends TestCase
      * {@see self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS} fails the build (new regression, or an
      * already-fixed method lost its fix); an allow-listed method with NO hit also fails (stale
      * entry -- shrink the list, per the ratchet's own "shrink-only" mandate). The allow-list holds
-     * NINE pre-existing `ReportController` methods CT-A6 did not reach
-     * (`accountsReconciliationReport`, `getAccounts`, `getPayableSupplier`, `getReceivable`,
-     * `getTotalBank`, `getGatewayReceivable`, `show`, `rangeSalesSuppliers`, `getAccountBalance`)
+     * SIX pre-existing `ReportController` methods CT-A6 did not reach
+     * (`accountsReconciliationReport`, `getTotalBank`, `getGatewayReceivable`, `show`,
+     * `rangeSalesSuppliers`, `getAccountBalance`)
      * -- CT-A6-1 fixed `unpaidaccountsPayableReceivableReport()`, `creditors()` and
      * `creditorsPdf()` (the three this lane's own scope named), and tracked the rest here — found
      * by actually running this scan against the real file, not by inspection alone — rather than
@@ -1477,18 +1477,22 @@ class ArchitectureTest extends TestCase
      * so its entry was DELETED. That deletion is the proof: this ratchet fails on a stale entry,
      * so the line could not have been removed while the lookup was still there, and the lookup
      * cannot come back without failing the unlisted side.
+     *
+     * CT-A7 ROUND 3 shrank it by three more -- `getAccounts`, `getPayableSupplier` and
+     * `getReceivable` -- for finding R3-1: their `->first()` name anchors were the live fragility
+     * on company 2's chart. Ten entries at the start of this lane, six now.
      */
     private const ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS = [
         // A reconciliation report walking the same hardcoded-name chain. Not named in CT-A6's
         // scope; tracked here so a future lane closing it can simply delete this line.
         'ReportController::accountsReconciliationReport',
-        // An account-picker endpoint resolving 'Accounts Payable' by name to build its options.
-        'ReportController::getAccounts',
-        'ReportController::getPayableSupplier',
-        // Six more pre-existing hardcoded-name lookups this lane's own scan (scoped to
-        // ReportController.php — see this rule's class docblock) surfaced beyond the four above.
-        // None were named in CT-A6's brief; tracked here rather than left undetectable.
-        'ReportController::getReceivable', // Account::where('name', 'Accounts Receivable')
+        // CT-A7 ROUND 3 (R3-1) shrank this list by THREE. `getAccounts`, `getPayableSupplier` and
+        // `getReceivable` resolved 'Accounts Payable'/'Accounts Receivable' by name with a bare
+        // `->first()` and no ORDER BY — the live fragility R3-1 names, on the very screens company
+        // 2's 14,205.62 would have dropped off. They now go through
+        // `NamedAccountGroupResolver::primaryGroupId()`, so their entries are DELETED. The ratchet
+        // is what found them: it failed as STALE the moment the lookups left, which is the
+        // shrink-only mandate working as designed rather than being remembered.
         'ReportController::getTotalBank', // Account::where('name', 'Bank Accounts')
         'ReportController::getGatewayReceivable', // Account::where('name', 'Payment Gateway')
         'ReportController::show', // Account::where('name', 'clients')
@@ -1555,15 +1559,21 @@ class ArchitectureTest extends TestCase
             }
             PHP);
 
-        // (b) Shaped exactly like a real allow-listed entry (ReportController::getAccounts) --
-        // proves the scanner matches allow-list entries by "Class::method", not merely by filename.
+        // (b) Shaped exactly like a real allow-listed entry -- proves the scanner matches allow-list
+        // entries by "Class::method", not merely by filename.
+        //
+        // CT-A7 ROUND 3: this used to name `getAccounts`, and when R3-1 fixed that method and its
+        // entry was deleted, THIS proof started reporting its own synthetic file as an unlisted
+        // violation. That is the ratchet and its proof both working -- the failure was real, not
+        // noise -- but it does mean the example has to track the list. `getTotalBank` is the
+        // longest-standing remaining entry (`Account::where('name', 'Bank Accounts')`).
         file_put_contents($controllersDir.'/ReportController.php', <<<'PHP'
             <?php
             class ReportController
             {
-                public function getAccounts(Request $request)
+                public function getTotalBank(Request $request)
                 {
-                    $account = Account::where('name', 'Accounts Payable')->first();
+                    $account = Account::where('name', 'Bank Accounts')->first();
                     return $account;
                 }
             }
@@ -1606,11 +1616,12 @@ class ArchitectureTest extends TestCase
             );
 
             // Every REAL production allow-list entry is "stale" against this synthetic root except
-            // ReportController::getAccounts, which fixture (b) above deliberately reproduces --
-            // proving the allow-list match is method-scoped, not merely file-scoped.
+            // ReportController::getTotalBank, which fixture (b) above deliberately reproduces --
+            // proving the allow-list match is method-scoped, not merely file-scoped. (CT-A7 ROUND 3
+            // moved this from getAccounts, whose entry R3-1 deleted; see fixture (b)'s own note.)
             $expectedStale = array_values(array_diff(
                 self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS,
-                ['ReportController::getAccounts']
+                ['ReportController::getTotalBank']
             ));
             sort($expectedStale);
             $actualStale = $result['stale'];
@@ -1702,6 +1713,249 @@ class ArchitectureTest extends TestCase
         $stale = array_values(array_diff(self::ALLOW_LISTED_ACCOUNT_NAME_LOOKUP_METHODS, array_keys($hitAllowListed)));
 
         return ['unlisted' => $unlisted, 'stale' => $stale];
+    }
+
+    /**
+     * CT-A7 ROUND 3 ratchet (finding **R3-1**): **only one file in `app/Services/Accounting` may
+     * anchor on a control account's NAME, and it must be the one that handles multiplicity.**
+     *
+     * `accounts.name` carries NO uniqueness constraint — not in the schema, and `CoaController`
+     * validates it as `required|string|max:255`. So a second `Accounts Payable` is two clicks away.
+     * `TaskPayablePositionResolver::apSubtreeIds()` anchored with `->value('id')`, singular and
+     * unordered, and an adversarial verifier put a supplier leaf under a second such group, credited
+     * 700.000 through real HTTP routes, and watched the payables screen read 0.000.
+     *
+     * The deeper problem was that ONE lookup had THREE handlings inside a single PR —
+     * `->value('id')` in `apSubtreeIds()`, `->pluck('id')` in `AccountingController::
+     * createBankPayment()`, `->first()` in `::createPayableDetail()`. Fixing one would have left
+     * two. {@see \App\Services\Accounting\NamedAccountGroupResolver} is now the single answer, and
+     * this rule is what stops a fourth appearing next to it.
+     *
+     * Scoped to `app/Services/Accounting` — the engine's own directory, where this lane's
+     * completeness argument lives. The controller tree is deliberately NOT in scope: it holds
+     * dozens of pre-existing name-anchored lookups (`InvoiceController`, `RefundController`,
+     * `AgentController`, `AccountingController`), which the CT-A6-1 ratchet's own docblock already
+     * records as a separate, much larger remediation lane. Widening this rule to them without
+     * auditing each site would be a blanket allow-list pretending to be coverage.
+     *
+     * Two-sided and shrink-only like every other rule in this file: a hit outside the allow-list
+     * fails the build, and an allow-listed file with NO hit fails it too.
+     */
+    private const ALLOW_LISTED_CONTROL_NAME_ANCHOR_FILES = [
+        // EMPTY, and that is the outcome this rule was designed for rather than a gap in it.
+        // NamedAccountGroupResolver takes the name as a PARAMETER (`where('name', $name)`), so it
+        // never contains one of these literals and needs no exemption: the single permitted handler
+        // is permitted because it is name-AGNOSTIC, which is a stronger property than being
+        // allow-listed. A future file that hard-codes one of the two names gets reported, including
+        // the resolver itself if anyone ever inlines a literal into it.
+    ];
+
+    /** The control-account names whose multiplicity is the whole point of this rule. */
+    private const CONTROL_ACCOUNT_NAMES = ['Accounts Payable', 'Accounts Receivable'];
+
+    public function test_no_accounting_service_anchors_on_a_control_account_name(): void
+    {
+        $result = $this->scanForControlNameAnchors();
+
+        $message = '';
+
+        if (! empty($result['unlisted'])) {
+            $message .= 'File(s) under app/Services/Accounting anchoring on a control account NAME '
+                .'outside the allow-list. `accounts.name` has no uniqueness constraint, so a second '
+                .'account of the same name silently hides a whole subtree (CT-A7 R3-1: 700.000 on '
+                .'screen as 0.000). Route the lookup through '
+                ."App\\Services\\Accounting\\NamedAccountGroupResolver, which is plural by contract:\n"
+                .implode("\n", $result['unlisted'])."\n";
+        }
+
+        if (! empty($result['stale'])) {
+            $message .= 'Allow-listed control-name-anchor file(s) with NO hit (the anchor moved — shrink '
+                ."the list; remove from ArchitectureTest::ALLOW_LISTED_CONTROL_NAME_ANCHOR_FILES):\n"
+                .implode("\n", $result['stale']);
+        }
+
+        $this->assertTrue(empty($result['unlisted']) && empty($result['stale']), $message);
+    }
+
+    /**
+     * Mutation proof, same construction as this file's other rules: a synthetic tree carrying
+     * (a) an unlisted file anchoring on 'Accounts Payable', (b) an unlisted file anchoring on
+     * 'Accounts Receivable', and (c) a clean file that mentions the resolver but never compares a
+     * name — which must NOT be reported.
+     */
+    public function test_the_control_name_anchor_ratchet_actually_bites_a_synthetic_violation(): void
+    {
+        $root = sys_get_temp_dir().'/arch-control-name-anchor-mutation-'.uniqid();
+        $dir = $root.'/Services/Accounting';
+        mkdir($dir, 0777, true);
+
+        file_put_contents($dir.'/RogueAp.php', <<<'PHP'
+            <?php
+            class RogueAp
+            {
+                public function group(int $companyId)
+                {
+                    return Account::where('name', 'Accounts Payable')
+                        ->where('company_id', $companyId)
+                        ->value('id');
+                }
+            }
+            PHP);
+
+        file_put_contents($dir.'/RogueAr.php', <<<'PHP'
+            <?php
+            class RogueAr
+            {
+                public function group(int $companyId)
+                {
+                    return Account::where('company_id', $companyId)->where('name', 'Accounts Receivable')->first();
+                }
+            }
+            PHP);
+
+        file_put_contents($dir.'/Clean.php', <<<'PHP'
+            <?php
+            class Clean
+            {
+                public function group(int $companyId)
+                {
+                    return app(NamedAccountGroupResolver::class)->subtreeIds($companyId, self::AP_GROUP_NAME);
+                }
+            }
+            PHP);
+
+        try {
+            $result = $this->scanForControlNameAnchors($root);
+
+            foreach (['RogueAp.php', 'RogueAr.php'] as $expected) {
+                $this->assertNotEmpty(
+                    array_filter($result['unlisted'], fn (string $hit) => str_contains($hit, $expected)),
+                    "The synthetic violation {$expected} was not detected — the scanner regressed."
+                );
+            }
+
+            $this->assertEmpty(
+                array_filter($result['unlisted'], fn (string $hit) => str_contains($hit, 'Clean.php')),
+                'A file that only calls the resolver is not a violation — the scanner over-fires.'
+            );
+
+            $this->assertCount(2, $result['unlisted'], 'Exactly the two synthetic violations, nothing else.');
+
+            // The stale side is still exercised: it is wired to the same (currently empty) list the
+            // production run checks, so an entry added later without a matching hit fails there too.
+            $this->assertSame(self::ALLOW_LISTED_CONTROL_NAME_ANCHOR_FILES, $result['stale']);
+            $this->assertSame([], $result['stale'], 'the allow-list is empty by design — see its own note');
+        } finally {
+            array_map('unlink', glob($dir.'/*.php'));
+            @rmdir($dir);
+            @rmdir($root.'/Services');
+            @rmdir($root);
+        }
+    }
+
+    /**
+     * @param  ?string  $rootOverride  When given, a directory to walk instead of the real `app/`
+     *                                 tree — used only by the mutation proof above.
+     * @return array{unlisted: string[], stale: string[]}
+     */
+    private function scanForControlNameAnchors(?string $rootOverride = null): array
+    {
+        $appDir = $rootOverride ?? base_path('app');
+        $scanDir = rtrim(str_replace('\\', '/', $appDir), '/').'/Services/Accounting';
+
+        if (! is_dir($scanDir)) {
+            return ['unlisted' => [], 'stale' => self::ALLOW_LISTED_CONTROL_NAME_ANCHOR_FILES];
+        }
+
+        $unlisted = [];
+        $hitAllowListed = [];
+
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($scanDir, FilesystemIterator::SKIP_DOTS)
+        );
+
+        foreach ($iterator as $file) {
+            if (! $file->isFile() || strtolower($file->getExtension()) !== 'php') {
+                continue;
+            }
+
+            $source = file_get_contents($file->getRealPath());
+
+            if ($source === false) {
+                continue;
+            }
+
+            // COMMENTS STRIPPED FIRST, unlike this file's older scanners, which match whole-file
+            // text and carry allow-list entries whose only sin is a docblock (see
+            // ALLOW_LISTED_RAW_WRITER_FILES' note on PostingEngineDisabledException). A rule about
+            // executable anchors should not fire on prose DESCRIBING the anchor it removed — this
+            // very lane's own docblocks quote the old `where('name', 'Accounts Payable')` call to
+            // explain why it is gone, and allow-listing a file for that would blind the rule to a
+            // real anchor added to it later.
+            $source = $this->sourceWithoutComments($source);
+
+            // A NAME COMPARISON, not a mention: `where('name', 'Accounts Payable')` and friends.
+            // The pattern requires the `'name'` column next to the string, so a constant holding
+            // the name is not an anchor either.
+            $hit = false;
+
+            foreach (self::CONTROL_ACCOUNT_NAMES as $controlName) {
+                $pattern = '/[\'"]name[\'"]\s*,\s*[\'"]'.preg_quote($controlName, '/').'[\'"]/';
+
+                if (preg_match($pattern, $source) === 1) {
+                    $hit = true;
+
+                    break;
+                }
+            }
+
+            if (! $hit) {
+                continue;
+            }
+
+            $relativePath = ltrim(str_replace(
+                rtrim(str_replace('\\', '/', $appDir), '/'),
+                '',
+                str_replace('\\', '/', $file->getRealPath())
+            ), '/');
+
+            if (in_array($relativePath, self::ALLOW_LISTED_CONTROL_NAME_ANCHOR_FILES, true)) {
+                $hitAllowListed[$relativePath] = true;
+            } else {
+                $unlisted[] = $relativePath;
+            }
+        }
+
+        sort($unlisted);
+
+        $stale = array_values(array_diff(
+            self::ALLOW_LISTED_CONTROL_NAME_ANCHOR_FILES,
+            array_keys($hitAllowListed)
+        ));
+
+        return ['unlisted' => $unlisted, 'stale' => $stale];
+    }
+
+    /** PHP source with every comment and docblock removed, so a rule about code cannot fire on prose. */
+    private function sourceWithoutComments(string $source): string
+    {
+        $out = '';
+
+        foreach (token_get_all($source) as $token) {
+            if (is_array($token)) {
+                if ($token[0] === T_COMMENT || $token[0] === T_DOC_COMMENT) {
+                    continue;
+                }
+
+                $out .= $token[1];
+
+                continue;
+            }
+
+            $out .= $token;
+        }
+
+        return $out;
     }
 
     /**

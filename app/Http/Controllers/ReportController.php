@@ -34,6 +34,7 @@ use App\Services\TrialBalanceService;
 use App\Services\Accounting\DeferredRevenueScheduleReport;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\LedgerSource;
+use App\Services\Accounting\NamedAccountGroupResolver;
 use App\Services\Accounting\GeneralLedgerService;
 use App\Services\Accounting\BalanceSheetService;
 use App\Exceptions\Accounting\UnmappedPurposeException;
@@ -1216,9 +1217,14 @@ class ReportController extends Controller
             $branchId = $user->accountant->branch->id ?? null;
         }
 
-        $accountPayable = Account::where('name', 'Accounts Payable')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A7 ROUND 3 (R3-1): was a bare ->first() with no ORDER BY. Company 2 carries TWO
+        // accounts of this name on dev AND live, and the one holding the money is only
+        // returned today because MariaDB hands back insertion order — an optimizer change
+        // flips it with no code change and drops 14,205.62 off this screen. primaryGroupId()
+        // prefers the group whose subtree actually carries journal movement.
+        $accountPayable = Account::withoutGlobalScopes()->find(
+            app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Accounts Payable')
+        );
 
         if (!$accountPayable) {
             return back()->with('error', 'Accounts Payable account not found.');
@@ -1310,17 +1316,27 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $accountPayable = Account::where('name', 'Accounts Payable')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A7 ROUND 3 (R3-1): was a bare ->first() with no ORDER BY. Company 2 carries TWO
+        // accounts of this name on dev AND live, and the one holding the money is only
+        // returned today because MariaDB hands back insertion order — an optimizer change
+        // flips it with no code change and drops 14,205.62 off this screen. primaryGroupId()
+        // prefers the group whose subtree actually carries journal movement.
+        $accountPayable = Account::withoutGlobalScopes()->find(
+            app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Accounts Payable')
+        );
 
         if (!$accountPayable) {
             return redirect()->back()->with('error', 'Accounts Payable account not found.');
         }
 
-        $receivableAccount = Account::where('name', 'Accounts Receivable')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A7 ROUND 3 (R3-1): was a bare ->first() with no ORDER BY. Company 2 carries TWO
+        // accounts of this name on dev AND live, and the one holding the money is only
+        // returned today because MariaDB hands back insertion order — an optimizer change
+        // flips it with no code change and drops 14,205.62 off this screen. primaryGroupId()
+        // prefers the group whose subtree actually carries journal movement.
+        $receivableAccount = Account::withoutGlobalScopes()->find(
+            app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Accounts Receivable')
+        );
 
         if (!$receivableAccount) {
             return redirect()->back()->with('error', 'Accounts Receivable account not found.');
@@ -1428,9 +1444,14 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $accountPayable = Account::where('name', 'Accounts Payable')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A7 ROUND 3 (R3-1): was a bare ->first() with no ORDER BY. Company 2 carries TWO
+        // accounts of this name on dev AND live, and the one holding the money is only
+        // returned today because MariaDB hands back insertion order — an optimizer change
+        // flips it with no code change and drops 14,205.62 off this screen. primaryGroupId()
+        // prefers the group whose subtree actually carries journal movement.
+        $accountPayable = Account::withoutGlobalScopes()->find(
+            app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Accounts Payable')
+        );
 
         if (!$accountPayable) {
             return redirect()->back()->with('error', 'Accounts Payable account not found.');
@@ -1536,9 +1557,14 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $receivableAccount = Account::where('name', 'Accounts Receivable')
-            ->where('company_id', $companyId)
-            ->first();
+        // CT-A7 ROUND 3 (R3-1): was a bare ->first() with no ORDER BY. Company 2 carries TWO
+        // accounts of this name on dev AND live, and the one holding the money is only
+        // returned today because MariaDB hands back insertion order — an optimizer change
+        // flips it with no code change and drops 14,205.62 off this screen. primaryGroupId()
+        // prefers the group whose subtree actually carries journal movement.
+        $receivableAccount = Account::withoutGlobalScopes()->find(
+            app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Accounts Receivable')
+        );
 
         if (!$receivableAccount) {
             return redirect()->back()->with('error', 'Accounts Receivable account not found.');

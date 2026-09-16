@@ -19,14 +19,15 @@ use App\Models\SupplierCompany;
 use App\Models\Transaction;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\ChequeImageStore;
-use App\Services\Accounting\TaskPayablePositionResolver;
 use App\Services\Accounting\DocumentDraft;
+use App\Services\Accounting\LegacyLineCurrencyColumns;
 use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PostedDocument;
 use App\Services\Accounting\PostingSeam;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\ReconciliationService;
 use App\Services\Accounting\SequenceService;
+use App\Services\Accounting\TaskPayablePositionResolver;
 use App\Services\Accounting\VoucherOptions;
 use App\Services\Accounting\VoucherSubTypeGuard;
 use App\Services\TrialBalanceService;
@@ -1067,8 +1068,17 @@ class BankPaymentController extends Controller
                     'name' => $line->partyName ?? $displayName,
                     'type' => $line->ledgerType ?? $line->transactionType,
                     'type_reference_id' => $line->partyAccountRef,
-                    'currency' => $line->currency,
-                    'exchange_rate' => $line->exchangeRate,
+                    // ── CT-A9 T2 — OFF/ON currency parity ──────────────────────────────────────
+                    // Was `'currency' => $line->currency, 'exchange_rate' => $line->exchangeRate`
+                    // and nothing else: this writer wrote two of the four currency columns
+                    // PostingService::post() step 8 writes, so the same document carried
+                    // `original_currency`/`original_amount` when the engine was on and NULL when it
+                    // was off (CT-FX-EXPOSURE-2026-09-16.md §5.4 item 2). One rule, one
+                    // implementation — see {@see LegacyLineCurrencyColumns} for why this is a class
+                    // and not four more array keys (short version: R-CT10 makes the engine DERIVE
+                    // the rate on a base-currency line, so copying the draft's would have opened a
+                    // new drift while closing the old one).
+                    ...LegacyLineCurrencyColumns::for($line),
                     'amount' => $line->amount,
                     'reconciled' => $line->reconciled ?? 0,
                     'voucher_number' => $number,

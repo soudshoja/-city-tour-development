@@ -20,6 +20,7 @@ use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\Support\AccountingTestCase;
 
@@ -377,5 +378,135 @@ class NameAnchorMultiplicityR3Test extends AccountingTestCase
             'the unpaid-AP screen must show the legacy tree\'s money — this is the 14,205.62 company 2 '
             .'would silently lose the day MariaDB returns the two rows the other way round'
         );
+    }
+
+    // ── CT-A7 ROUND 4, finding R4-4 ─────────────────────────────────────────────────────────────
+
+    /**
+     * R4-4. Round 3's docblock said "the one whose subtree carries movement wins"; the code looped
+     * in ID ORDER and returned the first group with ANY movement, so when BOTH carried movement the
+     * LOWEST ID won. A screen could pin a tree holding 50.000 while the other held 14,205.620.
+     *
+     * The fixture is the flip the verifier demonstrated: the LOWER-id tree carries the SMALLER
+     * amount, so an id-order pick lands on the wrong one.
+     */
+    public function test_the_tree_with_the_most_money_wins_not_the_lowest_id(): void
+    {
+        $liabilities = $this->accountByCode('2000');
+
+        $small = $this->mintUnder((int) $liabilities->id, 'Accounts Payable', '2900');
+        $smallLeaf = $this->mintUnder($small, 'Small Payee Leaf', '2901');
+
+        $big = $this->mintUnder((int) $liabilities->id, 'Accounts Payable', '2910');
+        $bigLeaf = $this->mintUnder($big, 'Big Payee Leaf', '2911');
+
+        $this->assertLessThan($big, $small, 'the SMALL tree must have the LOWER id for this to bite');
+
+        $this->creditViaJv($smallLeaf, 50.0);
+        $this->creditViaJv($bigLeaf, 14205.62);
+
+        $this->assertSame(
+            $big,
+            app(NamedAccountGroupResolver::class)->primaryGroupId($this->companyId, 'Accounts Payable'),
+            'R4-4: when more than one tree carries movement, the one with the LARGEST |net| must win. '
+            .'Ranking by id pins whichever happens to be older, which is the 50.000-over-14,205.620 '
+            .'inversion the verifier demonstrated.'
+        );
+    }
+
+    /**
+     * R4-4, the reversal property. A reversal is a NEW ROW with the opposite sign, never a delete,
+     * so an `exists()` movement test counted a fully-reversed tree as carrying money forever and one
+     * stray entry from years ago could pin a tree permanently. Netting cancels it arithmetically.
+     */
+    public function test_a_fully_reversed_tree_does_not_outrank_a_live_one(): void
+    {
+        $liabilities = $this->accountByCode('2000');
+
+        $reversed = $this->mintUnder((int) $liabilities->id, 'Accounts Payable', '2900');
+        $reversedLeaf = $this->mintUnder($reversed, 'Reversed Payee Leaf', '2901');
+
+        $live = $this->mintUnder((int) $liabilities->id, 'Accounts Payable', '2910');
+        $liveLeaf = $this->mintUnder($live, 'Live Payee Leaf', '2911');
+
+        $this->assertLessThan($live, $reversed, 'the reversed tree must be the OLDER one');
+
+        // Posted, then fully reversed: both documents stay on the ledger and net to zero.
+        $this->creditViaJv($reversedLeaf, 900.0);
+        $this->debitThroughJv($reversedLeaf, 900.0);
+
+        $this->creditViaJv($liveLeaf, 120.0);
+
+        $this->assertEqualsWithDelta(
+            0.0,
+            $this->engineNetCreditOver([$reversedLeaf]),
+            0.0005,
+            'the reversed tree must really net to zero'
+        );
+
+        $this->assertSame(
+            $live,
+            app(NamedAccountGroupResolver::class)->primaryGroupId($this->companyId, 'Accounts Payable'),
+            'R4-4: a tree that nets to zero must not outrank a live one just because it is older and '
+            .'once had a row — which is exactly what the exists() test did'
+        );
+    }
+
+    /**
+     * R4-4, the WARNING. A duplicate chart is a chart problem for the owner to rule on, not
+     * something the code should compensate for silently forever.
+     */
+    public function test_duplicate_control_names_are_logged_at_warning(): void
+    {
+        $liabilities = $this->accountByCode('2000');
+        $second = $this->mintUnder((int) $liabilities->id, 'Accounts Payable', '2900');
+        $leaf = $this->mintUnder($second, 'Payee Leaf', '2901');
+        $this->creditViaJv($leaf, 30.0);
+
+        $logged = [];
+        Log::listen(function ($message) use (&$logged) {
+            $logged[] = ['level' => $message->level, 'context' => $message->context];
+        });
+
+        app(NamedAccountGroupResolver::class)->primaryGroupId($this->companyId, 'Accounts Payable');
+
+        $warnings = array_filter(
+            $logged,
+            fn (array $m) => $m['level'] === 'warning'
+                && ($m['context']['event'] ?? null) === 'accounting.duplicate_control_account_name'
+        );
+
+        $this->assertNotEmpty($warnings, 'the duplicate must surface to the owner, not be absorbed');
+
+        $context = array_values($warnings)[0]['context'];
+        $this->assertSame($this->companyId, $context['company_id']);
+        $this->assertContains($second, $context['account_ids'], 'and the ids must be named');
+    }
+
+    /** A single group must NOT warn — otherwise the signal is noise on every healthy company. */
+    public function test_a_single_group_does_not_warn(): void
+    {
+        $logged = [];
+        Log::listen(function ($message) use (&$logged) {
+            $logged[] = $message->context['event'] ?? null;
+        });
+
+        app(NamedAccountGroupResolver::class)->primaryGroupId($this->companyId, 'Accounts Payable');
+
+        $this->assertNotContains('accounting.duplicate_control_account_name', $logged);
+    }
+
+    /** Debit an account through the manual JV "payable" screen — used to reverse a credit. */
+    private function debitThroughJv(int $accountId, float $amount): void
+    {
+        $this->actingAs($this->companyUser())->post(route('payable-details.payable-store'), [
+            'transaction_date' => now()->format('Y-m-d'),
+            'account_id' => $accountId,
+            'branch_id' => $this->branchId,
+            'bank_account' => $this->bankAccountId,
+            'description' => 'R4-4 reversal',
+            'amount' => $amount,
+            'type' => 'payable',
+        ])->assertRedirect();
     }
 }

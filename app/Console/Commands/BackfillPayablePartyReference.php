@@ -72,6 +72,14 @@ use Illuminate\Support\Str;
  * that undid nothing is not a success. A repeat undo of a run this command HAS fully rolled back
  * still exits 0, because there really is nothing left to do.
  *
+ * CT-A7 ROUND 4 (R4-5) — ONE RUN ID PER INVOCATION. A repair that was bounded with `--limit` and
+ * then resumed writes its before-images under a DIFFERENT run id each time, so undoing the whole
+ * repair takes one `--rollback` per run id, in any order. Every `--apply` echoes its own id and its
+ * own undo command, and they all live in `coa_linkage_changes.run_id`, so nothing is lost — but an
+ * operator who runs the repair in three passes and then rolls back one id has undone one third of
+ * it, not all of it. `SELECT DISTINCT run_id FROM coa_linkage_changes WHERE subject_table =
+ * 'journal_entries' AND rolled_back_at IS NULL` lists what is still outstanding.
+ *
  * Nothing here touches `debit`, `credit`, `account_id` or any header column: no money moves, no
  * document changes, and the trial balance is byte-identical before and after. `type_reference_id`
  * is a party-attribution column.
@@ -82,7 +90,7 @@ class BackfillPayablePartyReference extends Command
                             {--company= : Company id to process (default: every company with accounts)}
                             {--dry-run : Report the full change list without writing anything (the default whenever --apply is absent)}
                             {--apply : Actually write the party references}
-                            {--rollback= : Undo a previous --apply run by its run id}
+                            {--rollback= : Undo a previous --apply run by its run id. A bounded run that was resumed has ONE run id PER --apply invocation, so undoing the whole repair needs one --rollback per id.}
                             {--limit= : Cap the number of rows considered per company, for a staged rollout}
                             {--batch-size=500 : Rows per transaction. One batch = one transaction = one commit.}';
 
@@ -148,6 +156,10 @@ class BackfillPayablePartyReference extends Command
         if ($apply && $totalStamped > 0) {
             $this->line("  run id: {$runId}");
             $this->line("  undo with: php artisan accounting:backfill-payable-party --rollback={$runId}");
+            // CT-A7 R4-5: say it every time, because the operator most likely to need it is the one
+            // running a staged repair who has not noticed the id changed.
+            $this->line('  NOTE: each --apply invocation gets its OWN run id. A repair run in several '
+                .'bounded passes needs one --rollback per id to undo it all.');
         }
 
         if (! $apply) {

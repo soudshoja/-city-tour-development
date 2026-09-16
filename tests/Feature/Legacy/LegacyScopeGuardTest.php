@@ -10,6 +10,7 @@ use App\Services\Onboarding\Scope\LegacyLoadScope;
 use App\Services\Onboarding\Scope\LegacyScopeRefused;
 use App\Services\Onboarding\Scope\LegacySerialSchemaPlanner;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Tests\Concerns\PreparesLegacyPilotFence;
 use Tests\TestCase;
@@ -472,9 +473,24 @@ class LegacyScopeGuardTest extends TestCase
         // prevent, and it must now be refused rather than silently producing an unreversible load.
         $this->assertGreaterThan(0, DB::table('branches')->where('company_id', self::FLOOR)->count());
 
-        $this->artisan('legacy:scope', ['--company' => self::FLOOR, '--apply' => true])
-            ->expectsOutputToContain('already owns rows')
-            ->assertExitCode(1);
+        // Asserted the same way LegacyUnloadCommandTest does, and for the same reason:
+        // `legacy:scope` has FOUR refusal paths (sandbox, protected company, an existing company
+        // outside the band, and this one) and every one returns 1, while PendingCommand::run()
+        // asserts the exit code BEFORE it verifies output expectations — so
+        // `->expectsOutputToContain(...)->assertExitCode(1)` would pass whichever of the four
+        // fired. See PLAN.md §11a: this shape is repo-wide.
+        $this->withoutMockingConsoleOutput();
+
+        $exitCode = Artisan::call('legacy:scope', ['--company' => self::FLOOR, '--apply' => true]);
+        $output = (string) preg_replace('/\s+/', ' ', Artisan::output());
+
+        $this->assertStringContainsString(
+            'already owns rows',
+            $output,
+            'legacy:scope refused for some OTHER reason than the company already having rows'
+        );
+        $this->assertStringContainsString('structurally impossible', $output);
+        $this->assertSame(1, $exitCode);
 
         $this->assertFalse(
             app(\App\Services\Onboarding\Scope\LegacyCompanyGuard::class)

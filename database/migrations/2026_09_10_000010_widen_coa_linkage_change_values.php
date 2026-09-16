@@ -26,6 +26,15 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // AK-PORT F7c: guarded so a half-applied run can be re-run. DDL is non-transactional
+        // on MariaDB, so a migration that dies partway leaves its earlier statements applied
+        // and no `migrations` row -- the shape that halted the 2026-09-02 prod migrate.
+        // ->change() is already idempotent (widening an already-wide column is a no-op), but
+        // the table itself may not exist if 000021 was skipped or rolled back.
+        if (! Schema::hasTable('coa_linkage_changes')) {
+            return;
+        }
+
         Schema::table('coa_linkage_changes', function (Blueprint $table) {
             $table->text('before_value')->nullable()->change();
             $table->text('after_value')->nullable()->change();

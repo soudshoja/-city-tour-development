@@ -61,6 +61,15 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // AK-PORT 80-2: guarded PER ARTEFACT, not by a single proxy. Laravel emits one
+        // statement per added column and per index, and DDL is non-transactional on MariaDB,
+        // so a crash can leave any subset applied. A guard that asks only about the FIRST
+        // artefact returns early on a half-applied table and marks the migration DONE with
+        // the rest still missing -- worse than no guard at all.
+        if (Schema::hasColumn('invoice_receipts', 'settlement_channel')) {
+            return;
+        }
+
         Schema::table('invoice_receipts', function (Blueprint $table) {
             $table->string('settlement_channel', 24)->nullable()->after('bank_account_id');
         });

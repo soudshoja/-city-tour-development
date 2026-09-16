@@ -46,6 +46,39 @@ class MobileControllerW7MTest extends AccountingTestCase
      * @return array{company: Company, branch: Branch, agent: Agent, client: Client,
      *               supplier: Supplier, task: Task, authUser: User}
      */
+
+    /**
+     * CT-A10 — assert the CONTRACT, not the symptom.
+     *
+     * These two tests exist to prove what `updateInvoice()` does to the LEDGER. The HTTP status is
+     * not that: it is currently 500 because of a pre-existing, unrelated `status='Assigned'` ENUM
+     * defect that HEAD's per-task catch turns into `response()->json(..., 500)` (see each test's own
+     * comment). Pinning the literal 500 tied these tests to a bug — the day someone fixes that ENUM
+     * the status becomes 200 and both tests go red for a reason that has nothing to do with them.
+     *
+     * What genuinely must hold is narrower and more durable: **the request was authorised and
+     * reached the accounting path.** A 401 or a 403 means it did not, and that is the regression
+     * worth catching — it is exactly what happened when CT-F29 added
+     * `userMayManageInvoice()` and this fixture's caller turned out to belong to no company.
+     * Everything else about the outcome is asserted on the ledger rows below, which is where the
+     * behaviour under test actually lives.
+     */
+    private function assertReachedAccountingPath(\Illuminate\Testing\TestResponse $response): void
+    {
+        $status = $response->getStatusCode();
+
+        $this->assertNotContains($status, [401, 403], sprintf(
+            'the caller must be authorised to update this invoice (CT-F29 userMayManageInvoice); got %d, '
+                .'which means the request never reached the accounting path',
+            $status
+        ));
+
+        $this->assertContains($status, [200, 500], sprintf(
+            'expected either 200, or the 500 produced by the pre-existing status=\'Assigned\' ENUM defect; got %d',
+            $status
+        ));
+    }
+
     private function makeFixtures(): array
     {
         $company = Company::factory()->create();
@@ -77,10 +110,19 @@ class MobileControllerW7MTest extends AccountingTestCase
             'currency' => 'KWD',
         ]);
 
-        $branchOwner = User::factory()->create();
+        // CT-A10: the acting user OWNS this company's branch, so `User::$company` resolves to it.
+        //
+        // This fixture used to create a throwaway `$branchOwner` for the branch and a SEPARATE,
+        // unattached `$authUser` to act as. That was fine until CT-F29 added
+        // `MobileController::userMayManageInvoice()` — "only the invoice's own company may rewrite
+        // its ledger rows" — at which point the unattached user started (correctly) getting a 403
+        // from `updateInvoice()`/`deleteInvoice()`, and these two tests began asserting a status
+        // that no longer described the code path they exist to cover. The guard is right; the
+        // fixture's caller was not a member of any company, which no real caller is.
+        $authUser = User::factory()->create();
         $branch = Branch::factory()->create([
             'company_id' => $company->id,
-            'user_id' => $branchOwner->id,
+            'user_id' => $authUser->id,
         ]);
 
         $agentType = AgentType::firstOrCreate(['name' => 'w7m-test-type']);
@@ -103,7 +145,6 @@ class MobileControllerW7MTest extends AccountingTestCase
             'total' => 350.0,
         ]);
 
-        $authUser = User::factory()->create();
         // Account/JournalEntry/Transaction all use App\Traits\BelongsToCompany -- once
         // actingAs() makes Auth::check() true, every query against them is globally scoped to
         // getCompanyId(Auth::user()), which for an ADMIN role (the factory default) reads
@@ -345,7 +386,7 @@ class MobileControllerW7MTest extends AccountingTestCase
         // instead of a 200. Unchanged by W7.M; the accounting reverse+repost below already
         // completed (postMobileTaskSale() runs BEFORE the status='Assigned' line, same relative
         // position HEAD always had) regardless of this later, unrelated failure.
-        $update->assertStatus(500);
+        $this->assertReachedAccountingPath($update);
 
         // The OLD document must be reversed, never mutated/deleted.
         $oldTransaction->refresh();
@@ -423,7 +464,7 @@ class MobileControllerW7MTest extends AccountingTestCase
         // accounts FK constraint is enforced. Caught by the per-task catch, which (unlike
         // store()'s) explicitly returns 500. A genuine, pre-existing HEAD defect this cutover
         // preserves byte-for-byte rather than "fixes".
-        $update->assertStatus(500);
+        $this->assertReachedAccountingPath($update);
 
         // Legacy behaviour: the OLD InvoiceDetail is hard-deleted, matching HEAD.
         $this->assertNull(InvoiceDetail::find($oldDetail->id));

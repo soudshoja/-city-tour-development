@@ -11,6 +11,7 @@ use Database\Seeders\CoaSeeder;
 use Database\Seeders\SystemAccountsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\AssertionFailedError;
 use PHPUnit\Framework\ExpectationFailedException;
 use Tests\Support\AccountingInvariants;
 use Tests\TestCase;
@@ -171,22 +172,90 @@ class AccountingInvariantsTest extends TestCase
     }
 
     /**
-     * Negative control, part 2 — the tolerance boundary itself: the real, current CoaSeeder ships
-     * exactly one known, explicitly deferred duplicate ('2130': 'Suppliers (Hotels)' / 'Suppliers
-     * (Ferry)'). A freshly seeded company must pass this invariant despite that pair — proving the
-     * tolerance is narrow (this ONE pair) rather than accidentally silencing duplicates in
-     * general, which the test above already proves it does not.
+     * ── RE-DERIVED BY CT-A10 ────────────────────────────────────────────────────────────────────
+     * This test used to be called `..._tolerates_the_one_known_coaseeder_pair` and asserted that a
+     * freshly seeded company passes the invariant **despite** CoaSeeder shipping a known duplicate
+     * ('2130': Suppliers (Hotels) / Suppliers (Ferry)) that the invariant explicitly excused.
+     *
+     * **Neither half of that is true any more, and neither should be.** CT-A4b fixed the seeder at
+     * source (Ferry moved to '2131') and removed the named exception from
+     * {@see AccountingInvariants::assertNoDuplicateAccountCodes()}, whose failure message now reads
+     * *"every duplicate code is now a defect"*. So the test was asserting a tolerance that the code
+     * no longer has and that the owner's own ruling says it must not have.
+     *
+     * It failed **safely**, at its own precondition (*"CoaSeeder must still ship the known 2130
+     * duplicate for this test to prove anything"*) rather than passing vacuously — the original
+     * author's guard doing exactly its job. The expectation was re-derived rather than the number
+     * bumped.
+     *
+     * **What it is re-derived onto.** Its purpose was to prove the invariant is NARROW — that it
+     * excuses precisely one thing and is not accidentally silencing duplicates in general. The
+     * invariant has exactly one exclusion left, and it is a real one that can still occur:
+     * `whereNull('deleted_at')`. So this now walks that boundary on a REAL seeded chart (~100
+     * accounts), not a two-row fixture:
+     *
+     *   1. a freshly seeded chart passes — CT-A4b's fix, re-proved at the invariant layer;
+     *   2. introduce a live duplicate on that chart and the invariant FIRES — it is not silenced by
+     *      chart size or by the seeder's own codes;
+     *   3. soft-delete one side and it PASSES again — the one exclusion, honoured.
+     *
+     * **What this test is not.** It is a control over the invariant, which is a TEST helper. It has
+     * never run against the production chart and does not now. The 290 duplicate codes CT-A4 found
+     * on the real City Travelers chart are untouched by it and remain an owner decision
+     * (`accounting:coa-duplicates --renumber`, still unrun).
      */
-    public function test_assert_no_duplicate_account_codes_tolerates_the_one_known_coaseeder_pair(): void
+    public function test_assert_no_duplicate_account_codes_is_narrow_on_a_real_seeded_chart(): void
     {
         $company = Company::factory()->create();
         CoaSeeder::run($company->id);
-        (new SystemAccountsSeeder())->run();
+        (new SystemAccountsSeeder)->run();
 
-        $this->assertSame(
-            2,
-            Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '2130')->count(),
-            'Precondition: CoaSeeder must still ship the known 2130 duplicate for this test to prove anything.'
+        $chartSize = Account::withoutGlobalScopes()->where('company_id', $company->id)->count();
+        $this->assertGreaterThan(
+            50,
+            $chartSize,
+            'Precondition: this must run against a REAL seeded chart, not a handful of rows.'
+        );
+
+        // 1. The seeded chart is clean. CT-A4b's fix, seen from the invariant rather than the seeder.
+        $this->assertNoDuplicateAccountCodes($company->id);
+
+        // 2. A live duplicate on that same chart MUST fire. Deliberately reusing a code the seeder
+        //    already issued, which is the shape a mis-minted supplier leaf really takes.
+        $existing = Account::withoutGlobalScopes()
+            ->where('company_id', $company->id)->whereNotNull('code')->orderBy('id')->firstOrFail();
+
+        $clash = Account::factory()->create([
+            'company_id' => $company->id,
+            'code' => $existing->code,
+        ]);
+
+        $fired = false;
+        try {
+            $this->assertNoDuplicateAccountCodes($company->id);
+        } catch (AssertionFailedError $e) {
+            $fired = true;
+            $this->assertStringContainsString('accounts sharing code', $e->getMessage());
+            $this->assertStringContainsString((string) $existing->code, $e->getMessage());
+        }
+
+        $this->assertTrue($fired, 'the invariant must catch a duplicate introduced onto a full seeded chart');
+
+        // 3. Mark one side deleted: the invariant's ONE remaining exclusion, and it must be honoured.
+        //    A code freed by a delete is not a duplicate — that is what `whereNull('deleted_at')` is
+        //    for, and it is the only thing this invariant still excuses.
+        //
+        //    CT-A10 finding: `deleted_at` is written DIRECTLY here, not via `$clash->delete()`,
+        //    because `App\Models\Account` does NOT use the `SoftDeletes` trait even though the
+        //    `accounts` table has carried a `deleted_at` column since
+        //    `2026_08_24_120002_add_engine_columns_to_accounts_table`. `->delete()` on that model is
+        //    a HARD delete, which would remove the row and prove nothing about the exclusion. The
+        //    invariant filters on the COLUMN, so the column is what this step sets — which is also
+        //    the only way the state arises today (a data repair, or the day the trait is adopted).
+        DB::table('accounts')->where('id', $clash->id)->update(['deleted_at' => now()]);
+        $this->assertNotNull(
+            DB::table('accounts')->where('id', $clash->id)->value('deleted_at'),
+            'Precondition: the clash row must be marked deleted, not removed.'
         );
 
         $this->assertNoDuplicateAccountCodes($company->id);

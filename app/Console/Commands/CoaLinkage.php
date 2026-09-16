@@ -10,6 +10,7 @@ use App\Models\CoaLinkageChange;
 use App\Models\CoaLinkageFinding;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\AccountService;
+use App\Services\Accounting\BeforeImageOwnership;
 use App\Services\Accounting\PurposeHealthService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
@@ -513,12 +514,14 @@ class CoaLinkage extends Command
             // STDERR (CT-A3-R3 §4.3 measured exactly that).
             $this->line('  Run contains before-images for: '.$foreignPairs->implode(', '));
 
-            if ($foreignPairs->contains(fn ($pair) => str_starts_with((string) $pair, 'journal_entries.'))) {
-                $this->line('  Undo it with: php artisan accounting:backfill-payable-party --rollback='.$runId);
-            }
-
-            if ($foreignPairs->contains('accounts.supplier_id')) {
-                $this->line('  Undo it with: php artisan accounting:backfill-supplier-leaf --rollback='.$runId);
+            // ── CT-A9 T3 ──────────────────────────────────────────────────────────────────────
+            // Was two hand-rolled branches, one of which matched ANY `journal_entries.*` pair to
+            // `accounting:backfill-payable-party`. Two more commands write into this table now
+            // (`journal_entries.currency`/`.exchange_rate` and `tasks.total`/`.price`), so a
+            // prefix match names the wrong owner and a run touching `tasks` named no owner at all.
+            // One map, keyed on the full pair: {@see \App\Services\Accounting\BeforeImageOwnership}.
+            foreach ($foreignPairs->map(fn ($pair) => BeforeImageOwnership::commandFor([$pair]))->unique() as $command) {
+                $this->line('  Undo it with: php artisan '.$command.' --rollback='.$runId);
             }
 
             $this->line('  Nothing was restored.');

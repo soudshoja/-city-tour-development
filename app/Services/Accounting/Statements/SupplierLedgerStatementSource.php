@@ -6,6 +6,7 @@ namespace App\Services\Accounting\Statements;
 
 use App\Models\JournalEntry;
 use App\Services\Accounting\AccountResolver;
+use App\Services\Accounting\LedgerSource;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -29,7 +30,10 @@ use Illuminate\Support\Collection;
  */
 final class SupplierLedgerStatementSource implements PartyStatementSourceInterface
 {
-    public function __construct(private readonly AccountResolver $accountResolver) {}
+    public function __construct(
+        private readonly AccountResolver $accountResolver,
+        private readonly LedgerSource $ledgerSource,
+    ) {}
 
     public function documents(int $companyId, int $partyId, Carbon $asOf): Collection
     {
@@ -46,10 +50,17 @@ final class SupplierLedgerStatementSource implements PartyStatementSourceInterfa
      */
     private function build(int $companyId, int $partyId, Carbon $asOf): array
     {
-        $account = $this->accountResolver->resolve('PAYABLE_CONTROL', $companyId);
+        // CT-A7-1 (owner ruling R-CT9): a payable is read at its CURRENT position, so the statement
+        // and the AP ageing buckets StatementService builds on it span every leaf a party's payable
+        // can sit on — the PAYABLE_CONTROL leaf this class used to read alone, the per-service
+        // SERVICE_PAYABLE leaves, AND any leaf an R-CT8 payee nomination moved it to. Resolving
+        // that set is {@see LedgerSource::payableAccountIds()}'s job, in ONE place shared with the
+        // unpaid-AP, creditors and creditors-PDF screens, so a reassigned supplier's statement can
+        // never disagree with the payment-run screen about what is owed.
+        $accountIds = $this->ledgerSource->payableAccountIds($companyId, $this->accountResolver);
 
         $lines = JournalEntry::query()
-            ->where('account_id', $account->id)
+            ->whereIn('account_id', $accountIds)
             ->where('type_reference_id', $partyId)
             ->where('posting_date', '<=', $asOf->copy()->endOfDay())
             ->whereHas('transaction', fn ($q) => $q->where('posting_status', 'posted'))

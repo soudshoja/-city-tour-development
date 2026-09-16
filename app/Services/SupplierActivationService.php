@@ -122,6 +122,21 @@ class SupplierActivationService
                 'is_active' => true,
             ]);
 
+            // CT-A7-2. `SupplierCompany` extends Illuminate\...\Relations\Pivot, which declares
+            // `public $incrementing = false` — so on a row this call CREATES (as opposed to finds),
+            // Eloquent never reads back the auto-increment key and `$supplierCompany->id` is NULL,
+            // even though `supplier_companies` has a real `$table->id()`. Every FIRST activation of
+            // a supplier therefore minted its payable and cost leaves with
+            // `accounts.supplier_company_id = NULL`, and the leaf had no link back to its party at
+            // all. Re-reading the row by its natural key is the narrow fix; flipping $incrementing
+            // on a Pivot used across several relations is not this lane's change to make.
+            if ($supplierCompany->id === null) {
+                $supplierCompany = SupplierCompany::where('supplier_id', $supplier->id)
+                    ->where('company_id', $company->id)
+                    ->orderByDesc('id')
+                    ->first() ?? $supplierCompany;
+            }
+
             $data = [
                 'name' => $supplier->name,
                 'level' => 4,
@@ -131,6 +146,34 @@ class SupplierActivationService
                 'company_id' => $company->id,
                 'supplier_company_id' => $supplierCompany->id,
             ];
+
+            // CT-A7-2: the party link the REST of this codebase reads —
+            // `BankPaymentController::resolveSupplierBankDetail()` (the PV screen's own
+            // supplier-bank auto-select) and, since CT-A7-2, `voucherPartyRef()`, which is what puts
+            // the supplier on a payment voucher's payable leg so the supplier filter on the
+            // creditors and unpaid-AP screens shows the payments as well as the invoices (R3-10a).
+            // It was never stamped here; the pivot id above was the only link, and (see the comment
+            // above) it was NULL on every first activation.
+            //
+            // ── CT-A7 ROUND 2, finding F5 — PAYABLE LEAF ONLY ───────────────────────────────────
+            // Round 1 put this inside `$data`, which is spread into BOTH leaves below.
+            // `App\Models\Supplier::payableAccount()` is `hasOne(Account::class, 'supplier_id')`
+            // with no root, parent or company constraint, so the column on two rows per supplier
+            // per company makes that relation match two and return whichever row the database
+            // hands back first — it can return the EXPENSE account where a payable is meant.
+            //
+            // Constraining the relation by root was considered and rejected: the column's MEANING
+            // is the problem, not the query. `accounts.supplier_id` answers "is this a supplier's
+            // payable account?" for `resolveSupplierBankDetail()` and, since CT-A7-2, for
+            // `voucherPartyRef()`. A cost account is where that supplier's cost is EXPENSED, not
+            // what is owed to them, so it answers neither — the honest fix is to stop claiming it
+            // does, rather than to teach one of three readers to ignore a value the other two
+            // would still trust.
+            //
+            // `supplier_company_id` deliberately stays on both: it is a pre-existing "this account
+            // belongs to that supplier-company pairing" link, it is not what `payableAccount()`
+            // keys on, and dropping it would change behaviour this finding does not name.
+            $payableData = $data + ['supplier_id' => $supplier->id];
 
             // CT-D2b: PR #14's detection, unchanged in substance, moved off the log and onto a
             // record. It MUST run here — "was this account a leaf, with a purpose mapped directly
@@ -152,7 +195,7 @@ class SupplierActivationService
             // active or not. When a pool has no numeric children yet, generate() returns null and
             // the BUG-H1 documented fallback applies — the newly persisted row's own id becomes its
             // code (see AccountService::create(), the other consumer of this same contract).
-            $payable = new Account($data + [
+            $payable = new Account($payableData + [
                 'parent_id' => $accountPayable->id,
                 'root_id' => $accountPayable->root_id,
             ]);

@@ -39,9 +39,25 @@ abstract class AccountingTestCase extends TestCase
     }
 
     /**
-     * CT-D2b — drop the `GATEWAY_CLEARING_*` / `GATEWAY_FEE_EXPENSE_*` mappings that
-     * `SystemAccountsSeeder` parks on the `1300 Payment Gateway` POOL itself, so a bare seeded
-     * fixture has the chart shape a real company's does.
+     * CT-D2b — drop this company's gateway CLEARING mappings, so a bare seeded fixture is "a
+     * company whose gateways are not configured yet" rather than one carrying the pooled shape.
+     *
+     * ── CT-A7-5 RE-DERIVED (this helper's own instruction, followed) ────────────────────────────
+     * The version below used to delete every `system_accounts` row pointing AT the pool account,
+     * and asserted it deleted at least one, with the message "SystemAccountsSeeder is expected to
+     * park the gateway purposes on the Payment Gateway pool itself. If it no longer does, this
+     * helper is stale — re-derive it." CT-A7-5 is exactly that event: COA-DESIGN-PROPOSAL
+     * correction C1 now seeds the five per-gateway clearing leaves (1310-1314) under `1300`, so
+     * `resolveGatewayClearing()`'s NAME-matching branch maps each purpose onto its own leaf and the
+     * bare-pool branch never runs. Nothing is parked on the pool any more, `$dropped` became 0, and
+     * the pre-condition fired on all five call sites.
+     *
+     * Re-derived to the INTENT rather than to the old mechanism: delete the `GATEWAY_CLEARING_*`
+     * mappings wherever they now sit. The callers' premise — a company whose gateways are simply
+     * not configured, yielding `UNRESOLVED_PURPOSE` / `ruling` rows rather than blocking ones — is
+     * unchanged and is what the paragraphs below still describe.
+     *
+     * The history below is kept because it is the record of WHY CT-A7-5 changed the seeder.
      *
      * Why any fixture that runs `accounting:coa-linkage --apply` needs this on the merged CT-D2
      * head, and why it is a FIXTURE change and not a production one:
@@ -69,8 +85,9 @@ abstract class AccountingTestCase extends TestCase
      * yields `UNRESOLVED_PURPOSE` / `ruling` rows instead of blocking ones.
      *
      * The collision itself — `SystemAccountsSeeder` deliberately PRESERVES a pool mapping that
-     * `CoaLinkage::verifyPurposes()` now calls a defect this run introduced — is reported as
-     * **CT-D2b-1** and left for the next lane.
+     * `CoaLinkage::verifyPurposes()` now calls a defect this run introduced — was reported as
+     * **CT-D2b-1** and is CLOSED by CT-A7-5 (correction C1), which removes the pooled state the two
+     * rules disagreed about instead of adding a guard to one of them.
      */
     protected function dropPooledGatewayMappings(int $companyId): void
     {
@@ -83,14 +100,18 @@ abstract class AccountingTestCase extends TestCase
 
         $dropped = \Illuminate\Support\Facades\DB::table('system_accounts')
             ->where('company_id', $companyId)
-            ->where('account_id', $poolId)
+            ->where(function ($q) use ($poolId) {
+                $q->where('account_id', $poolId)
+                    ->orWhere('purpose_code', 'like', 'GATEWAY_CLEARING_%');
+            })
             ->delete();
 
         $this->assertGreaterThan(
             0,
             $dropped,
-            'Fixture pre-condition: SystemAccountsSeeder is expected to park the gateway purposes on '.
-            'the Payment Gateway pool itself. If it no longer does, this helper is stale — re-derive it.'
+            'Fixture pre-condition: this company is expected to have gateway CLEARING mappings to drop '
+            .'(on the 1300 pool before CT-A7-5, on the per-gateway 1310-1314 leaves after it). If it has '
+            .'neither, this helper is stale — re-derive it.'
         );
     }
 

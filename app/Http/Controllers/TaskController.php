@@ -43,6 +43,7 @@ use App\Models\SupplierSurchargeReference;
 use App\Models\User;
 use App\Models\TaskPendingAction;
 use App\Services\Accounting\PostingSeam;
+use App\Services\Accounting\TaskPayablePositionResolver;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\RevenueRecognitionService;
 use App\Services\Accounting\SaleDraftBuilder;
@@ -5661,7 +5662,10 @@ class TaskController extends Controller
     {
         Log::info('Task ID: ' . $task->id . '. Updating journal entries for payment method account ID: ' . $payment_method_account_id);
 
-        $paymentMethodAccount = Account::find($payment_method_account_id);
+        $paymentMethodAccount = Account::withoutGlobalScopes()
+            ->whereKey($payment_method_account_id)
+            ->whereNull('deleted_at')
+            ->first();
 
         if (!$paymentMethodAccount) {
             Log::error('Payment method account not found for ID: ' . $payment_method_account_id);
@@ -5676,6 +5680,116 @@ class TaskController extends Controller
         $supplier = Supplier::find($task->supplier_id);
         $branchId = $this->getTaskBranchId($task);
         $companyId = (int) $task->company_id;
+
+        // ── CT-A7 ROUND 2, finding F4 — the nomination DESTINATION is now constrained ────────────
+        // This used to be a bare `Account::find()`, and there was no AP-subtree check at all, so a
+        // bank, an expense or a suspense account was nominatable.
+        //
+        // `App\Models\Account` DOES carry a global company scope -- via `use App\Traits\
+        // BelongsToCompany` (app/Models/Account.php:11), whose bootBelongsToCompany() registers
+        // addGlobalScope('company', ...). CT-A7 ROUND 3 (R3-2) corrects an earlier version of this
+        // comment that asserted the opposite; that claim was wrong and would have had a future
+        // reader make a scoping decision on it. What is true is WHEN it binds (see
+        // app/Helper/helper.php:6-43):
+        //
+        //   - ADMIN            -> always binds; getCompanyId() falls back to session('company_id', 1)
+        //   - COMPANY          -> binds, UNLESS the user is linked to no company (then null)
+        //   - BRANCH / AGENT / ACCOUNTANT with no branch or company, and any unknown role -> null
+        //   - unauthenticated  -> does not bind at all (console commands, queued jobs, seeders)
+        //
+        // A null company id makes the scope a no-op, so "scoped model" is not by itself a tenant
+        // guarantee here, and this method is reachable in states where it does not bind.
+        //
+        // `TaskPayablePositionResolver::nominatedPayeeAccountIdsForCompany()`
+        // then plucks every account_id on the posted document straight into
+        // `LedgerSource::payableAccountIds()`. Round 1's docblock claimed the union "can never hide
+        // money", which is true and is not the whole claim: nominating a bank, an expense, a
+        // suspense account — or ANOTHER COMPANY'S account — INFLATES the payables total on the
+        // unpaid-AP screen, the creditors screen and the supplier statement.
+        //
+        // Two refusals, not warnings. A destination that cannot name a payable position is not a
+        // payable position, and refusing here is also what lets `payableAccountIds()` claim
+        // completeness BY CONSTRUCTION (finding F1): every account that can carry a payable is
+        // inside this subtree, so scanning the subtree reaches all of them.
+        //
+        // The cross-tenant half was already fatal deeper down — `PostingService::post()` throws
+        // CrossTenantAccountException — but only on the ENGINE path, and as an uncaught exception
+        // (a 500 with a stack trace) rather than a refusal. The legacy path below had no such
+        // check at all. This guard covers both paths, before anything posts.
+        //
+        // An empty AP subtree is a REFUSAL too, deliberately, rather than a skipped check: a chart
+        // with no `Accounts Payable` group has no payable position for a nomination to move, and
+        // silently allowing an unconstrained destination there would put exactly the hole F1 closes
+        // back into the union for that company. The legacy branch below already refuses such a
+        // chart a few lines later ('Liabilities account not found'), so this is not a new class of
+        // rejection — it is the same one, earlier and by name.
+        $apSubtreeIds = app(TaskPayablePositionResolver::class)->apSubtreeIds($companyId);
+
+        if ((int) $paymentMethodAccount->company_id !== $companyId) {
+            Log::error('Payee nomination refused: cross-company destination.', [
+                'event' => 'accounting.payee_nomination.refused',
+                'reason' => 'cross_company',
+                'task_id' => (int) $task->id,
+                'task_company_id' => $companyId,
+                'account_id' => (int) $paymentMethodAccount->id,
+                'account_company_id' => (int) $paymentMethodAccount->company_id,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The selected payee account belongs to a different company.',
+            ], 422);
+        }
+
+        if (!in_array((int) $paymentMethodAccount->id, $apSubtreeIds, true)) {
+            Log::error('Payee nomination refused: destination is not an accounts-payable account.', [
+                'event' => 'accounting.payee_nomination.refused',
+                'reason' => $apSubtreeIds === [] ? 'no_accounts_payable_group' : 'outside_ap_subtree',
+                'task_id' => (int) $task->id,
+                'company_id' => $companyId,
+                'account_id' => (int) $paymentMethodAccount->id,
+                'account_name' => (string) $paymentMethodAccount->name,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The selected payee account is not an Accounts Payable account, so a supplier '
+                    . 'payable cannot be moved onto it.',
+            ], 422);
+        }
+
+        // ── CT-A7 ROUND 4, finding R4-1(a) — membership is not enough; it must be a LEAF ─────────
+        // R3-1 changed apSubtreeIds() from "descendants only" to "groups PLUS descendants", which is
+        // correct for READING (a payable can sit directly on an unsplit control, and a payables
+        // screen that skipped it would hide money). But this guard uses the same array to decide
+        // what may be WRITTEN to, and a group is never a legal write target: PostingService refuses
+        // any line whose account has children, whatever chose it. So from R3-1 until this commit the
+        // guard ADMITTED the AP group and handed it to the posting layer, which threw
+        // NonLeafAccountException — an uncaught 500 where round 2 had returned a clean 422.
+        //
+        // Leaf-ness is derived from "has children", the same test AccountResolver::isLeaf() and
+        // PostingService use — never from `accounts.is_group`, which CT-A1 §1.4 measured wrong on
+        // 613 accounts (566 flagged groups with no children, 47 flagged leaves that have children).
+        if (Account::withoutGlobalScopes()
+            ->where('parent_id', $paymentMethodAccount->id)
+            ->whereNull('deleted_at')
+            ->exists()
+        ) {
+            Log::error('Payee nomination refused: destination is a group account, not a leaf.', [
+                'event' => 'accounting.payee_nomination.refused',
+                'reason' => 'non_leaf_destination',
+                'task_id' => (int) $task->id,
+                'company_id' => $companyId,
+                'account_id' => (int) $paymentMethodAccount->id,
+                'account_name' => (string) $paymentMethodAccount->name,
+            ]);
+
+            return response()->json([
+                'status' => 'error',
+                'message' => 'The selected payee account is a group account. Choose one of its child '
+                    . 'accounts instead — a payable cannot be posted to a group.',
+            ], 422);
+        }
 
         // ENGINE PATH. Built and posted here rather than inside a $legacy-style closure because
         // this feeder's two paths return different shapes and the seam deliberately does not paper

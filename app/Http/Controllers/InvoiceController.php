@@ -41,6 +41,7 @@ use App\Services\Accounting\LineDraft;
 use App\Services\Accounting\PaymentIdempotencyKey;
 use App\Services\Accounting\PostedDocument;
 use App\Services\Accounting\PostingSeam;
+use App\Services\Accounting\NamedAccountGroupResolver;
 use App\Services\Accounting\PostingService;
 use App\Services\Accounting\SaleDraftBuilder;
 use App\Services\Accounting\SaleDraftInput;
@@ -1825,9 +1826,14 @@ class InvoiceController extends Controller
         $legacy = function () use ($transactionId, $invoice, $invoiceId, $invoiceDetailId, $task, $agent, $companyId, $selling, $clientName) {
             // ENTRY 1: DEBIT Asset (Receivable) - Client owes us selling price
             try {
-                $accountReceivable = Account::where('name', 'Accounts Receivable')
-                    ->where('company_id', $companyId)
-                    ->first();
+                // CT-A7 ROUND 3 (R3-1): was a bare ->first() with no ORDER BY. Company 2 carries TWO
+                // accounts of this name on dev AND live; the money-bearing one is returned today only
+                // because MariaDB hands back insertion order, and an optimizer change flips it with no
+                // code change. primaryGroupId() prefers the group whose subtree actually carries journal
+                // movement, so the pick is correct on purpose rather than by accident.
+                $accountReceivable = Account::withoutGlobalScopes()->find(
+                    app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Accounts Receivable')
+                );
 
                 $clientAccount = Account::where('name', 'Clients')
                     ->where('company_id', $companyId)
@@ -6128,17 +6134,29 @@ class InvoiceController extends Controller
                             'reference_type' => 'Invoice',
                         ]);
 
-                        $accountsPayable = Account::where('name', 'Accounts Payable')
-                            ->where('company_id', $companyId)
-                            ->first();
+                        // CT-A7 ROUND 3 (R3-1): was a bare ->first() with no ORDER BY. Company 2 carries
+                        // TWO accounts of this name on dev AND live; the money-bearing one is returned
+                        // today only because MariaDB hands back insertion order, and an optimizer change
+                        // flips it with no code change. primaryGroupId() prefers the group whose subtree
+                        // actually carries journal movement, so the pick is correct on purpose rather than
+                        // by accident.
+                        $accountsPayable = Account::withoutGlobalScopes()->find(
+                            app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Accounts Payable')
+                        );
                         $creditorsAccount = Account::where('name', 'Creditors')
                             ->where('company_id', $companyId)
                             ->where('parent_id', optional($accountsPayable)->id)
                             ->first();
 
-                        $accountsReceivable = Account::where('name', 'Accounts Receivable')
-                            ->where('company_id', $companyId)
-                            ->first();
+                        // CT-A7 ROUND 3 (R3-1): was a bare ->first() with no ORDER BY. Company 2 carries
+                        // TWO accounts of this name on dev AND live; the money-bearing one is returned
+                        // today only because MariaDB hands back insertion order, and an optimizer change
+                        // flips it with no code change. primaryGroupId() prefers the group whose subtree
+                        // actually carries journal movement, so the pick is correct on purpose rather than
+                        // by accident.
+                        $accountsReceivable = Account::withoutGlobalScopes()->find(
+                            app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Accounts Receivable')
+                        );
                         $clientsControlAccount = Account::where('name', 'Clients')
                             ->where('company_id', $companyId)
                             ->where('parent_id', optional($accountsReceivable)->id)
@@ -8364,9 +8382,15 @@ class InvoiceController extends Controller
                             ]);
                         }
                     } else {
-                        $accountReceivable = Account::where('name', 'Accounts Receivable')
-                            ->where('company_id', $companyId)
-                            ->first();
+                        // CT-A7 ROUND 3 (R3-1): was a bare ->first() with no ORDER BY. Company 2 carries
+                        // TWO accounts of this name on dev AND live; the money-bearing one is returned
+                        // today only because MariaDB hands back insertion order, and an optimizer change
+                        // flips it with no code change. primaryGroupId() prefers the group whose subtree
+                        // actually carries journal movement, so the pick is correct on purpose rather than
+                        // by accident.
+                        $accountReceivable = Account::withoutGlobalScopes()->find(
+                            app(NamedAccountGroupResolver::class)->primaryGroupId($companyId, 'Accounts Receivable')
+                        );
 
                         $clientAccount = Account::where('name', 'Clients')
                             ->where('company_id', $companyId)

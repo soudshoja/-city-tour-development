@@ -251,6 +251,35 @@ class EnsureSystemLeaves extends Command
         // ('Knet' / 'uPayment') match config('accounting.purpose_codes.gateways')'s own labels
         // exactly, the same naming convention 'Tap'/'MyFatoorah'/'Hesabe' already establish for
         // this pool's children.
+        //
+        // ── CT-A7 ROUND 2, finding F3 — ALL FIVE, not two ───────────────────────────────────────
+        // CT-A7-5 fixed CT-D2b-1 by seeding the five per-gateway clearing leaves in `CoaSeeder`.
+        // `CoaSeeder` runs at PROVISIONING ONLY, so that fixed charts that do not exist yet and
+        // nothing else: this list still held only Knet and uPayment, so on every EXISTING company
+        // with a bare `1300 Payment Gateway` pool the original sequence played out unchanged —
+        // `SystemAccountsSeeder` parks all five purposes on the still-leaf pool, this command mints
+        // exactly two children under it, the pool becomes a GROUP, and `CoaLinkage::verifyPurposes()`
+        // exits 1 over MYFATOORAH / HESABE / TAP without repairing anything. City Travelers is not
+        // affected (its pool already carries per-gateway named children), but no other tenant is
+        // covered, and travelerp and Akeed are both next in line for this engine.
+        //
+        // Codes and leaf names are COA-DESIGN-PROPOSAL C1's own and are IDENTICAL to what
+        // `CoaSeeder` seeds, deliberately: this command resolves an existing leaf by NAME under the
+        // parent chain, so on a chart that already has 'Tap'/'MyFatoorah'/'Hesabe' (the real City
+        // Travelers shape, where all three share the pre-existing duplicate code '1310') it FINDS
+        // them and mints nothing. Two code families here would re-create CT-D2b-1 with extra
+        // accounts instead of repairing it.
+        //
+        // OPTIONAL, not core, for the same reason as Knet/uPayment below: a company without a
+        // 'Payment Gateway' pool at all must not fail its whole backfill over a gateway it does not
+        // transact on.
+        [
+            'leafName' => 'Tap',
+            'code' => '1310',
+            'parentChain' => ['Payment Gateway', 'Assets'],
+            'purposeCode' => 'GATEWAY_CLEARING_TAP',
+            'core' => false,
+        ],
         [
             'leafName' => 'Knet',
             'code' => '1311',
@@ -263,6 +292,20 @@ class EnsureSystemLeaves extends Command
             'code' => '1312',
             'parentChain' => ['Payment Gateway', 'Assets'],
             'purposeCode' => 'GATEWAY_CLEARING_UPAYMENT',
+            'core' => false,
+        ],
+        [
+            'leafName' => 'MyFatoorah',
+            'code' => '1313',
+            'parentChain' => ['Payment Gateway', 'Assets'],
+            'purposeCode' => 'GATEWAY_CLEARING_MYFATOORAH',
+            'core' => false,
+        ],
+        [
+            'leafName' => 'Hesabe',
+            'code' => '1314',
+            'parentChain' => ['Payment Gateway', 'Assets'],
+            'purposeCode' => 'GATEWAY_CLEARING_HESABE',
             'core' => false,
         ],
         // W5.L (w5-brief.md §W5.L item 4) — four voucher/instrument anchor leaves. See

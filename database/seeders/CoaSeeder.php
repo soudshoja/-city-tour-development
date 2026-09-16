@@ -35,6 +35,30 @@ class CoaSeeder extends Seeder
             // SystemAccountsSeeder's mapByCode('CHEQUES_IN_HAND', ..., '1215', ...) mapping.
             ['code' => '1215', 'name' => 'Cheques In Hand', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1300', 'name' => 'Payment Gateway', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            // CT-A7-5 (finding CT-D2b-1) — COA-DESIGN-PROPOSAL correction **C1**: the five
+            // per-gateway CLEARING leaves, seeded. 1300 used to be seeded with NO children, and the
+            // consequence was a two-step self-inflicted break on every fresh chart:
+            //   1. SystemAccountsSeeder::resolveGatewayClearing()'s bare-pool branch mapped ALL
+            //      FIVE GATEWAY_CLEARING_* purposes onto 1300 itself, which was then a leaf; then
+            //   2. `accounting:coa-linkage --apply` ran EnsureSystemLeaves, which mints exactly two
+            //      children here ('Knet' 1311 / 'uPayment' 1312 — the only two in its leaf list),
+            //      turning 1300 into a GROUP and leaving MYFATOORAH/HESABE/TAP pointing at a
+            //      non-leaf. CoaLinkage::verifyPurposes() correctly calls that "a defect this run
+            //      introduced" and exits 1 WITHOUT repairing it. Measured on a bare seeded chart:
+            //      exit 1, three blocking NON_LEAF_PURPOSE_MAPPING rows (CT-D2B §1.5).
+            // Both rules are defensible and they contradict each other, so the fix is to remove the
+            // state they disagree about rather than to add a guard: with a dedicated leaf per
+            // gateway, resolveGatewayClearing()'s NAME-matching branch maps each purpose on the
+            // first pass, the bare-pool branch never runs, and there is no pool-to-group transition
+            // left. Codes are C1's own (1310-1314) and 1311/1312 deliberately match the codes
+            // EnsureSystemLeaves already mints, so that backfill now FINDS these leaves instead of
+            // creating duplicates. Names match config('accounting.purpose_codes.gateways')'s labels
+            // exactly — that is what resolveGatewayClearing() matches on.
+            ['code' => '1310', 'name' => 'Tap', 'level' => 3, 'parent' => 'Payment Gateway', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1311', 'name' => 'Knet', 'level' => 3, 'parent' => 'Payment Gateway', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1312', 'name' => 'uPayment', 'level' => 3, 'parent' => 'Payment Gateway', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1313', 'name' => 'MyFatoorah', 'level' => 3, 'parent' => 'Payment Gateway', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
+            ['code' => '1314', 'name' => 'Hesabe', 'level' => 3, 'parent' => 'Payment Gateway', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
 
             ['code' => '1350', 'name' => 'Accounts Receivable', 'level' => 2, 'parent' => 'Assets', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],
             ['code' => '1351', 'name' => 'Clients', 'level' => 3, 'parent' => 'Accounts Receivable', 'account_type' => null, 'report_type' => Account::REPORT_TYPES['BALANCE_SHEET']],

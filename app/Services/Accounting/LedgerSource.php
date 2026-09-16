@@ -93,6 +93,15 @@ use Illuminate\Support\Facades\DB;
  */
 final class LedgerSource
 {
+    /**
+     * CT-A7-1: injected only so {@see self::payableAccountIds()} can union the purpose-resolved
+     * control leaves with the leaves an R-CT8 payee nomination actually posted to (ruling R-CT9).
+     * Every other method on this class is unaffected and never touches it.
+     */
+    public function __construct(
+        private readonly TaskPayablePositionResolver $payablePositions = new TaskPayablePositionResolver,
+    ) {}
+
     public function engineOn(int $companyId): bool
     {
         if (! (bool) config('accounting.engine.enabled')) {
@@ -226,9 +235,80 @@ final class LedgerSource
      * what keeps a company with no per-service split from reporting the control leaf's balance
      * multiple times over.
      *
+     * ── CT-A7-1 — owner ruling R-CT9: plus wherever a payee nomination has MOVED one ────────────
+     * The purpose-resolved set above is where a payable is FIRST posted. Under owner ruling R-CT8
+     * a who-to-pay reassignment moves it onto an operator-chosen payee leaf that is, by
+     * construction, in no purpose mapping — so a set built from purposes alone cannot see it, and
+     * VERIFY-CT-A56-R3 §3.2 (finding R3-9) measured the consequence on the replayed City Travelers
+     * ledger: 1,642 reassignment documents carrying KWD 234,153.262 invisible on the AP payment-run
+     * screen, re-measured live after the CT-D2b deploy as KWD 234,120.448 of a 1,413,392.039 AP
+     * tree sitting outside the six leaves these screens read.
+     *
+     * R-CT9 rules that the screens must show a payable at its CURRENT position, so the two sets are
+     * UNIONED here — one place, so every caller
+     * ({@see \App\Http\Controllers\ReportController::unpaidaccountsPayableReceivableReport()},
+     * {@see \App\Http\Controllers\ReportController::creditors()}, that method's PDF twin, and
+     * {@see \App\Services\Accounting\Statements\SupplierLedgerStatementSource} for the supplier
+     * statement and its AP ageing buckets) gets the ruling without a per-screen edit.
+     *
+     * ── CT-A7 ROUND 2, finding F1 — and why the round-1 union was INCOMPLETE ────────────────────
+     * Round 1 unioned the purpose-resolved leaves with the reassignment-document family alone, and
+     * defended that as sufficient on a 0.000 measured shortfall. An adversarial verifier disproved
+     * it: {@see PostingService::targetAccountId()} is the R-CT8 seam ONLY for lines that resolve by
+     * `purposeCode`, and FOUR production writers build AP-side lines with an explicit `accountId`
+     * — `AccountingController::storePayableDetail()`, `::storeReceivableDetail()`,
+     * `::storeBankPayment()` and `BankPaymentController::buildVoucherDraft()` (the highest-volume
+     * AP writer). Through real HTTP routes: raw AP subtree 250.000, this screen 0.000. R3-9,
+     * reproduced after the round-1 fix. The live shortfall read 0.000 only because on the City
+     * Travelers chart the AP leaves carrying money happen to also be the 1,642 reassignment
+     * targets — one accountant using the Payable journal screen and the money is invisible again.
+     *
+     * The set is therefore now the union of THREE halves, and it is complete by CONSTRUCTION
+     * rather than by measurement (the argument in full is on
+     * {@see TaskPayablePositionResolver::apSubtreeIdsWithPostedMovement()}):
+     *
+     *   (a) the purpose-resolved control leaves — always, even at zero movement, so a quiet chart
+     *       does not lose the options in the screens' own account pickers;
+     *   (b) every account in the company's AP subtree THAT CARRIES POSTED MOVEMENT — any payable
+     *       line, however it resolved its account, lands inside that subtree, and an account with
+     *       no line contributes exactly 0.000, so this half cannot miss a KWD and cannot admit a
+     *       leaf the ledger never touched;
+     *   (c) the accounts R-CT8 reassignment documents actually posted to
+     *       ({@see TaskPayablePositionResolver::nominatedPayeeAccountIdsForCompany()}).
+     *
+     * (c) is KEPT rather than subsumed by (b), deliberately: finding F4 constrains nomination
+     * destinations to the AP subtree from now on, but HISTORICAL nominations were unconstrained, so
+     * a pre-F4 destination sitting OUTSIDE the subtree is reachable only through (c).
+     *
      * @return list<int>
      */
     public function payableAccountIds(int $companyId, AccountResolver $resolver): array
+    {
+        $ids = $this->purposeResolvedPayableAccountIds($companyId, $resolver);
+
+        foreach ($this->payablePositions->apSubtreeIdsWithPostedMovement($companyId) as $moved) {
+            $ids[] = $moved;
+        }
+
+        foreach ($this->payablePositions->nominatedPayeeAccountIdsForCompany($companyId) as $nominated) {
+            $ids[] = $nominated;
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    /**
+     * CT-A7-1: the purpose-resolved half of {@see self::payableAccountIds()} ALONE — the exact set
+     * that method returned before ruling R-CT9 widened it.
+     *
+     * Exists for one reason: a test (and the PR's own mutation proof) has to be able to state the
+     * before-and-after figure without re-implementing the purpose resolution it is measuring
+     * against. No production caller uses it, and none should — a screen that reads this instead of
+     * {@see self::payableAccountIds()} is reintroducing R3-9.
+     *
+     * @return list<int>
+     */
+    public function purposeResolvedPayableAccountIds(int $companyId, AccountResolver $resolver): array
     {
         $ids = [$resolver->resolve('PAYABLE_CONTROL', $companyId)->id];
 
@@ -236,7 +316,7 @@ final class LedgerSource
             $ids[] = $resolver->resolve('SERVICE_PAYABLE', $companyId, $serviceType)->id;
         }
 
-        return array_values(array_unique($ids));
+        return array_values(array_unique(array_map('intval', $ids)));
     }
 
     /**

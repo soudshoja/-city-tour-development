@@ -740,6 +740,23 @@ return [
             'transactions',
             'journal_entries',
             'accounting_audit_log',
+        ],
+
+        // Growth here is NOT an undeclared write, and NOT reversible either.
+        //
+        // `jobs` is written by the provisioning step (it queues ProvisionResayilWorkspace on the
+        // database queue driver), so an undeclared-growth check that did not know about it would
+        // refuse a perfectly normal load. But it is deliberately NOT in `tables`:
+        //
+        //   * it carries nothing but a serialised payload, so no attribution rule could decide
+        //     whether a given row is this load's without parsing that payload -- and parsing a
+        //     payload to decide whether a DELETE is safe is not a decision this lane should make;
+        //   * a queued job is transient application state the worker consumes; it is not ledger
+        //     data and a reversal has no business deleting one;
+        //   * and leaving it out of `tables` also leaves it out of the ARMING set, which is the
+        //     point: raising `jobs`.AUTO_INCREMENT to the floor would drop every job City
+        //     Travelers' own dev app queues from then on into the reserved band, for no benefit.
+        'ignored_growth_tables' => [
             'jobs',
         ],
 
@@ -756,7 +773,6 @@ return [
             'users',
             'agents',
             'suppliers',
-            'jobs',
         ],
 
         // ── Tables with NO `id` column at all ────────────────────────────────────────────────
@@ -789,10 +805,27 @@ return [
             'accounting_audit_log' => 'append-only: BEFORE DELETE trigger accounting_audit_log_no_delete refuses the delete unless @accounting_audit_log_allow_delete = 1 (use --purge-audit-log)',
         ],
 
+        // Tables with NO `id` column at all -- the Spatie permission pivots. They cannot be
+        // reached by id, so they are reversed through a FK that points at a row this load OWNS
+        // (per LegacyRowLedger), never through an id range.
+        //
+        // ROUND 2 CORRECTION. Round 1 deleted `model_has_roles` by `model_id BETWEEN band`, which
+        // (a) is the same unsound band-as-ownership reasoning finding F1 is about, and (b) left a
+        // Como role attached to an out-of-band user silently in place -- a row pointing at a role
+        // that was about to be deleted. Each clause below names an OWNING TABLE instead, and the
+        // delete is the UNION of the clauses: a pivot row goes when EITHER side of it is a row
+        // this load owns, because either way it is about to dangle.
         'pivot_tables' => [
-            'model_has_roles' => ['column' => 'model_id', 'where' => ['model_type' => 'App\Models\User']],
-            'model_has_permissions' => ['column' => 'model_id', 'where' => ['model_type' => 'App\Models\User']],
-            'role_has_permissions' => ['column' => 'role_id', 'where' => []],
+            'model_has_roles' => [
+                ['column' => 'role_id', 'owner' => 'roles'],
+                ['column' => 'model_id', 'owner' => 'users', 'where' => ['model_type' => 'App\\Models\\User']],
+            ],
+            'model_has_permissions' => [
+                ['column' => 'model_id', 'owner' => 'users', 'where' => ['model_type' => 'App\\Models\\User']],
+            ],
+            'role_has_permissions' => [
+                ['column' => 'role_id', 'owner' => 'roles'],
+            ],
         ],
     ],
 ];

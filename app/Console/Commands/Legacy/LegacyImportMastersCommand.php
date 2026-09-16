@@ -63,7 +63,9 @@ class LegacyImportMastersCommand extends Command
         // The only edit this command carries relative to the Akeed-Ai original. Three gates, all
         // before the first write: quarantined staging connection, target company (R-CO4), reserved
         // id band. See App\Console\Commands\Legacy\Concerns\GuardsLegacyScope.
-        if ($this->legacyScopeOrFail($companyId) === null) {
+        $scope = $this->legacyScopeOrFail($companyId);
+
+        if ($scope === null) {
             return self::FAILURE;
         }
 
@@ -179,6 +181,12 @@ class LegacyImportMastersCommand extends Command
         }
 
         $this->info('legacy:import-masters complete. Next: `php artisan legacy:replay --year=2025 --dry-run`.');
+
+        // ROUND 2, finding F2 - the R-CO4 post-conditions, on the deployed path. See
+        // App\Console\Commands\Legacy\Concerns\GuardsLegacyScope::assertLegacyPostConditions().
+        if (! $this->assertLegacyPostConditions($scope)) {
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }

@@ -8,6 +8,7 @@ use App\Services\Onboarding\LegacyPathGuard;
 use App\Services\Onboarding\Scope\LegacyCompanyGuard;
 use App\Services\Onboarding\Scope\LegacyIdBandGuard;
 use App\Services\Onboarding\Scope\LegacyLoadScope;
+use App\Services\Onboarding\Scope\LegacyRowLedger;
 use App\Services\Onboarding\Scope\LegacyScopeRefused;
 
 /**
@@ -46,6 +47,50 @@ trait GuardsLegacyScope
         app(LegacyIdBandGuard::class)->assertArmed($scope);
 
         return $scope;
+    }
+
+    /**
+     * ROUND 2, finding F2 - the R-CO4 POST-condition, on the deployed path.
+     *
+     * Round 1 shipped `assertBaselineIntact()`-shaped checks whose only caller was a test. This
+     * runs at the END of every legacy:* write command:
+     *
+     *   1. re-derive and record which rows this load owns ({@see LegacyRowLedger::claim()}), so the
+     *      reversal has an accurate ledger and never has to fall back on an id range;
+     *   2. prove every row that existed BEFORE the load is byte-identical
+     *      ({@see LegacyCompanyGuard::assertBaselineIntact()});
+     *   3. prove no table outside the declared write set grew
+     *      ({@see LegacyIdBandGuard::assertNoUndeclaredGrowthSinceCapture()});
+     *   4. prove every row of the target company landed inside the reserved band
+     *      ({@see LegacyIdBandGuard::assertCompanyRowsInBand()}).
+     *
+     * A failure is reported with the offending tables and rows NAMED, and the command exits
+     * non-zero. It does not roll the load back - that is `legacy:unload`'s job, and a silent
+     * rollback would destroy the evidence of what went wrong.
+     */
+    protected function assertLegacyPostConditions(LegacyLoadScope $scope): bool
+    {
+        try {
+            $owned = app(LegacyRowLedger::class)->claim($scope);
+
+            app(LegacyCompanyGuard::class)->assertBaselineIntact($scope);
+            $grew = app(LegacyIdBandGuard::class)->assertNoUndeclaredGrowthSinceCapture($scope);
+            app(LegacyIdBandGuard::class)->assertCompanyRowsInBand($scope);
+        } catch (LegacyScopeRefused $e) {
+            $this->error('POST-CONDITION FAILED: '.$e->getMessage());
+
+            return false;
+        }
+
+        $this->line(sprintf(
+            'scope post-conditions OK: %d row(s) claimed across %d table(s); %d declared table(s) '.
+            'grew; no undeclared table grew; every pre-existing row byte-identical.',
+            array_sum($owned),
+            count(array_filter($owned)),
+            count($grew)
+        ));
+
+        return true;
     }
 
     /**

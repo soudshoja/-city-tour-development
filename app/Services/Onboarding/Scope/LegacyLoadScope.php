@@ -133,13 +133,40 @@ final class LegacyLoadScope
         /** @var array<string, array{column:string, where:array<string,string>}> $pivots */
         $pivots = (array) config('legacy_pilot.ct_scope.pivot_tables', []);
 
-        foreach ($pivots as $name => $spec) {
-            if (! is_array($spec) || ! isset($spec['column']) || ! is_string($spec['column']) || $spec['column'] === '') {
+        // ROUND 2: each pivot is now a LIST of clauses, each naming the FK column and the OWNING
+        // table whose ledger decides the match — no longer a single column compared to an id band.
+        foreach ($pivots as $name => $clauses) {
+            if (! is_array($clauses) || $clauses === []) {
                 throw new LegacyScopeRefused(
-                    "Refused: legacy_pilot.ct_scope.pivot_tables['{$name}'] has no 'column'. A table ".
-                    'with no `id` is unreachable by the id band unless it names the FK that is in '.
-                    'the band, so an unnamed one would silently survive the unload.'
+                    "Refused: legacy_pilot.ct_scope.pivot_tables['{$name}'] declares no clauses. A ".
+                    'table with no `id` is unreachable unless it names a FK into a table whose rows '.
+                    'this load owns, so an unclaused one would silently survive the unload.'
                 );
+            }
+
+            foreach ($clauses as $clause) {
+                $ok = is_array($clause)
+                    && isset($clause['column'], $clause['owner'])
+                    && is_string($clause['column']) && $clause['column'] !== ''
+                    && is_string($clause['owner']) && $clause['owner'] !== '';
+
+                if (! $ok) {
+                    throw new LegacyScopeRefused(
+                        "Refused: a clause of legacy_pilot.ct_scope.pivot_tables['{$name}'] is missing ".
+                        "'column' or 'owner'. Both are required: the column is the FK, the owner is ".
+                        'the table whose ct_scope_row ledger decides whether that FK points at a row '.
+                        'this load owns.'
+                    );
+                }
+
+                if (! in_array($clause['owner'], $tables, true)) {
+                    throw new LegacyScopeRefused(
+                        "Refused: legacy_pilot.ct_scope.pivot_tables['{$name}'] names owner table ".
+                        "'{$clause['owner']}', which is not in ct_scope.tables. An owner outside the ".
+                        'declared write set has no ledger, so the clause could never match and the '.
+                        'pivot rows would survive the unload without anyone noticing.'
+                    );
+                }
             }
         }
 

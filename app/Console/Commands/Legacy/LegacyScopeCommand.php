@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands\Legacy;
 
 use App\Services\Onboarding\LegacyPathGuard;
+use App\Services\Onboarding\Scope\LegacyCompanyGuard;
 use App\Services\Onboarding\Scope\LegacyIdBandGuard;
 use App\Services\Onboarding\Scope\LegacyLoadScope;
 use App\Services\Onboarding\Scope\LegacyScopeRefused;
@@ -34,7 +35,7 @@ class LegacyScopeCommand extends Command
 
     protected $description = 'CD-PORT — arm the reserved id band (10,000,001..19,999,999) for one company and record each table\'s pre-load AUTO_INCREMENT, so the unload can restore it exactly.';
 
-    public function handle(LegacyIdBandGuard $band): int
+    public function handle(LegacyIdBandGuard $band, LegacyCompanyGuard $company): int
     {
         $companyOption = $this->option('company');
 
@@ -55,9 +56,26 @@ class LegacyScopeCommand extends Command
 
             $scope = LegacyLoadScope::forCompany((int) $companyOption);
 
+            // ROUND 2, finding F3. This command used to have NO company gate at all:
+            // `legacy:scope --company=2 --apply` happily reported "Band armed for company 2:
+            // 21 counter(s) raised", arming the reversal trap under a PROTECTED City Travelers id.
+            // It now passes the same gate every other write command does, with one deliberate
+            // relaxation: the company does NOT have to exist yet. It cannot - the load order is
+            // scope-then-provision, precisely so that `companies`' own AUTO_INCREMENT is recorded
+            // BEFORE the company row is minted. If it does already exist, it must be in the band.
+            $this->assertCompanyGate($scope);
+
             // Record the counters BEFORE arming anything: once arm() has run, the pre-load value is
             // gone and cannot be recovered from the database.
             $recorded = $apply ? $this->recordCounters($scope, $band) : $this->previewCounters($scope, $band);
+
+            // ROUND 2, finding F2. Capture and PERSIST the before-picture while it still IS the
+            // before-picture. Round 1 had these checks but no caller on the deployed path and no
+            // stored baseline, so after a load there was nothing left to compare against.
+            if ($apply) {
+                $baseline = $company->captureBaseline($scope);
+                $census = $band->captureCensus($scope);
+            }
 
             $report = $band->arm($scope, $apply);
         } catch (LegacyScopeRefused $e) {
@@ -96,6 +114,14 @@ class LegacyScopeCommand extends Command
 
         $this->recordRun($scope, 'arm', $report);
 
+        $this->line(sprintf(
+            'baseline captured: %d table fingerprint(s) + %d table row count(s), persisted to '.
+            'legacy_pilot.ct_scope_fingerprint. Every legacy:* write command now compares against '.
+            'them on completion and refuses on a difference.',
+            count($baseline ?? []),
+            count($census ?? [])
+        ));
+
         $this->info(
             "Band armed for company {$scope->companyId}: {$raised} counter(s) raised to ".
             number_format($scope->idFloor).", {$already} already inside the band ".
@@ -104,6 +130,36 @@ class LegacyScopeCommand extends Command
         );
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The company half of the gate, finding F3.
+     *
+     * @throws LegacyScopeRefused
+     */
+    private function assertCompanyGate(LegacyLoadScope $scope): void
+    {
+        /** @var list<int> $protected */
+        $protected = array_map('intval', (array) config('legacy_pilot.ct_scope.protected_company_ids', []));
+
+        if (in_array($scope->companyId, $protected, true)) {
+            throw new LegacyScopeRefused(
+                'Refused: company '.$scope->companyId.' is on the protected list ('.
+                implode(', ', $protected).'). Arming the reserved band under a City Travelers '.
+                'company id is how a later reversal comes to be pointed at one.'
+            );
+        }
+
+        $existing = DB::table('companies')->where('id', $scope->companyId)->first();
+
+        if ($existing !== null && ! $scope->contains((int) $existing->id)) {
+            throw new LegacyScopeRefused(
+                'Refused: company '.$scope->companyId.' already exists and its id is OUTSIDE the '.
+                'reserved band '.$scope->bandDescription().'. This band is for a company the '.
+                'pipeline creates inside it; an existing company below the floor is somebody '.
+                'else\'s.'
+            );
+        }
     }
 
     /**

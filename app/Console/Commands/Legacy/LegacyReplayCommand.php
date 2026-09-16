@@ -53,7 +53,20 @@ class LegacyReplayCommand extends Command
         // TARGET COMPANY; pointing that at company 1 would read City Travelers' chart and report
         // a mapping built from it, which is a wrong answer delivered confidently rather than a
         // harmless no-op. The gate is on the command, not on the write.
-        if ($this->legacyScopeOrFail((int) $options['company_id']) === null) {
+        $scope = $this->legacyScopeOrFail((int) $options['company_id']);
+
+        if ($scope === null) {
+            return self::FAILURE;
+        }
+
+        // ROUND 2, finding F5. Numbering is asserted BEFORE the first document, not discovered
+        // by an SQLSTATE[22001] part-way through a 30,000-document replay.
+        try {
+            app(\App\Services\Onboarding\Scope\LegacySerialSchemaPlanner::class)
+                ->assertSeeded($scope, $this->replayYears($options));
+        } catch (\App\Services\Onboarding\Scope\LegacyScopeRefused $e) {
+            $this->error($e->getMessage());
+
             return self::FAILURE;
         }
 
@@ -85,6 +98,12 @@ class LegacyReplayCommand extends Command
         }
 
         $this->info('legacy:replay complete: zero refusals, zero type stops.');
+
+        // ROUND 2, finding F2 - the R-CO4 post-conditions, on the deployed path. See
+        // App\Console\Commands\Legacy\Concerns\GuardsLegacyScope::assertLegacyPostConditions().
+        if (! $this->assertLegacyPostConditions($scope)) {
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }
@@ -120,6 +139,33 @@ class LegacyReplayCommand extends Command
     }
 
     /** @param array<string, mixed> $summary */
+    /**
+     * The document years this run will actually touch: the explicit `--year` when given, otherwise
+     * every year in the configured replay window. Reads `window_start`/`window_end` — the keys that
+     * exist — for the same reason LegacySerialsCommand::resolveYears() now does.
+     *
+     * @param  array<string,mixed>  $options
+     * @return list<int>
+     */
+    private function replayYears(array $options): array
+    {
+        if (($options['year'] ?? null) !== null) {
+            return [(int) $options['year']];
+        }
+
+        $start = (string) config('legacy_pilot.replay.window_start', '');
+        $end = (string) config('legacy_pilot.replay.window_end', '');
+
+        if ($start === '' || $end === '') {
+            return [(int) date('Y')];
+        }
+
+        $from = (int) date('Y', (int) strtotime($start));
+        $to = (int) date('Y', (int) strtotime($end));
+
+        return range(min($from, $to), max($from, $to));
+    }
+
     private function printSummary(array $summary): void
     {
         $this->line(sprintf('run_id            : %s%s', $summary['run_id'], $summary['dry_run'] ? '  (DRY RUN — nothing was written)' : ''));

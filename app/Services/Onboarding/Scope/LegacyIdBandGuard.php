@@ -250,6 +250,9 @@ final class LegacyIdBandGuard
      */
     public function assertNoUndeclaredTableGrew(LegacyLoadScope $scope, array $before, array $after): array
     {
+        /** @var list<string> $ignored */
+        $ignored = array_map('strval', (array) config('legacy_pilot.ct_scope.ignored_growth_tables', []));
+
         $declaredGrowth = [];
         $undeclared = [];
 
@@ -261,7 +264,7 @@ final class LegacyIdBandGuard
                 continue;
             }
 
-            if (in_array($table, $scope->declaredTables(), true)) {
+            if (in_array($table, $scope->declaredTables(), true) || in_array($table, $ignored, true)) {
                 $declaredGrowth[$table] = ['before' => $was, 'after' => $count, 'delta' => $delta];
 
                 continue;
@@ -280,6 +283,86 @@ final class LegacyIdBandGuard
         }
 
         return $declaredGrowth;
+    }
+
+    /**
+     * ROUND 2 - persist the full row census, so the undeclared-growth check has a "before" side
+     * that survives the process that captured it.
+     *
+     * Round 1 could only compare a census taken in the same PHP process, which meant the only
+     * caller was a test and the deployed pipeline never ran the check at all. The config comment
+     * "anything that grows and is NOT on this list is a refusal" was simply not true at runtime.
+     *
+     * Every BASE TABLE, not just the declared write set: the entire point is to catch a table the
+     * write set does NOT name. Counted with COUNT(*), never
+     * `information_schema.TABLES.table_rows`, which is an optimiser estimate on InnoDB and is
+     * routinely wrong by tens of percent - an estimate cannot decide whether a table grew by one
+     * row.
+     *
+     * @return array<string,int>
+     */
+    public function captureCensus(LegacyLoadScope $scope): array
+    {
+        $database = $this->databaseName();
+        $census = $this->rowCensus();
+
+        foreach ($census as $table => $count) {
+            $exists = DB::connection('legacy_pilot')->table('ct_scope_fingerprint')
+                ->where('company_id', $scope->companyId)
+                ->where('database_name', $database)
+                ->where('table_name', $table)
+                ->where('stage', 'census')
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            DB::connection('legacy_pilot')->table('ct_scope_fingerprint')->insert([
+                'company_id' => $scope->companyId,
+                'database_name' => $database,
+                'table_name' => $table,
+                'stage' => 'census',
+                'max_id_at_capture' => 0,
+                'row_count' => $count,
+                'content_xor' => null,
+                'captured_at' => now(),
+            ]);
+        }
+
+        return $census;
+    }
+
+    /**
+     * ROUND 2 - the deployed-path twin of {@see self::assertNoUndeclaredTableGrew()}, reading the
+     * "before" side from `ct_scope_fingerprint` instead of from a variable the caller happens to
+     * still be holding.
+     *
+     * @return array<string, array{before:int, after:int, delta:int}> the declared tables that grew
+     *
+     * @throws LegacyScopeRefused
+     */
+    public function assertNoUndeclaredGrowthSinceCapture(LegacyLoadScope $scope): array
+    {
+        $database = $this->databaseName();
+
+        $before = DB::connection('legacy_pilot')->table('ct_scope_fingerprint')
+            ->where('company_id', $scope->companyId)
+            ->where('database_name', $database)
+            ->where('stage', 'census')
+            ->pluck('row_count', 'table_name')
+            ->map(static fn ($n) => (int) $n)
+            ->all();
+
+        if ($before === []) {
+            throw new LegacyScopeRefused(
+                'Refused: no pre-load row census is recorded for company '.$scope->companyId.' on `'.
+                $database.'`. `legacy:scope --apply` captures it; without it the undeclared-growth '.
+                'check would pass vacuously, which is worse than not running it.'
+            );
+        }
+
+        return $this->assertNoUndeclaredTableGrew($scope, $before, $this->rowCensus());
     }
 
     /** @return array<string,int> table => AUTO_INCREMENT, for the declared write set */

@@ -136,6 +136,86 @@ final class LegacySerialSchemaPlanner
     }
 
     /**
+     * ROUND 2, finding F5 (second half) — refuse to START a replay whose document numbering is not
+     * fully pre-seeded.
+     *
+     * {@see \App\Services\Accounting\SequenceService::next()} `firstOrCreate`s a `serial_schemas`
+     * row with `DEFAULT_MASK` for any `(company, branch, doc_type, doc_year)` that has none. On
+     * this company that mask renders the EIGHT-DIGIT branch id and produces a 22-23 character
+     * number for a `varchar(20)` column — the exact `SQLSTATE[22001]` this planner exists to
+     * prevent, arriving mid-run instead of before it.
+     *
+     * Round 1 relied on the planner having been run with the right `--years`, and `--years`
+     * defaulted through two config keys that do not exist. That is two silent dependencies in a
+     * row, and their joint failure mode is a replay that dies thousands of documents in.
+     *
+     * This asserts the whole grid — every branch the company owns, every doc type the engine can
+     * emit, every year in range — is present AND that each present row's mask still renders inside
+     * the live column width, because a hand-edited mask is as dangerous as a missing row.
+     *
+     * @param  list<int>  $years
+     *
+     * @throws LegacyScopeRefused
+     */
+    public function assertSeeded(LegacyLoadScope $scope, array $years): void
+    {
+        $plan = $this->plan($scope, $years);
+        $limit = $plan['limit'];
+
+        $missing = [];
+        $tooLong = [];
+
+        foreach ($plan['rows'] as $row) {
+            $existing = DB::table('serial_schemas')
+                ->where('company_id', $row['company_id'])
+                ->where('branch_id', $row['branch_id'])
+                ->where('doc_type', $row['doc_type'])
+                ->where('doc_year', $row['doc_year'])
+                ->first();
+
+            if ($existing === null) {
+                $missing[] = sprintf('%s/%s/%d', $row['doc_type'], $row['branch_id'], $row['doc_year']);
+
+                continue;
+            }
+
+            $sample = $this->render((string) $existing->mask, $row['doc_type'], (int) $row['doc_year'], 99999);
+
+            if (strlen($sample) > $limit) {
+                $tooLong[] = sprintf(
+                    '%s/%s/%d renders %s (%d chars)',
+                    $row['doc_type'],
+                    $row['branch_id'],
+                    $row['doc_year'],
+                    $sample,
+                    strlen($sample)
+                );
+            }
+        }
+
+        if ($missing !== []) {
+            throw new LegacyScopeRefused(
+                'Refused before the first document: '.count($missing).' (doc_type/branch/year) '.
+                'combination(s) have no pre-seeded serial_schemas row — '.
+                implode(', ', array_slice($missing, 0, 12)).
+                (count($missing) > 12 ? ', and '.(count($missing) - 12).' more' : '').
+                '. SequenceService would mint each one with its DEFAULT_MASK, which renders this '.
+                'company\'s eight-digit branch id and overflows transactions.reference_number '.
+                '('.$limit.' chars) part-way through the run. Run `php artisan legacy:serials '.
+                '--company='.$scope->companyId.' --apply` first.'
+            );
+        }
+
+        if ($tooLong !== []) {
+            throw new LegacyScopeRefused(
+                'Refused before the first document: '.count($tooLong).' pre-seeded serial_schemas '.
+                'mask(s) render longer than transactions.reference_number holds ('.$limit.
+                ' chars, read from information_schema) — '.implode('; ', array_slice($tooLong, 0, 6)).'.'
+            );
+        }
+    }
+
+    /**
      * Inserts the planned rows, skipping any `(company, branch, doc_type, doc_year)` that already
      * has one.
      *

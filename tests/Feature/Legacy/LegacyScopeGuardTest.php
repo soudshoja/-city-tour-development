@@ -401,6 +401,184 @@ class LegacyScopeGuardTest extends TestCase
     }
 
     // ─────────────────────────────────────────────────────────────────────────────────────────
+    // ROUND 2 — the gates adversarial verification found missing
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * FINDING F3. `legacy:scope` had no company gate whatsoever:
+     * `legacy:scope --company=2 --apply` reported "Band armed for company 2: 21 counter(s) raised"
+     * and armed the reversal band under a PROTECTED City Travelers id.
+     *
+     * MUTATION PROOF. Removing the protected-list branch from
+     * {@see \App\Console\Commands\Legacy\LegacyScopeCommand::assertCompanyGate()} makes this test
+     * fail on the exit code (0 instead of 1) and the counters move.
+     */
+    public function test_scope_command_refuses_a_protected_company(): void
+    {
+        $this->seedCityTravelersBaseline();
+
+        $band = app(LegacyIdBandGuard::class);
+        $before = $band->autoIncrement('accounts');
+
+        $this->artisan('legacy:scope', ['--company' => 2, '--apply' => true])
+            ->assertExitCode(1);
+
+        $this->assertSame(
+            $before,
+            $band->autoIncrement('accounts'),
+            'legacy:scope armed the band for a protected company id'
+        );
+    }
+
+    /**
+     * The same gate must not fire for a legitimate target, or it proves nothing. A company id that
+     * does not exist YET is explicitly allowed: the deploy order is scope-then-provision, precisely
+     * so `companies`' own pre-load counter is recorded before the company row is minted.
+     */
+    public function test_scope_command_arms_for_a_company_that_does_not_exist_yet(): void
+    {
+        $this->seedCityTravelersBaseline();
+
+        $this->artisan('legacy:scope', ['--company' => self::FLOOR, '--apply' => true])
+            ->assertExitCode(0);
+
+        $this->assertSame(self::FLOOR, app(LegacyIdBandGuard::class)->autoIncrement('accounts'));
+    }
+
+    /**
+     * FINDING F5, second half. {@see \App\Services\Accounting\SequenceService::next()}
+     * `firstOrCreate`s a `serial_schemas` row with `DEFAULT_MASK` for any combination that has
+     * none — and on this company that mask renders the EIGHT-DIGIT branch id, overflowing
+     * `transactions.reference_number` part-way through a replay instead of before it.
+     *
+     * MUTATION PROOF. Deleting the `$missing !== []` refusal from `assertSeeded()` makes this test
+     * fail on the missing exception — and the real replay then dies on `SQLSTATE[22001]` at
+     * whichever document first needs the unseeded combination.
+     */
+    public function test_serial_planner_refuses_a_replay_whose_numbering_is_not_seeded(): void
+    {
+        $this->seedCityTravelersBaseline();
+        $this->seedLegacyCompanyWithBranch('CO');
+
+        $planner = app(LegacySerialSchemaPlanner::class);
+        $scope = LegacyLoadScope::forCompany(self::FLOOR);
+
+        try {
+            $planner->assertSeeded($scope, [2025]);
+            $this->fail('Expected LegacyScopeRefused: nothing has been seeded yet.');
+        } catch (LegacyScopeRefused $e) {
+            $this->assertStringContainsString('have no pre-seeded serial_schemas row', $e->getMessage());
+            $this->assertStringContainsString('DEFAULT_MASK', $e->getMessage());
+        }
+
+        // Seed it, and the same assertion must now PASS — a guard that can never be satisfied
+        // proves nothing.
+        $planner->apply($planner->plan($scope, [2025])['rows']);
+        $planner->assertSeeded($scope, [2025]);
+
+        // And a HAND-EDITED mask that no longer fits is caught too, which a "does a row exist"
+        // check alone would miss.
+        DB::table('serial_schemas')
+            ->where('company_id', self::FLOOR)
+            ->where('doc_type', 'INV')
+            ->update(['mask' => '{TYPE}-A-VERY-LONG-BRANCH-TAG-{YYYY}-{SEQ:5}']);
+
+        try {
+            $planner->assertSeeded($scope, [2025]);
+            $this->fail('Expected LegacyScopeRefused: an existing mask renders too long.');
+        } catch (LegacyScopeRefused $e) {
+            $this->assertStringContainsString('render longer than transactions.reference_number holds', $e->getMessage());
+            $this->assertStringContainsString((string) $planner->referenceNumberLimit(), $e->getMessage());
+        }
+    }
+
+    /**
+     * FINDING F5, first half. `LegacySerialsCommand::resolveYears()` read
+     * `replay.window_from` / `replay.window_to` — NEITHER KEY EXISTS (they are `window_start` /
+     * `window_end`), so both `config()` calls fell through to the PHP defaults written beside them
+     * and the command worked only because those defaults happened to be the intended window. A
+     * typo'd key that silently returns a plausible answer is the exact shape of defect this phase
+     * exists to find in somebody else's ledger.
+     *
+     * MUTATION PROOF. Restoring `window_from`/`window_to` in resolveYears() makes this test fail on
+     * the missing exception, because the wrong key falls through to a default instead of refusing.
+     */
+    public function test_serials_command_refuses_when_the_replay_window_is_not_configured(): void
+    {
+        $this->seedCityTravelersBaseline();
+
+        // This test exercises a COMMAND, so its declared write set has to cover everything the
+        // command's own post-conditions will see grow — `users` and `serial_schemas` included.
+        // (The narrow default set in setUp() is what test_undeclared_table_growth_is_refused needs,
+        // and widening it there would make that test vacuous.)
+        config()->set('legacy_pilot.ct_scope.tables', [
+            'companies', 'users', 'branches', 'accounts', 'serial_schemas', 'transactions', 'journal_entries',
+        ]);
+        config()->set('legacy_pilot.ct_scope.global_tables', ['companies', 'users']);
+
+        // ARM FIRST. Without this the command exits non-zero anyway — its post-conditions refuse
+        // because no pre-load baseline is persisted — and this test would pass with the wrong
+        // config keys restored. A mutation run proved exactly that. Arming makes the window config
+        // the only thing left that can refuse.
+        $this->artisan('legacy:scope', ['--company' => self::FLOOR, '--apply' => true])->assertExitCode(0);
+        $this->seedLegacyCompanyWithBranch('CO');
+
+        // The keys the command must read. Asserting they EXIST first means this test fails loudly
+        // if the config is renamed again, rather than passing for the wrong reason.
+        $this->assertIsString(config('legacy_pilot.replay.window_start'));
+        $this->assertIsString(config('legacy_pilot.replay.window_end'));
+
+        // Control: with the window configured and no --years, the command succeeds. This is what
+        // makes the refusal below meaningful rather than a permanent failure.
+        $this->artisan('legacy:serials', ['--company' => self::FLOOR, '--apply' => true])
+            ->assertExitCode(0);
+
+        $seeded = DB::table('serial_schemas')->where('company_id', self::FLOOR)->count();
+        $this->assertGreaterThan(0, $seeded);
+
+        config()->set('legacy_pilot.replay.window_start', null);
+
+        try {
+            $this->resolveSerialYears();
+            $this->fail('Expected LegacyScopeRefused: the replay window is not configured.');
+        } catch (LegacyScopeRefused $e) {
+            $this->assertStringContainsString('window_start / window_end are not both configured', $e->getMessage());
+            $this->assertStringContainsString('will not substitute a plausible default', $e->getMessage());
+        }
+
+        $this->artisan('legacy:serials', ['--company' => self::FLOOR, '--apply' => true])
+            ->assertExitCode(1);
+
+        $this->assertSame(
+            $seeded,
+            DB::table('serial_schemas')->where('company_id', self::FLOOR)->count(),
+            'legacy:serials wrote rows although the window it derives years from was unconfigured'
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * {@see \App\Console\Commands\Legacy\LegacySerialsCommand::resolveYears()}, invoked directly
+     * so its refusal MESSAGE can be asserted — Command::error() wraps at the terminal width, so a
+     * long substring straddles a line break and expectsOutputToContain() can never match it.
+     *
+     * @return list<int>
+     */
+    private function resolveSerialYears(): array
+    {
+        $command = new \App\Console\Commands\Legacy\LegacySerialsCommand;
+        $method = new \ReflectionMethod($command, 'resolveYears');
+        $method->setAccessible(true);
+
+        // resolveYears() reads only $this->option('years'), which is empty on a freshly constructed
+        // command, and config() — which is what this test is about.
+        $command->setLaravel($this->app);
+        $input = new \Symfony\Component\Console\Input\ArrayInput([], $command->getDefinition());
+        $command->setInput($input);
+
+        return $method->invoke($command);
+    }
 
     /** @return array<string,int> */
     private function rowSnapshot(): array
@@ -416,6 +594,7 @@ class LegacyScopeGuardTest extends TestCase
 
     private function seedCityTravelersBaseline(): void
     {
+        DB::table('countries')->insert(['id' => 1, 'name' => 'Kuwait', 'iso_code' => 'KW', 'is_active' => 1]);
         DB::table('users')->insert(['id' => 1, 'role_id' => 1, 'name' => 'CT', 'email' => 'ct@example.invalid', 'password' => 'x']);
         DB::table('companies')->insert([
             'id' => 1, 'user_id' => 1, 'code' => 'CT', 'currency' => 'KWD', 'country_id' => 1,

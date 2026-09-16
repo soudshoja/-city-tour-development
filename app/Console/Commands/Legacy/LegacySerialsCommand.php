@@ -47,9 +47,8 @@ class LegacySerialsCommand extends Command
             return self::FAILURE;
         }
 
-        $years = $this->resolveYears();
-
         try {
+            $years = $this->resolveYears();
             $plan = $planner->plan($scope, $years);
         } catch (LegacyScopeRefused $e) {
             $this->error($e->getMessage());
@@ -89,6 +88,12 @@ class LegacySerialsCommand extends Command
             $result['existing']
         ));
 
+        // ROUND 2, finding F2 - the R-CO4 post-conditions, on the deployed path. See
+        // App\Console\Commands\Legacy\Concerns\GuardsLegacyScope::assertLegacyPostConditions().
+        if (! $this->assertLegacyPostConditions($scope)) {
+            return self::FAILURE;
+        }
+
         return self::SUCCESS;
     }
 
@@ -102,8 +107,27 @@ class LegacySerialsCommand extends Command
             return array_values(array_map('intval', $given));
         }
 
-        $from = (int) date('Y', strtotime((string) config('legacy_pilot.replay.window_from', '2025-01-01')));
-        $to = (int) date('Y', strtotime((string) config('legacy_pilot.replay.window_to', '2026-03-31')));
+        // ROUND 2, finding F5. This used to read `replay.window_from` / `replay.window_to`.
+        // NEITHER KEY EXISTS - config/legacy_pilot.php calls them `window_start` / `window_end` -
+        // so both config() calls fell through to the PHP defaults written beside them, and the
+        // command worked only because those defaults happened to be the intended window. A typo'd
+        // config key that silently returns a plausible answer is the shape of defect this phase
+        // exists to find in somebody else's ledger; it does not get to live in the tool.
+        //
+        // The keys are asserted rather than defaulted: a missing one is a refusal, not a guess.
+        $start = config('legacy_pilot.replay.window_start');
+        $end = config('legacy_pilot.replay.window_end');
+
+        if (! is_string($start) || ! is_string($end) || $start === '' || $end === '') {
+            throw new LegacyScopeRefused(
+                'Refused: legacy_pilot.replay.window_start / window_end are not both configured, so '.
+                'there is no window to derive document years from. Pass --years explicitly, or fix '.
+                'the config - this command will not substitute a plausible default for a missing key.'
+            );
+        }
+
+        $from = (int) date('Y', (int) strtotime($start));
+        $to = (int) date('Y', (int) strtotime($end));
 
         return range(min($from, $to), max($from, $to));
     }

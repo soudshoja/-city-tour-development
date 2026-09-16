@@ -5,40 +5,49 @@ declare(strict_types=1);
 namespace App\Console\Commands\Legacy;
 
 use App\Services\Onboarding\LegacyPathGuard;
+use App\Services\Onboarding\Scope\LegacyCompanyGuard;
 use App\Services\Onboarding\Scope\LegacyIdBandGuard;
 use App\Services\Onboarding\Scope\LegacyLoadScope;
+use App\Services\Onboarding\Scope\LegacyRowLedger;
 use App\Services\Onboarding\Scope\LegacyScopeRefused;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
- * CD-PORT — the exact undo. `CD0-REVERSAL-MANIFEST-2026-09-16.md` §3, executable.
+ * CD-PORT — the reversal. `CD0-REVERSAL-MANIFEST-2026-09-16.md` §3, executable and corrected.
  *
- * The manifest is fifteen hand-written `DELETE … WHERE id BETWEEN` statements plus fifteen
- * `ALTER … AUTO_INCREMENT` statements, and CD0 proved it correct on a local fence. This command is
- * the same procedure with four things the hand-written version could not have:
+ * ── ROUND 2: this command used to delete City Travelers rows and report success ─────────────────
+ * Round 1 implemented the manifest literally: `DELETE … WHERE id BETWEEN <floor> AND <ceiling>`,
+ * with a `company_id` predicate added only where the table had that column. Adversarial
+ * verification proved that unsound and reproduced it twice on a fence:
  *
- *   1. **It cannot drift from the write set.** The delete order and the table list are derived from
- *      `legacy_pilot.ct_scope.tables`, which is the same list the guards enforce during the load.
- *      A table added to the load is a table the unload deletes from, in the same commit.
- *   2. **It reaches the tables the manifest could not.** `model_has_roles`,
- *      `model_has_permissions` and `role_has_permissions` have NO `id` column, so the manifest's
- *      `WHERE id BETWEEN` cannot touch them and the rows the provisioner writes there would have
- *      survived the documented reversal. Each is deleted here through a FK that IS in the band.
- *   3. **It restores each counter to the value recorded before the load**, not to `MAX(id) + 1` —
- *      see the `ct_scope_counter` migration for why those are different numbers and why the
- *      difference matters for `accounts`.
- *   4. **It re-reads every counter after the ALTER.** CD0's central finding is that
- *      `ALTER TABLE t AUTO_INCREMENT = n` returns exit 0 while doing nothing; a reversal that
- *      trusted the exit code would report fifteen restored counters and be wrong about all
- *      fifteen. Ruling R-CO5.
+ *     legacy:unload --company=10000001 --apply
+ *       -> "5 row(s) deleted across 5 table(s); 0 residual rows in the band."
+ *          FOUR of the five were City Travelers' — a user, a supplier, an agent, a queued job.
  *
- * `--dry-run` is the DEFAULT. `--apply` must be typed.
+ *     legacy:unload --company=99999999 --apply       (a company that never existed, never loaded)
+ *       -> "1 row(s) deleted … 0 residual" — a City Travelers supplier, gone.
  *
- * ── The one thing this command will not do ──────────────────────────────────────────────────────
- * It never deletes a row outside the band, and it never deletes a row of a protected company, even
- * if asked. The band predicate is on every statement, and the company gate runs first. A caller
- * who wants City Travelers' rows gone is asking the wrong tool.
+ * Three separate defects produced that, and all three are fixed here:
+ *
+ *   1. **The band is not ownership, and the port itself made it a trap.** `legacy:scope --apply`
+ *      raises `AUTO_INCREMENT` to the floor on `users`, `agents` and `suppliers`, so from that
+ *      moment every row the dev application (and `test.citycommerce.group`, the second app on the
+ *      same schema) mints there lands INSIDE the band — and it fills continuously across the days
+ *      the deploy plan leaves between arming and unloading. **Deletion is now driven entirely by
+ *      {@see LegacyRowLedger}**, which records per-table ownership from explicit attribution rules
+ *      (`companies.user_id`, `branches.company_id`, `supplier_companies.company_id`, …). No
+ *      statement in this command carries an id-range predicate any more.
+ *   2. **There was no company gate.** Only `assertNotProtected()` against 1/2/3, which any typo
+ *      clears. It now calls {@see LegacyCompanyGuard::assertTargetCompany()} — exists, in band,
+ *      not protected — AND refuses a company with no `ct_scope_run` row on this database. A
+ *      company that never loaded can never reach a DELETE.
+ *   3. **Rows in the band that are not ours were invisible.** `fingerprintOutsideBand()` computes
+ *      over `id NOT BETWEEN`, so a City Travelers row *inside* the band was excluded from the
+ *      "untouched" proof by construction — the evidence could not see the defect. Those rows are
+ *      now enumerated by name and id, and refused by default.
+ *
+ * `--dry-run` is the DEFAULT; `--apply` must be typed.
  */
 class LegacyUnloadCommand extends Command
 {
@@ -46,28 +55,16 @@ class LegacyUnloadCommand extends Command
                             {--company= : The company whose legacy load is being reversed (required)}
                             {--apply : Actually delete. Without this the command counts and reports, and writes nothing}
                             {--keep-counters : Delete the rows but leave every AUTO_INCREMENT where it is}
-                            {--purge-audit-log : Also remove this load\'s accounting_audit_log rows by setting the append-only table\'s own documented escape-hatch session variable. Off by default — the append-only invariant belongs to City Travelers, not to this lane}';
+                            {--purge-audit-log : Also remove this load\'s accounting_audit_log rows by setting the append-only table\'s own documented escape-hatch session variable. Off by default — the append-only invariant belongs to City Travelers, not to this lane}
+                            {--allow-unowned-in-band : Proceed although rows this load does NOT own are sitting inside the reserved band. They are still never deleted; this only downgrades the refusal to a warning, for a live database where the dev application mints into those tables continuously}';
 
-    protected $description = 'CD-PORT — reverse a legacy load: delete every row in the reserved id band for one company, restore each table\'s recorded pre-load AUTO_INCREMENT, and report the counts.';
+    protected $description = 'CD-PORT — reverse a legacy load: delete exactly the rows the load owns (per the ct_scope_row ledger, never by id range), restore each table\'s recorded pre-load AUTO_INCREMENT, and report the counts.';
 
     /**
      * Delete order: children before parents, so no FK is ever left dangling and
-     * `FOREIGN_KEY_CHECKS` never has to be turned off.
-     *
-     * Derived from the FK graph measured on the fence:
-     *   journal_entries -> transactions, accounts, branches, companies
-     *   transactions    -> companies, users
-     *   accounts        -> accounts (self), companies, supplier_companies
-     *   branches        -> companies, users
-     *   companies       -> users
-     *
-     * `accounts` is self-referencing via `parent_id`, so its rows are deleted deepest-child-first
-     * inside {@see self::deleteAccountsTree()} rather than in one statement.
-     *
-     * A table in `ct_scope.tables` that is NOT named here is deleted after this list, before
-     * `accounts`/`branches`/`companies`/`users` — see {@see self::deleteOrder()}. That is a
-     * deliberate fail-safe: a newly declared table still gets reversed even if nobody updated this
-     * constant, it just gets a less considered position in the order.
+     * `FOREIGN_KEY_CHECKS` never has to be turned off. Derived from the FK graph measured on the
+     * fence. `accounts` is self-referencing via `parent_id` and is handled in
+     * {@see self::deleteAccountsTree()}.
      */
     private const EXPLICIT_ORDER_HEAD = [
         'journal_entries',
@@ -86,7 +83,6 @@ class LegacyUnloadCommand extends Command
         'supplier_companies',
         'suppliers',
         'agents',
-        'jobs',
     ];
 
     /** Deleted last, in this order, because everything else points at them. */
@@ -98,7 +94,7 @@ class LegacyUnloadCommand extends Command
         'users',
     ];
 
-    public function handle(LegacyIdBandGuard $band): int
+    public function handle(LegacyIdBandGuard $band, LegacyRowLedger $ledger, LegacyCompanyGuard $company): int
     {
         $companyOption = $this->option('company');
 
@@ -113,85 +109,143 @@ class LegacyUnloadCommand extends Command
         try {
             LegacyPathGuard::assertQuarantinedConnection();
             $scope = LegacyLoadScope::forCompany((int) $companyOption);
-            $this->assertNotProtected($scope);
-            $this->assertBandBelongsSolelyToTarget($scope, $band);
+
+            // Gate 1 — the same gate every write command passes: not protected, exists, and its
+            // own id is inside the band. Round 1 had none of this and would delete for a company
+            // id that had never existed.
+            $company->assertTargetCompany($scope);
+
+            // Gate 2 — this database must actually carry a load for this company. `ct_scope_run`
+            // is written by `legacy:scope --apply`; without a row there, nothing armed a band for
+            // this company here and there is nothing of ours to reverse.
+            $this->assertLoadExists($scope);
         } catch (LegacyScopeRefused $e) {
             $this->error($e->getMessage());
 
             return self::FAILURE;
         }
 
-        $counts = $this->countBandRows($scope, $band);
-        $pivotCounts = $this->countPivotRows($scope, $band);
+        // Re-derive ownership before reading it, so a load that added rows after the last write
+        // command is still fully covered. Derivational and idempotent — see LegacyRowLedger.
+        $ledger->claim($scope);
+
+        $owned = $ledger->allOwned($scope);
+        $unowned = $ledger->unownedInBand($scope);
 
         $rows = [];
 
-        foreach ($counts as $table => $n) {
-            $rows[] = [$table, $n, 'id BETWEEN band'];
+        foreach ($this->deleteOrder($scope) as $table) {
+            $rows[] = [$table, count($owned[$table] ?? []), 'ct_scope_row ledger'];
         }
 
-        foreach ($pivotCounts as $table => [$n, $predicate]) {
+        foreach ($this->pivotCounts($scope, $ledger) as $table => [$n, $predicate]) {
             $rows[] = [$table, $n, $predicate];
         }
 
-        $this->table(['table', 'rows in band', 'predicate'], $rows);
+        $this->table(['table', 'rows OWNED by this load', 'how ownership was decided'], $rows);
 
-        $total = array_sum($counts) + array_sum(array_map(static fn ($p) => $p[0], $pivotCounts));
+        if ($unowned !== []) {
+            $total = array_sum(array_map('count', $unowned));
+
+            $lines = [];
+
+            foreach ($unowned as $table => $ids) {
+                $shown = array_slice($ids, 0, 10);
+                $lines[] = $table.' ['.implode(', ', $shown).(count($ids) > 10 ? ', … '.(count($ids) - 10).' more' : '').']';
+            }
+
+            $message =
+                'There are '.$total.' row(s) inside the reserved band '.$scope->bandDescription().
+                ' that this load does NOT own: '.implode('; ', $lines).'. These are almost certainly '.
+                "City Travelers' own rows — the dev application mints into `users`, `agents` and ".
+                '`suppliers` continuously, and `legacy:scope --apply` raised those counters into the '.
+                'band. They are NEVER deleted by this command. ';
+
+            if (! $this->option('allow-unowned-in-band')) {
+                $this->error(
+                    'Refused: '.$message.'Re-run with --allow-unowned-in-band to proceed; the '.
+                    'reversal will still touch only the rows in the ct_scope_row ledger.'
+                );
+
+                return self::FAILURE;
+            }
+
+            $this->warn($message.'--allow-unowned-in-band was given; proceeding.');
+        }
+
+        $totalOwned = array_sum(array_map('count', $owned));
 
         if (! $apply) {
             $this->warn(
-                "DRY RUN — nothing was deleted. {$total} row(s) are inside the band ".
-                $scope->bandDescription()." for company {$scope->companyId}. Re-run with --apply."
+                "DRY RUN — nothing was deleted. {$totalOwned} row(s) are owned by company ".
+                "{$scope->companyId} on this database. Re-run with --apply."
             );
 
             return self::SUCCESS;
         }
 
-        $deleted = $this->deleteAll($scope, $band, $pivotCounts);
+        $deleted = $this->deleteAll($scope, $band, $ledger, $owned);
 
-        $residual = array_filter(
-            $this->countBandRows($scope, $band),
-            fn ($n, $table) => $n > 0 && ! $this->isExempt($table),
-            ARRAY_FILTER_USE_BOTH
-        );
+        // Post-condition: not one owned row may remain. Deliberately re-derived from the LEDGER,
+        // not from the band — "0 residual rows in the band" was round 1's headline and it was true
+        // while the command was deleting somebody else's rows.
+        $residual = [];
 
-        $exemptResidue = array_filter(
-            $this->countBandRows($scope, $band),
-            fn ($n, $table) => $n > 0 && $this->isExempt($table),
-            ARRAY_FILTER_USE_BOTH
-        );
-        $residualPivots = array_filter($this->countPivotRows($scope, $band), static fn ($p) => $p[0] > 0);
+        foreach ($owned as $table => $ids) {
+            if ($this->isExempt($table) || ! $band->tableExists($table) || $ids === []) {
+                continue;
+            }
 
-        if ($residual !== [] || $residualPivots !== []) {
-            $names = array_merge(array_keys($residual), array_keys($residualPivots));
+            $left = (int) DB::table($table)->whereIn('id', $ids)->count();
 
+            if ($left > 0) {
+                $residual[$table] = $left;
+            }
+        }
+
+        if ($residual !== []) {
             $this->error(
-                'Refused to report success: '.count($names).' table(s) still hold rows in the band '.
-                'after the unload — '.implode(', ', $names).'. The reversal is INCOMPLETE.'
+                'Refused to report success: '.count($residual).' table(s) still hold rows this load '.
+                'owns — '.implode(', ', array_map(
+                    static fn ($t, $n) => "{$t}={$n}",
+                    array_keys($residual),
+                    $residual
+                )).'. The reversal is INCOMPLETE.'
             );
 
             return self::FAILURE;
         }
 
-        foreach ($exemptResidue as $table => $n) {
-            $this->warn(sprintf(
-                'EXEMPT RESIDUE: %d row(s) remain in `%s` inside the band and were NOT deleted — %s',
-                $n,
-                $table,
-                (string) (config('legacy_pilot.ct_scope.unload_exempt_tables')[$table] ?? 'exempt')
-            ));
+        foreach ($owned as $table => $ids) {
+            if (! $this->isExempt($table) || $ids === [] || ! $band->tableExists($table)) {
+                continue;
+            }
+
+            $left = (int) DB::table($table)->whereIn('id', $ids)->count();
+
+            if ($left > 0) {
+                $this->warn(sprintf(
+                    'EXEMPT RESIDUE: %d row(s) remain in `%s` and were NOT deleted — %s',
+                    $left,
+                    $table,
+                    (string) (config('legacy_pilot.ct_scope.unload_exempt_tables')[$table] ?? 'exempt')
+                ));
+            }
         }
 
         $counters = $this->option('keep-counters')
             ? []
-            : $this->restoreCounters($scope, $band);
+            : $this->restoreCounters($scope, $band, $owned);
+
+        $ledger->forget($scope);
 
         $this->recordRun($scope, 'unload', ['deleted' => $deleted, 'counters' => $counters]);
 
         $this->info(
             'Unload complete for company '.$scope->companyId.': '.array_sum($deleted).
-            ' row(s) deleted across '.count(array_filter($deleted)).' table(s); 0 residual rows in '.
-            'the band. '.count(array_filter($counters, static fn ($c) => $c['restored'])).
+            ' row(s) deleted across '.count(array_filter($deleted)).' table(s), every one of them '.
+            'from the ct_scope_row ledger; 0 residual owned rows. '.
+            count(array_filter($counters, static fn ($c) => $c['restored'])).
             ' counter(s) restored and re-read from information_schema.TABLES.'
         );
 
@@ -209,13 +263,24 @@ class LegacyUnloadCommand extends Command
     }
 
     /**
-     * A table the unload must not delete from — today only `accounting_audit_log`, whose
-     * append-only trigger refuses the statement outright. Kept as config rather than a constant so
-     * the reason travels with the entry and shows up in the operator's own output.
+     * @throws LegacyScopeRefused
      */
-    private function isExempt(string $table): bool
+    private function assertLoadExists(LegacyLoadScope $scope): void
     {
-        return array_key_exists($table, (array) config('legacy_pilot.ct_scope.unload_exempt_tables', []));
+        $exists = DB::connection('legacy_pilot')->table('ct_scope_run')
+            ->where('company_id', $scope->companyId)
+            ->where('database_name', DB::connection()->getDatabaseName())
+            ->where('action', 'arm')
+            ->exists();
+
+        if (! $exists) {
+            throw new LegacyScopeRefused(
+                'Refused: no legacy load is recorded for company '.$scope->companyId.' on database `'.
+                DB::connection()->getDatabaseName().'` — `legacy_pilot.ct_scope_run` has no `arm` row '.
+                'for it. A company this pipeline never loaded is a company this command will not '.
+                'delete from, whatever its id happens to be.'
+            );
+        }
     }
 
     private function assertNotProtected(LegacyLoadScope $scope): void
@@ -232,40 +297,29 @@ class LegacyUnloadCommand extends Command
         }
     }
 
-    /** @return array<string,int> */
-    private function countBandRows(LegacyLoadScope $scope, LegacyIdBandGuard $band): array
+    /**
+     * A table the unload must not delete from — today only `accounting_audit_log`, whose
+     * append-only trigger refuses the statement outright. Kept as config rather than a constant so
+     * the reason travels with the entry and shows up in the operator's own output.
+     */
+    private function isExempt(string $table): bool
     {
-        $out = [];
-
-        foreach ($this->deleteOrder($scope) as $table) {
-            if (! $band->tableExists($table)) {
-                continue;
-            }
-
-            $out[$table] = (int) $this->bandQuery($table, $scope, $band)->count();
-        }
-
-        return $out;
+        return array_key_exists($table, (array) config('legacy_pilot.ct_scope.unload_exempt_tables', []));
     }
 
-    /** @return array<string, array{0:int, 1:string}> */
-    private function countPivotRows(LegacyLoadScope $scope, LegacyIdBandGuard $band): array
+    /**
+     * Pivot rows this load owns: those whose FK points at a row in the ledger. See
+     * `legacy_pilot.ct_scope.pivot_tables` for why the delete is the UNION of the clauses.
+     *
+     * @return array<string, array{0:int, 1:string}>
+     */
+    private function pivotCounts(LegacyLoadScope $scope, LegacyRowLedger $ledger): array
     {
         $out = [];
 
-        foreach ($scope->pivotTables as $table => $spec) {
-            if (! $band->tableExists($table)) {
-                continue;
-            }
-
-            $q = DB::table($table)->whereBetween($spec['column'], [$scope->idFloor, $scope->idCeiling]);
-            $predicate = $spec['column'].' BETWEEN band';
-
-            foreach (($spec['where'] ?? []) as $col => $val) {
-                $q->where($col, $val);
-                $predicate .= " AND {$col} = '{$val}'";
-            }
-
+        foreach ($this->pivotClauses($scope, $ledger) as $table => [$clauses, $predicate]) {
+            $q = DB::table($table);
+            $this->applyPivotClauses($q, $clauses);
             $out[$table] = [(int) $q->count(), $predicate];
         }
 
@@ -273,103 +327,69 @@ class LegacyUnloadCommand extends Command
     }
 
     /**
-     * The band predicate, plus — for a table that HAS a `company_id` — the company predicate too.
-     *
-     * Both, not either. The band alone would delete another company's row if one ever landed in the
-     * band (it should not, but "should not" is not a guarantee), and the company alone would delete
-     * a row the load did not create. Requiring both means a row has to be BOTH in the band AND the
-     * target company's before this command will remove it, which is the strictest reading of the
-     * reversal manifest rather than the loosest.
+     * @return array<string, array{0: list<array{column:string, ids:list<int>, where:array<string,string>}>, 1: string}>
      */
-    private function bandQuery(string $table, LegacyLoadScope $scope, LegacyIdBandGuard $band)
+    private function pivotClauses(LegacyLoadScope $scope, LegacyRowLedger $ledger): array
     {
-        $q = DB::table($table)->whereBetween('id', [$scope->idFloor, $scope->idCeiling]);
+        $out = [];
 
-        if ($table === 'companies') {
-            // `companies` is a "global" table only in the sense that it has no `company_id`
-            // COLUMN — its `id` IS the company. Leaving it on the band predicate alone was a real
-            // defect, caught by the scoping mutation proof: `legacy:unload --company=50` (a
-            // company with nothing in the band) built `DELETE FROM companies WHERE id BETWEEN
-            // 10000001 AND 19999999` and tried to delete the OTHER, unrelated legacy company that
-            // was loaded there, failing on `accounts_company_id_foreign` rather than on anything
-            // that would have told the operator what it had just attempted.
-            return $q->where('id', $scope->companyId);
+        /** @var array<string, list<array{column:string, owner:string, where?:array<string,string>}>> $config */
+        $config = (array) config('legacy_pilot.ct_scope.pivot_tables', []);
+
+        foreach ($config as $table => $clauseSpecs) {
+            if (! $this->tableExists($table)) {
+                continue;
+            }
+
+            $clauses = [];
+            $described = [];
+
+            foreach ($clauseSpecs as $spec) {
+                $ids = $ledger->ownedIds($scope, $spec['owner']);
+
+                if ($ids === []) {
+                    continue;
+                }
+
+                $clauses[] = [
+                    'column' => $spec['column'],
+                    'ids' => $ids,
+                    'where' => $spec['where'] ?? [],
+                ];
+
+                $describe = $spec['column'].' IN owned '.$spec['owner'];
+
+                foreach ($spec['where'] ?? [] as $col => $val) {
+                    $describe .= " AND {$col}='{$val}'";
+                }
+
+                $described[] = $describe;
+            }
+
+            if ($clauses === []) {
+                continue;
+            }
+
+            $out[$table] = [$clauses, implode(' OR ', $described)];
         }
 
-        if (! $scope->isGlobalTable($table) && $band->hasColumn($table, 'company_id')) {
-            $q->where('company_id', $scope->companyId);
-        }
-
-        return $q;
+        return $out;
     }
 
-    /**
-     * The precondition that makes deleting from a `company_id`-less table safe at all.
-     *
-     * `users`, `agents`, `suppliers` and `jobs` carry no company column, so for them the id band
-     * IS the scope — which is only sound if the band holds ONE load's rows. This asserts exactly
-     * that, by asking every company-scoped table in the write set which companies own rows inside
-     * the band, and refusing if the answer is anything other than "only the target, or nobody".
-     *
-     * Without it, two legacy companies sharing a band would each unload the other's global rows.
-     * With it, that configuration is refused before the first DELETE, naming the companies
-     * involved — and the operator's answer is to give the second load its own band, not to force
-     * this one through.
-     *
-     * @throws LegacyScopeRefused
-     */
-    private function assertBandBelongsSolelyToTarget(LegacyLoadScope $scope, LegacyIdBandGuard $band): void
+    /** @param  list<array{column:string, ids:list<int>, where:array<string,string>}>  $clauses */
+    private function applyPivotClauses($query, array $clauses): void
     {
-        $intruders = [];
+        $query->where(function ($outer) use ($clauses) {
+            foreach ($clauses as $clause) {
+                $outer->orWhere(function ($inner) use ($clause) {
+                    $inner->whereIn($clause['column'], $clause['ids']);
 
-        foreach ($scope->tables as $table) {
-            if ($table === 'companies' || $scope->isGlobalTable($table) || ! $band->tableExists($table)) {
-                continue;
+                    foreach ($clause['where'] as $col => $val) {
+                        $inner->where($col, $val);
+                    }
+                });
             }
-
-            if (! $band->hasColumn($table, 'company_id')) {
-                continue;
-            }
-
-            $others = DB::table($table)
-                ->whereBetween('id', [$scope->idFloor, $scope->idCeiling])
-                ->where('company_id', '<>', $scope->companyId)
-                ->distinct()
-                ->pluck('company_id')
-                ->all();
-
-            foreach ($others as $other) {
-                $intruders[(int) $other][] = $table;
-            }
-        }
-
-        // `companies` itself: another company row sitting in the band is the same problem.
-        $otherCompanies = DB::table('companies')
-            ->whereBetween('id', [$scope->idFloor, $scope->idCeiling])
-            ->where('id', '<>', $scope->companyId)
-            ->pluck('id')
-            ->all();
-
-        foreach ($otherCompanies as $other) {
-            $intruders[(int) $other][] = 'companies';
-        }
-
-        if ($intruders !== []) {
-            $detail = [];
-
-            foreach ($intruders as $companyId => $tables) {
-                $detail[] = 'company '.$companyId.' in '.implode('/', array_unique($tables));
-            }
-
-            throw new LegacyScopeRefused(
-                'Refused: the reserved band '.$scope->bandDescription().' holds rows belonging to '.
-                count($intruders).' company/companies other than the unload target '.
-                $scope->companyId.' — '.implode('; ', $detail).'. Tables with no `company_id` '.
-                'column (users, agents, suppliers, jobs) are scoped by the band ALONE, so deleting '.
-                'from them here would take the other load\'s rows with them. Give each load its own '.
-                'band before unloading either.'
-            );
-        }
+        });
     }
 
     /** @return list<string> */
@@ -391,49 +411,44 @@ class LegacyUnloadCommand extends Command
     }
 
     /**
-     * @param  array<string, array{0:int, 1:string}>  $pivotCounts
+     * @param  array<string, list<int>>  $owned
      * @return array<string,int>
      */
-    private function deleteAll(LegacyLoadScope $scope, LegacyIdBandGuard $band, array $pivotCounts): array
+    private function deleteAll(LegacyLoadScope $scope, LegacyIdBandGuard $band, LegacyRowLedger $ledger, array $owned): array
     {
         $deleted = [];
 
-        return DB::transaction(function () use ($scope, $band, $pivotCounts, &$deleted) {
-            // Pivots first: they point at roles/users, which are deleted below.
-            foreach ($scope->pivotTables as $table => $spec) {
-                if (! $band->tableExists($table) || ($pivotCounts[$table][0] ?? 0) === 0) {
-                    continue;
-                }
-
-                $q = DB::table($table)->whereBetween($spec['column'], [$scope->idFloor, $scope->idCeiling]);
-
-                foreach (($spec['where'] ?? []) as $col => $val) {
-                    $q->where($col, $val);
-                }
-
-                $deleted[$table] = (int) $q->delete();
-            }
-
+        return DB::transaction(function () use ($scope, $band, $ledger, $owned, &$deleted) {
             if ($this->option('purge-audit-log')) {
-                // The escape hatch the append-only trigger itself defines — see
-                // legacy_pilot.ct_scope.unload_exempt_tables and AccountingAuditLogPurge, which
-                // uses the identical mechanism for retention. Set inside the transaction so it
-                // cannot leak to an unrelated later statement on a pooled connection.
+                // The escape hatch the append-only trigger itself defines — the identical
+                // mechanism AccountingAuditLogPurge uses for retention. Set inside the transaction
+                // so it cannot leak to an unrelated later statement on a pooled connection.
                 DB::statement('SET @accounting_audit_log_allow_delete = 1');
             }
 
+            // Pivots first: they point at roles and users, which are deleted below.
+            foreach ($this->pivotClauses($scope, $ledger) as $table => [$clauses, $_predicate]) {
+                $q = DB::table($table);
+                $this->applyPivotClauses($q, $clauses);
+                $deleted[$table] = (int) $q->delete();
+            }
+
             foreach ($this->deleteOrder($scope) as $table) {
-                if (! $band->tableExists($table)) {
+                if (! $band->tableExists($table) || $this->isExempt($table)) {
                     continue;
                 }
 
-                if ($this->isExempt($table)) {
+                $ids = $owned[$table] ?? [];
+
+                if ($ids === []) {
+                    $deleted[$table] = 0;
+
                     continue;
                 }
 
                 $deleted[$table] = $table === 'accounts'
-                    ? $this->deleteAccountsTree($scope, $band)
-                    : (int) $this->bandQuery($table, $scope, $band)->delete();
+                    ? $this->deleteAccountsTree($ids)
+                    : (int) DB::table($table)->whereIn('id', $ids)->delete();
             }
 
             return $deleted;
@@ -441,42 +456,28 @@ class LegacyUnloadCommand extends Command
     }
 
     /**
-     * `accounts.parent_id` is a self-FK, so a single `DELETE … WHERE id BETWEEN` fails on the first
-     * parent whose children have not gone yet (MySQL evaluates the FK per row, and the delete order
-     * within one statement is the optimiser's choice, not ours).
+     * `accounts.parent_id` is a self-FK, so one `DELETE … WHERE id IN (…)` fails on the first
+     * parent whose children have not gone yet (MySQL evaluates the FK per row, and the delete
+     * order within one statement is the optimiser's choice, not ours).
      *
-     * Deleting leaves-first in `level` DESCENDING order is the fix, and it is bounded: the loop
-     * runs at most once per distinct level and stops the moment a pass deletes nothing, so a cycle
-     * in the tree (which would be a corrupt chart, not a normal one) terminates the loop instead of
-     * spinning. Any rows left after that are reported by the caller's residual check rather than
-     * silently tolerated.
+     * Deleting leaves-first is the fix, and it is bounded: the loop stops the moment a pass
+     * deletes nothing, so a cycle in the tree (a corrupt chart, not a normal one) terminates the
+     * loop instead of spinning. Anything left is caught by the caller's residual check.
+     *
+     * @param  list<int>  $ids
      */
-    private function deleteAccountsTree(LegacyLoadScope $scope, LegacyIdBandGuard $band): int
+    private function deleteAccountsTree(array $ids): int
     {
         $total = 0;
-
-        $levels = DB::table('accounts')
-            ->whereBetween('id', [$scope->idFloor, $scope->idCeiling])
-            ->where('company_id', $scope->companyId)
-            ->distinct()
-            ->orderByDesc('level')
-            ->pluck('level');
-
-        foreach ($levels as $level) {
-            $total += (int) $this->bandQuery('accounts', $scope, $band)->where('level', $level)->delete();
-        }
-
-        // Anything left (a NULL level, or a row whose level ordering did not satisfy its own FK)
-        // gets one more pass, deepest id first.
-        $remaining = (int) $this->bandQuery('accounts', $scope, $band)->count();
+        $remaining = (int) DB::table('accounts')->whereIn('id', $ids)->count();
 
         while ($remaining > 0) {
-            $gone = (int) $this->bandQuery('accounts', $scope, $band)
-                ->whereNotIn('id', function ($q) use ($scope) {
+            $gone = (int) DB::table('accounts')
+                ->whereIn('id', $ids)
+                ->whereNotIn('id', function ($q) use ($ids) {
                     $q->select('parent_id')->from('accounts')
                         ->whereNotNull('parent_id')
-                        ->whereBetween('id', [$scope->idFloor, $scope->idCeiling])
-                        ->where('company_id', $scope->companyId);
+                        ->whereIn('id', $ids);
                 })
                 ->delete();
 
@@ -486,16 +487,17 @@ class LegacyUnloadCommand extends Command
                 break;
             }
 
-            $remaining = (int) $this->bandQuery('accounts', $scope, $band)->count();
+            $remaining = (int) DB::table('accounts')->whereIn('id', $ids)->count();
         }
 
         return $total;
     }
 
     /**
+     * @param  array<string, list<int>>  $owned
      * @return array<string, array{target:int, before:int, after:int, restored:bool}>
      */
-    private function restoreCounters(LegacyLoadScope $scope, LegacyIdBandGuard $band): array
+    private function restoreCounters(LegacyLoadScope $scope, LegacyIdBandGuard $band, array $owned): array
     {
         $database = $band->databaseName();
         $out = [];
@@ -511,9 +513,9 @@ class LegacyUnloadCommand extends Command
             }
 
             // A table whose rows were left in place cannot have its counter restored — CD0's whole
-            // finding. Skipping it here is the difference between "not attempted, and said so" and
+            // finding. Skipping it is the difference between "not attempted, and said so" and
             // "attempted, reported success from an exit code, and was wrong".
-            if ($this->isExempt($table) && (int) DB::table($table)->whereBetween('id', [$scope->idFloor, $scope->idCeiling])->count() > 0) {
+            if ($this->isExempt($table) && ($owned[$table] ?? []) !== []) {
                 continue;
             }
 
@@ -534,6 +536,14 @@ class LegacyUnloadCommand extends Command
         }
 
         return $out;
+    }
+
+    private function tableExists(string $table): bool
+    {
+        return DB::selectOne(
+            'SELECT 1 AS present FROM information_schema.TABLES WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?',
+            [DB::connection()->getDatabaseName(), $table]
+        ) !== null;
     }
 
     /** @param  array<string,mixed>  $detail */

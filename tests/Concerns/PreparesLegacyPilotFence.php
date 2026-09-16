@@ -37,7 +37,7 @@ trait PreparesLegacyPilotFence
     // the newest legacy_pilot migration's newest table (2026_09_16_000001_create_ct_scope_tables).
     // Without it a fence migrated before that migration existed would skip the migrate call and
     // fail later on a missing table rather than on a pending migration.
-    private const FENCE_MIGRATION_MARKERS = ['map_purpose', 'parity_run', 'seeded_chart_removed', 'map_document', 'seeded_chart_removal_run', 'ct_scope_counter'];
+    private const FENCE_MIGRATION_MARKERS = ['map_purpose', 'parity_run', 'seeded_chart_removed', 'map_document', 'seeded_chart_removal_run', 'ct_scope_counter', 'ct_scope_row'];
 
     /**
      * The same probe for a migration that only ADDS COLUMNS, and so introduces
@@ -56,7 +56,7 @@ trait PreparesLegacyPilotFence
         'map_document', 'map_document_line', 'map_allocation',
         'seeded_chart_removal_run',
         // CD-PORT
-        'ct_scope_counter', 'ct_scope_run',
+        'ct_scope_counter', 'ct_scope_run', 'ct_scope_row', 'ct_scope_fingerprint',
     ];
 
     protected function setUpLegacyPilotFence(): void

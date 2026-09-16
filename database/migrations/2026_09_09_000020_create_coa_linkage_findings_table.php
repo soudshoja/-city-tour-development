@@ -32,6 +32,17 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // AK-PORT 80-2: guarded PER ARTEFACT, not by a single proxy. Laravel emits one
+        // statement per added column and per index, and DDL is non-transactional on MariaDB,
+        // so a crash can leave any subset applied. A guard that asks only about the FIRST
+        // artefact returns early on a half-applied table and marks the migration DONE with
+        // the rest still missing -- worse than no guard at all.
+        if (Schema::hasTable('coa_linkage_findings')) {
+            $this->ensureIndexes();
+
+            return;
+        }
+
         Schema::create('coa_linkage_findings', function (Blueprint $table) {
             $table->id();
 
@@ -62,6 +73,37 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['company_id', 'code'], 'coa_lf_company_code_idx');
+        });
+    }
+
+
+    /**
+     * AK-PORT 80-2. Every index a Schema::create declares -- single-column ->index() as
+     * well as a named composite -- is emitted as its OWN `alter table ... add index`
+     * statement, not as part of the CREATE. DDL is non-transactional on MariaDB, so a
+     * crash mid-create leaves the table present with an arbitrary subset of its indexes,
+     * and a bare hasTable() guard would then return early and mark the migration DONE
+     * with the rest permanently missing. Measured: dropping coa_lf_company_code_idx and
+     * re-running reported DONE and did not restore it.
+     */
+    private function ensureIndexes(): void
+    {
+        Schema::table('coa_linkage_findings', function (Blueprint $table) {
+            if (! Schema::hasIndex('coa_linkage_findings', 'coa_linkage_findings_company_id_index')) {
+                $table->index('company_id', 'coa_linkage_findings_company_id_index');
+            }
+
+            if (! Schema::hasIndex('coa_linkage_findings', 'coa_linkage_findings_code_index')) {
+                $table->index('code', 'coa_linkage_findings_code_index');
+            }
+
+            if (! Schema::hasIndex('coa_linkage_findings', 'coa_linkage_findings_severity_index')) {
+                $table->index('severity', 'coa_linkage_findings_severity_index');
+            }
+
+            if (! Schema::hasIndex('coa_linkage_findings', 'coa_lf_company_code_idx')) {
+                $table->index(['company_id', 'code'], 'coa_lf_company_code_idx');
+            }
         });
     }
 

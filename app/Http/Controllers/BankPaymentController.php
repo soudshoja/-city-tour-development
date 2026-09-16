@@ -1655,6 +1655,8 @@ class BankPaymentController extends Controller
         $payments = $this->reconciliation->fetchPaymentsByDate(
             $companyId,
             $branchIds,
+            // CT-A12: passed through raw on purpose — fetchPaymentsByDate() normalises both
+            // bounds itself, so no caller has to know that `transaction_date` is a datetime.
             $request->from,
             $request->to,
             $request->get('supplier'),

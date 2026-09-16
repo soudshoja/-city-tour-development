@@ -46,6 +46,7 @@ use Maatwebsite\Excel\Facades\Excel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
+use App\Support\ReportDateRange;
 
 class SupplierController extends Controller
 {
@@ -273,7 +274,10 @@ class SupplierController extends Controller
 
         $tasks = Task::with(['agent', 'flightDetails', 'hotelDetails.hotel'])
             ->where('supplier_id', $supplierId)
-            ->whereBetween('supplier_pay_date', [$fromDate, $toDate])
+            // CT-A12: `tasks.supplier_pay_date` is a `datetime` and these are bare `Y-m-d`
+            // request values — measured on LIVE, 18 tasks carrying KWD 4,701.499 sit after
+            // midnight on a month end and were dropped from this ledger.
+            ->whereBetween('supplier_pay_date', [ReportDateRange::start($fromDate), ReportDateRange::end($toDate)])
             ->whereHas('agent.branch.company', function ($q) use ($companyId) {
                 $q->where('id', $companyId);
             })

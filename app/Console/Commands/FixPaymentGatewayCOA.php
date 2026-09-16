@@ -12,6 +12,7 @@ use App\Services\ChargeService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Support\ReportDateRange;
 
 class FixPaymentGatewayCOA extends Command
 {
@@ -114,12 +115,15 @@ class FixPaymentGatewayCOA extends Command
             $query->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId));
         }
 
+        // CT-A12: `--to-date=2026-09-30` meant `<= '2026-09-30 00:00:00'` against a `datetime`
+        // column, so this repair command silently skipped every invoice paid after midnight on the
+        // last day the operator asked for — and reported success over the smaller set.
         if ($fromDate = $this->option('from-date')) {
-            $query->where('paid_date', '>=', $fromDate);
+            $query->where('paid_date', '>=', ReportDateRange::start($fromDate));
         }
 
         if ($toDate = $this->option('to-date')) {
-            $query->where('paid_date', '<=', $toDate);
+            $query->where('paid_date', '<=', ReportDateRange::end($toDate));
         }
 
         $invoices = $query->get();
@@ -309,12 +313,13 @@ class FixPaymentGatewayCOA extends Command
             $query->whereHas('agent.branch', fn($q) => $q->where('company_id', $companyId));
         }
 
+        // CT-A12: same boundary as fixInvoiceCOA() above, on `payments.payment_date`.
         if ($fromDate = $this->option('from-date')) {
-            $query->where('payment_date', '>=', $fromDate);
+            $query->where('payment_date', '>=', ReportDateRange::start($fromDate));
         }
 
         if ($toDate = $this->option('to-date')) {
-            $query->where('payment_date', '<=', $toDate);
+            $query->where('payment_date', '<=', ReportDateRange::end($toDate));
         }
 
         $payments = $query->get();

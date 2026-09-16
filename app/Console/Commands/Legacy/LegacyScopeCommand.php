@@ -6,6 +6,7 @@ namespace App\Console\Commands\Legacy;
 
 use App\Services\Onboarding\LegacyPathGuard;
 use App\Services\Onboarding\Scope\LegacyCompanyGuard;
+use App\Services\Onboarding\Scope\LegacySandboxGuard;
 use App\Services\Onboarding\Scope\LegacyIdBandGuard;
 use App\Services\Onboarding\Scope\LegacyLoadScope;
 use App\Services\Onboarding\Scope\LegacyScopeRefused;
@@ -52,6 +53,9 @@ class LegacyScopeCommand extends Command
         $apply = (bool) $this->option('apply');
 
         try {
+            // The sandbox gate, before anything — see GuardsLegacyScope::assertLegacyScope().
+            app(LegacySandboxGuard::class)->assertSandbox();
+
             LegacyPathGuard::assertQuarantinedConnection();
 
             $scope = LegacyLoadScope::forCompany((int) $companyOption);

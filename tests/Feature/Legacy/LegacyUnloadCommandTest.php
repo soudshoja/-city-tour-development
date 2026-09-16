@@ -6,6 +6,7 @@ namespace Tests\Feature\Legacy;
 
 use App\Services\Onboarding\Scope\LegacyLoadScope;
 use App\Services\Onboarding\Scope\LegacyRowLedger;
+use App\Services\Onboarding\Scope\LegacySandboxGuard;
 use App\Services\Onboarding\Scope\LegacyScopeRefused;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -62,6 +63,13 @@ class LegacyUnloadCommandTest extends TestCase
                 ['column' => 'model_id', 'owner' => 'users', 'where' => ['model_type' => 'App\Models\User']],
             ],
         ]);
+
+        // The sandbox gate is on every legacy:* command now, so the fence declares itself one.
+        // test_the_unload_refuses_on_a_database_that_is_not_a_declared_sandbox() undoes this
+        // deliberately, which is what makes the gate's own test meaningful.
+        config()->set('legacy_pilot.ct_scope.sandbox_database', DB::connection()->getDatabaseName());
+        config()->set('legacy_pilot.ct_scope.never_sandbox_databases', ['citycomm_city-tour', 'citycomm_city-tour-test']);
+        app(LegacySandboxGuard::class)->mark('phpunit fence');
 
         $this->seedCityTravelers();
     }
@@ -349,6 +357,166 @@ class LegacyUnloadCommandTest extends TestCase
     }
 
     // ─────────────────────────────────────────────────────────────────────────────────────────
+    // ROUND 3 — the sandbox gate (owner decision 2026-09-16, superseding O-1)
+    // ─────────────────────────────────────────────────────────────────────────────────────────
+
+    /**
+     * **The one gate that replaces five fixes.** Como runs in its own copy of the development
+     * database, so the pipeline must refuse to run anywhere that is not a declared sandbox.
+     *
+     * Two adversarial verification rounds found two different routes by which this pipeline's row
+     * attribution reached City Travelers data on a SHARED schema — an id band the pipeline itself
+     * filled with other companies' rows, and reachability rules that claimed a supplier linked to
+     * two companies and deleted it at id 5. Neither is reachable on a dedicated copy, and this gate
+     * is what stops a future operator from putting the pipeline back on a shared one.
+     *
+     * MUTATION PROOF. Deleting the `assertSandbox()` call from
+     * {@see \App\Console\Commands\Legacy\LegacyUnloadCommand::handle()} makes this test fail on
+     * `Expected status code 1 but received 0` AND on the surviving-company assertion, because the
+     * unload then proceeds on an undeclared database.
+     */
+    public function test_the_unload_refuses_on_a_database_that_is_not_a_declared_sandbox(): void
+    {
+        $companyId = $this->loadComoCompany();
+
+        // Undeclare it — exactly the state the working development site is in, permanently.
+        config()->set('legacy_pilot.ct_scope.sandbox_database', null);
+
+        try {
+            app(LegacySandboxGuard::class)->assertSandbox();
+            $this->fail('Expected LegacyScopeRefused: LEGACY_SANDBOX_DATABASE is unset.');
+        } catch (LegacyScopeRefused $e) {
+            $this->assertStringContainsString('LEGACY_SANDBOX_DATABASE is not set', $e->getMessage());
+            $this->assertStringContainsString('NOT safe on a database shared with another live company', $e->getMessage());
+        }
+
+        $this->artisan('legacy:unload', [
+            '--company' => $companyId, '--apply' => true, '--allow-unowned-in-band' => true,
+        ])->assertExitCode(1);
+
+        $this->assertSame(1, DB::table('companies')->where('id', $companyId)->count(), 'the unload ran on an undeclared database');
+    }
+
+    /**
+     * The env var alone is not enough: the marker must exist in the database itself, and must name
+     * the schema it was stamped for. A sandbox `.env` copied onto another site does not make that
+     * site a sandbox, and a dump of a sandbox restored under another name stops being one.
+     */
+    public function test_the_gate_needs_both_the_env_declaration_and_a_marker_stamped_for_this_schema(): void
+    {
+        $guard = app(LegacySandboxGuard::class);
+        $live = DB::connection()->getDatabaseName();
+
+        // 1. env names a DIFFERENT database -> refused.
+        config()->set('legacy_pilot.ct_scope.sandbox_database', 'citycomm_como_sandbox');
+
+        try {
+            $guard->assertSandbox();
+            $this->fail('Expected LegacyScopeRefused: the declared name does not match the live one.');
+        } catch (LegacyScopeRefused $e) {
+            $this->assertStringContainsString("names 'citycomm_como_sandbox'", $e->getMessage());
+            $this->assertStringContainsString("resolves to '".$live."'", $e->getMessage());
+        }
+
+        // 2. env matches but the marker was stamped for another schema -> refused. This is the
+        //    restored-dump case, and it is why the marker records a name rather than a flag.
+        config()->set('legacy_pilot.ct_scope.sandbox_database', $live);
+        $guard->mark('fence');
+        DB::table(LegacySandboxGuard::MARKER_TABLE)->update(['database_name' => 'citycomm_some_other_copy']);
+
+        try {
+            $guard->assertSandbox();
+            $this->fail('Expected LegacyScopeRefused: the marker belongs to another schema.');
+        } catch (LegacyScopeRefused $e) {
+            $this->assertStringContainsString('was stamped for', $e->getMessage());
+            $this->assertStringContainsString('a COPY of a sandbox, not a sandbox', $e->getMessage());
+        }
+
+        // 3. both agree -> it runs. A gate that can never be satisfied proves nothing.
+        DB::table(LegacySandboxGuard::MARKER_TABLE)->update(['database_name' => $live]);
+        $guard->assertSandbox();
+        $this->assertTrue($guard->isSandbox());
+    }
+
+    /**
+     * `legacy:sandbox --mark` cannot be the thing that accidentally declares a shared database:
+     * it refuses unless the env var already names this exact database, and it refuses the two
+     * names that are never a sandbox whatever any env var says.
+     */
+    public function test_marking_refuses_an_undeclared_or_forbidden_database(): void
+    {
+        $live = DB::connection()->getDatabaseName();
+        $guard = app(LegacySandboxGuard::class);
+
+        config()->set('legacy_pilot.ct_scope.sandbox_database', null);
+        DB::table(LegacySandboxGuard::MARKER_TABLE)->delete();
+
+        $this->artisan('legacy:sandbox', ['--mark' => true])->assertExitCode(1);
+        $this->assertSame(
+            0,
+            DB::table(LegacySandboxGuard::MARKER_TABLE)->count(),
+            'legacy:sandbox --mark stamped a database that had not declared itself'
+        );
+
+        // Named as never-a-sandbox: refused even when the env var agrees with the live name.
+        config()->set('legacy_pilot.ct_scope.sandbox_database', $live);
+        config()->set('legacy_pilot.ct_scope.never_sandbox_databases', [$live]);
+
+        try {
+            $guard->mark();
+            $this->fail('Expected LegacyScopeRefused: this database is on never_sandbox_databases.');
+        } catch (LegacyScopeRefused $e) {
+            $this->assertStringContainsString('never_sandbox_databases', $e->getMessage());
+            $this->assertStringContainsString('are never sandboxes, whatever any env var says', $e->getMessage());
+        }
+    }
+
+    /**
+     * ROUND 3, item 4 — the post-conditions run INSIDE the delete transaction, so a baseline
+     * difference rolls the whole reversal back instead of leaving a half-undone load.
+     *
+     * MUTATION PROOF. Removing the two post-condition calls from `deleteAll()` makes this test fail
+     * on `assertSame(1, …companies…)`: the reversal commits and the legacy company is gone despite
+     * the baseline being violated.
+     */
+    public function test_a_baseline_violation_rolls_the_whole_reversal_back(): void
+    {
+        // HARNESS ACCOMMODATION, and it is worth naming rather than hiding. `legacy:scope --apply`
+        // issues `ALTER TABLE ... AUTO_INCREMENT`, which is DDL, and DDL implicitly COMMITS in
+        // MySQL — which destroys the outer transaction `RefreshDatabase` wraps every test in. Any
+        // later rollback then fails with `SQLSTATE[42000] ... SAVEPOINT trans2 does not exist`,
+        // and this is the only test in the class where the command under test must roll ITS OWN
+        // transaction back. Dropping the floor to 1 means every counter is already at or above it,
+        // so `arm()` reports `already` and issues no ALTER at all. Nothing about the assertion
+        // below depends on the band — it is about the baseline check undoing a delete — so this
+        // costs the oracle nothing. In production there is no outer transaction and the rollback
+        // is ordinary.
+        config()->set('legacy_pilot.ct_scope.id_floor', 1);
+
+        $companyId = $this->loadComoCompany();
+
+        // A City Travelers row that existed before the load, altered. The row COUNT does not move,
+        // so only the content fingerprint can see it.
+        DB::table('accounts')->where('id', 2)->update(['name' => 'Cash (tampered)']);
+
+        $this->artisan('legacy:unload', [
+            '--company' => $companyId, '--apply' => true, '--allow-unowned-in-band' => true,
+        ])->assertExitCode(1);
+
+        $this->assertSame(1, DB::table('companies')->where('id', $companyId)->count(), 'the reversal committed despite a baseline violation');
+        $this->assertSame(1, DB::table('accounts')->where('company_id', $companyId)->count());
+
+        // Put it back and the reversal completes — so the guard is satisfiable, not permanent.
+        DB::table('accounts')->where('id', 2)->update(['name' => 'Cash']);
+
+        $this->artisan('legacy:unload', [
+            '--company' => $companyId, '--apply' => true, '--allow-unowned-in-band' => true,
+        ])->assertExitCode(0);
+
+        $this->assertSame(0, DB::table('companies')->where('id', $companyId)->count());
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────────────────────
     // The ledger itself
     // ─────────────────────────────────────────────────────────────────────────────────────────
 
@@ -435,30 +603,27 @@ class LegacyUnloadCommandTest extends TestCase
     }
 
     /**
-     * The unload's two gates, invoked directly so a refusal MESSAGE can be asserted without going
-     * through Command::error()'s line wrapping.
+     * The command's OWN `assertLoadExists()`, invoked by reflection.
+     *
+     * ROUND 3, item 5. This used to be a helper that REIMPLEMENTED the gate inside the test file —
+     * it queried `ct_scope_run` itself and threw its own `LegacyScopeRefused` carrying its own copy
+     * of the message, so the two `assertStringContainsString` calls below were asserting on a
+     * string the test had written. Mutating the real `assertLoadExists()` to a no-op left five
+     * assertions passing and failed only on `assertExitCode(1)` — the exact weak oracle this
+     * correction was meant to move away from, and one that every other refusal path also satisfies.
+     *
+     * Reflection onto the real private method is the honest fix: the message asserted is the
+     * message the command actually produces, so emptying that method makes this fail ON THE
+     * MESSAGE.
      *
      * @throws LegacyScopeRefused
      */
     private function runUnloadGates(int $companyId): void
     {
-        $scope = LegacyLoadScope::forCompany($companyId);
-
-        app(\App\Services\Onboarding\Scope\LegacyCompanyGuard::class)->assertTargetCompany($scope);
-
-        $armed = DB::connection('legacy_pilot')->table('ct_scope_run')
-            ->where('company_id', $companyId)
-            ->where('database_name', DB::connection()->getDatabaseName())
-            ->where('action', 'arm')
-            ->exists();
-
-        if (! $armed) {
-            throw new LegacyScopeRefused(
-                'Refused: no legacy load is recorded for company '.$companyId.' on database `'.
-                DB::connection()->getDatabaseName().'` - `legacy_pilot.ct_scope_run` has no `arm` row '.
-                'for it.'
-            );
-        }
+        $command = $this->app->make(\App\Console\Commands\Legacy\LegacyUnloadCommand::class);
+        $method = new \ReflectionMethod($command, 'assertLoadExists');
+        $method->setAccessible(true);
+        $method->invoke($command, LegacyLoadScope::forCompany($companyId));
     }
 
     private function insertUser(string $email, string $name): int

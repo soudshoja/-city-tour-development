@@ -9,6 +9,7 @@ use App\Services\Onboarding\Scope\LegacyCompanyGuard;
 use App\Services\Onboarding\Scope\LegacyIdBandGuard;
 use App\Services\Onboarding\Scope\LegacyLoadScope;
 use App\Services\Onboarding\Scope\LegacyRowLedger;
+use App\Services\Onboarding\Scope\LegacySandboxGuard;
 use App\Services\Onboarding\Scope\LegacyScopeRefused;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
@@ -107,6 +108,13 @@ class LegacyUnloadCommand extends Command
         $apply = (bool) $this->option('apply');
 
         try {
+            // ── THE SANDBOX GATE ─────────────────────────────────────────────────────────────
+            // This is the only command in the pipeline that deletes anything, so it is the one
+            // the gate matters most for. Read LegacySandboxGuard's class docblock: this command's
+            // row attribution is NOT safe on a database shared with another live company, and the
+            // gate is what enforces that rather than a comment nobody reads.
+            app(LegacySandboxGuard::class)->assertSandbox();
+
             LegacyPathGuard::assertQuarantinedConnection();
             $scope = LegacyLoadScope::forCompany((int) $companyOption);
 
@@ -184,7 +192,15 @@ class LegacyUnloadCommand extends Command
             return self::SUCCESS;
         }
 
-        $deleted = $this->deleteAll($scope, $band, $ledger, $owned);
+        try {
+            $deleted = $this->deleteAll($scope, $band, $ledger, $owned);
+        } catch (LegacyScopeRefused $e) {
+            // Thrown from INSIDE the delete transaction by the post-condition check below, so
+            // everything this reversal did has already been rolled back by the time this runs.
+            $this->error('POST-CONDITION FAILED, REVERSAL ROLLED BACK: '.$e->getMessage());
+
+            return self::FAILURE;
+        }
 
         // Post-condition: not one owned row may remain. Deliberately re-derived from the LEDGER,
         // not from the band — "0 residual rows in the band" was round 1's headline and it was true
@@ -450,6 +466,17 @@ class LegacyUnloadCommand extends Command
                     ? $this->deleteAccountsTree($ids)
                     : (int) DB::table($table)->whereIn('id', $ids)->delete();
             }
+
+            // ── ROUND 3, item 4 — the R-CO4 post-conditions, INSIDE the transaction ──────────
+            // `legacy:unload` was the only one of the seven commands that deletes anything and the
+            // only one that never ran them. Verification proved they would have caught round 2's
+            // damage: run by hand straight after that destructive unload they refused with
+            // `suppliers (rows 1 -> 0 ... over id <= 5); supplier_companies (rows 1 -> 0 ... over
+            // id <= 7)`. The instrument existed, worked, and was not pointed at the command that
+            // needed it. Throwing here rolls the whole reversal back rather than leaving a
+            // half-undone load behind.
+            app(LegacyCompanyGuard::class)->assertBaselineIntact($scope);
+            $band->assertNoUndeclaredTableChangedSinceCapture($scope);
 
             return $deleted;
         });

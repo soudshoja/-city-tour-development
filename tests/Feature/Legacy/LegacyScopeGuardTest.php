@@ -48,6 +48,11 @@ class LegacyScopeGuardTest extends TestCase
         config()->set('legacy_pilot.ct_scope.global_tables', ['companies']);
         config()->set('legacy_pilot.ct_scope.pivot_tables', []);
         config()->set('legacy_pilot.ct_scope.unload_exempt_tables', []);
+
+        // The sandbox gate runs before every other gate on every legacy:* command.
+        config()->set('legacy_pilot.ct_scope.sandbox_database', \Illuminate\Support\Facades\DB::connection()->getDatabaseName());
+        config()->set('legacy_pilot.ct_scope.never_sandbox_databases', ['citycomm_city-tour', 'citycomm_city-tour-test']);
+        app(\App\Services\Onboarding\Scope\LegacySandboxGuard::class)->mark('phpunit fence');
     }
 
     // ─────────────────────────────────────────────────────────────────────────────────────────

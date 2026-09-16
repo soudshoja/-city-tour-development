@@ -692,6 +692,28 @@ return [
     */
     'ct_scope' => [
 
+        // ── THE SANDBOX GATE (owner decision 2026-09-16, superseding O-1) ────────────────────
+        //
+        // Como runs in its OWN COPY of the development database, not inside it. Two adversarial
+        // verification rounds found two different routes by which this pipeline's row attribution
+        // reached City Travelers data on a shared schema — an id band that the pipeline itself
+        // filled with other people's rows, and reachability rules that claimed a supplier linked
+        // to two companies. The fix is not a third attribution scheme; it is not sharing.
+        //
+        // `LEGACY_SANDBOX_DATABASE` must name the database this application actually connects to,
+        // and that database must carry a `ct_legacy_sandbox` marker stamped for its own name. Both
+        // are required, both are deliberate acts, and neither can happen by accident. See
+        // App\Services\Onboarding\Scope\LegacySandboxGuard.
+        'sandbox_database' => env('LEGACY_SANDBOX_DATABASE'),
+
+        // Names that are never a sandbox, whatever any env var says. A belt-and-braces list: the
+        // marker check above is the real gate, and this is here so that the single most damaging
+        // typo is refused by name rather than by mechanism.
+        'never_sandbox_databases' => [
+            'citycomm_city-tour',       // LIVE
+            'citycomm_city-tour-test',  // the working development + test site
+        ],
+
         'id_floor' => (int) env('LEGACY_PILOT_ID_FLOOR', 10000001),
         'id_ceiling' => (int) env('LEGACY_PILOT_ID_CEILING', 19999999),
 

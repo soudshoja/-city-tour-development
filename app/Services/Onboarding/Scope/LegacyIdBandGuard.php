@@ -365,6 +365,61 @@ final class LegacyIdBandGuard
         return $this->assertNoUndeclaredTableGrew($scope, $before, $this->rowCensus());
     }
 
+    /**
+     * ROUND 3, fix 4 — the UNLOAD's census check. `assertNoUndeclaredTableGrew()` only looks for
+     * growth, which is right for a load and wrong for a reversal: a reversal SHRINKS things, and
+     * an undeclared table shrinking is exactly the cascade damage round 2 did to
+     * `supplier_companies`. This refuses on a change in EITHER direction.
+     *
+     * @throws LegacyScopeRefused
+     */
+    public function assertNoUndeclaredTableChangedSinceCapture(LegacyLoadScope $scope): void
+    {
+        $database = $this->databaseName();
+
+        $before = DB::connection('legacy_pilot')->table('ct_scope_fingerprint')
+            ->where('company_id', $scope->companyId)
+            ->where('database_name', $database)
+            ->where('stage', 'census')
+            ->pluck('row_count', 'table_name')
+            ->map(static fn ($n) => (int) $n)
+            ->all();
+
+        if ($before === []) {
+            throw new LegacyScopeRefused(
+                'Refused: no pre-load row census is recorded for company '.$scope->companyId.' on `'.
+                $database.'`, so there is nothing to check the reversal against.'
+            );
+        }
+
+        /** @var list<string> $ignored */
+        $ignored = array_map('strval', (array) config('legacy_pilot.ct_scope.ignored_growth_tables', []));
+
+        $after = $this->rowCensus();
+        $offenders = [];
+
+        foreach ($after as $table => $count) {
+            if (in_array($table, $scope->declaredTables(), true) || in_array($table, $ignored, true)) {
+                continue;
+            }
+
+            $was = $before[$table] ?? 0;
+
+            if ($count !== $was) {
+                $offenders[] = sprintf('%s (%d -> %d, %+d)', $table, $was, $count, $count - $was);
+            }
+        }
+
+        if ($offenders !== []) {
+            throw new LegacyScopeRefused(
+                'Refused: '.count($offenders).' table(s) outside the declared write set changed row '.
+                'count — '.implode('; ', $offenders).'. A reversal that shrinks a table nobody '.
+                'declared is cascade damage, which is how round 2 removed `supplier_companies` row '.
+                '7 while reporting it had deleted only ledger rows.'
+            );
+        }
+    }
+
     /** @return array<string,int> table => AUTO_INCREMENT, for the declared write set */
     public function counters(LegacyLoadScope $scope): array
     {

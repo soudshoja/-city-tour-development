@@ -9,6 +9,7 @@ use App\Services\Onboarding\Scope\LegacyCompanyGuard;
 use App\Services\Onboarding\Scope\LegacyIdBandGuard;
 use App\Services\Onboarding\Scope\LegacyLoadScope;
 use App\Services\Onboarding\Scope\LegacyRowLedger;
+use App\Services\Onboarding\Scope\LegacySandboxGuard;
 use App\Services\Onboarding\Scope\LegacyScopeRefused;
 
 /**
@@ -39,6 +40,14 @@ trait GuardsLegacyScope
      */
     protected function assertLegacyScope(int $companyId): LegacyLoadScope
     {
+        // ── THE SANDBOX GATE, first, before everything ───────────────────────────────────────
+        // This pipeline's row attribution is NOT safe on an application database shared with
+        // another live company. Two verification rounds proved it twice, by two different routes.
+        // {@see LegacySandboxGuard} is what keeps a future operator out of that situation, and it
+        // runs before the quarantine check, the company gate and the band because it is the one
+        // that makes the others meaningful.
+        app(LegacySandboxGuard::class)->assertSandbox();
+
         LegacyPathGuard::assertQuarantinedConnection();
 
         $scope = LegacyLoadScope::forCompany($companyId);

@@ -198,6 +198,27 @@ or the ratchet is decorative.
    site — the replay is what caught the scanner's own case-sensitive regex missing
    `supplier_pay_date`.
 
+   **CT-A13 closed four holes in that scanner, each of which had hidden a LIVE defect.** It matched
+   only string-literal column arguments, so the `->where(DB::raw('COALESCE(posting_date,
+   transaction_date)'), '<=', $to)` form — which is how almost every accounting date predicate in
+   this codebase is written — was invisible. It accepted any earlier normalising assignment
+   anywhere in the function, so one fixed branch vouched for every branch below it, and a
+   `whereBetween`'s normalised LOWER end vouched for its upper one. It read only the first line of a
+   signature, so a `?Carbon $dateTo` on its own line was lost. And it matched `<=`/`>=` but never
+   `<`/`>`. A range is now judged on its **upper end alone** — the only end that can carry this
+   defect, since a bare `Y-m-d` lower bound widening to `00:00:00` is exactly what "from the 1st"
+   means.
+
+**Every allow-list entry must ship with a proof that removing it makes the census fail.** This is a
+rule for every source-scanner ratchet here, not just the date-range one. Emptying the whole list and
+watching it go red proves only that AT LEAST ONE entry matters; CT-A12 did exactly that, called both
+its entries load-bearing, and one of them was decoration — the site it named could not be reported
+by that scanner at any time, because its only predicate was a shape the regexes did not match. An
+allow-list entry that suppresses nothing is worse than no entry, because it reads like a reviewed
+decision and will outlive the code it describes. `DateRangeBoundaryRatchetTest::
+test_every_allow_list_entry_is_load_bearing()` is the mechanical form: it removes each entry in
+turn, re-runs the census, and fails naming the entry if the census stays green.
+
 Running the accounting suites: **chunk `tests/Feature/Accounting` into groups of ~32 files.** A
 single-process run of all 128 files reports hundreds of phantom failures — one test leaking an open
 transaction makes every later test fail on an `innodb_lock_wait_timeout` about 50s later, attributed

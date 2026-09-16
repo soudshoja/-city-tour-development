@@ -29,6 +29,7 @@ use App\Services\Accounting\Reconciliation\SupplierStatementMatcher;
 use App\Services\Accounting\ReconciliationCenterService;
 use App\Services\Accounting\ReconciliationFixDraftService;
 use App\Services\Accounting\ReconciliationProposalService;
+use App\Support\ReportDateRange;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -568,7 +569,16 @@ class ReconciliationController extends Controller
         $companyId = $this->resolveCompanyId($request);
         abort_if($companyId === null, 400, 'No company selected.');
 
-        $asOf = $request->filled('date') ? Carbon::parse((string) $request->input('date')) : now();
+        // CT-A13: `Carbon::parse('2026-09-30')` is midnight, and the three consumers of this value
+        // disagreed about what to do with it. `ReconciliationCenterService::grid()` normalises
+        // internally (bounds() applies startOfDay()/endOfDay()), so the GRID counted the whole
+        // day; `unmatchedFor()` and `explainGap()` take the instant literally as a `<=` bound, so
+        // the DRILL-DOWN stopped at 00:00:00. Same screen, same date, two different populations —
+        // the divergence shape CT-A12 fixed on the trial balance, on a screen it did not reach.
+        // Normalising once, here, is what makes the three agree.
+        $asOf = $request->filled('date')
+            ? (ReportDateRange::end((string) $request->input('date')) ?? now())
+            : now();
         $mode = $request->input('mode', 'day') === 'month' ? 'month' : 'day';
 
         return [$companyId, $asOf, $mode];

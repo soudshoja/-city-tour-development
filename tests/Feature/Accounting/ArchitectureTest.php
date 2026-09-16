@@ -197,6 +197,24 @@ class ArchitectureTest extends TestCase
         // entry, so `feat/accounting-dev-line` @ fafaa14268 fails this ratchet on its own. The
         // ratchet did its job; this is the note it asked for.
         'Console/Commands/AccountingCoaDuplicates.php',
+        // CT-A8 — `accounting:backfill-supplier-leaf` (the write, and its `--rollback` restore):
+        // `DB::table('accounts')->where('id', …)->whereNull('supplier_id')->update(['supplier_id' => …])`.
+        //
+        // Same category as the two entries above: a repair of an EXISTING leaf's non-balance
+        // column, which AccountService's contract has no operation for (it creates accounts; it
+        // does not assign a party to one). `supplier_id` is a party-attribution column — the rule
+        // this allow-list protects is that `accounts.actual_balance` is derived from
+        // `journal_entries` and must never be written, and this touches no balance at all. The
+        // command's own test file pins that with a byte-equality fingerprint of every money column
+        // AND of `journal_entries.type_reference_id` taken before and after an applied repair
+        // (BackfillSupplierLeafTest::test_the_repair_moves_no_money_and_stamps_no_ledger_line).
+        //
+        // Gated four ways by the command itself: dry-run is the default; it writes only where the
+        // column is NULL (re-asserted in the UPDATE itself, so it can never overwrite an operator's
+        // or SupplierActivationService's assignment); it refuses any leaf whose posted evidence
+        // does not name exactly one supplier; and every write is preceded by a `CoaLinkageChange`
+        // before-image that its own `--rollback={runId}` restores.
+        'Console/Commands/BackfillSupplierLeaf.php',
     ];
 
     /**

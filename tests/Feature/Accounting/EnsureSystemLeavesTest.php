@@ -41,6 +41,18 @@ class EnsureSystemLeavesTest extends AccountingTestCase
     {
         $company = Company::factory()->create();
         CoaSeeder::run($company->id);
+
+        // CT-A7 ROUND 2 (finding F3, and a consequence of CT-A7-5's own seeder change): COA
+        // correction C1 now seeds the five per-gateway clearing leaves 1310-1314 under
+        // `1300 Payment Gateway`. A company whose chart PREDATES that correction has none of them,
+        // and this whole fixture exists to be such a company — so they are removed BEFORE
+        // SystemAccountsSeeder runs, which is what lets its bare-pool branch park all five
+        // GATEWAY_CLEARING_* purposes on the pool exactly as a real pre-C1 chart carries them.
+        DB::table('accounts')
+            ->where('company_id', $company->id)
+            ->whereIn('code', ['1310', '1311', '1312', '1313', '1314'])
+            ->delete();
+
         (new SystemAccountsSeeder())->run();
 
         // Simulate a company whose chart predates the four leaves this command backfills: remove
@@ -522,18 +534,23 @@ class EnsureSystemLeavesTest extends AccountingTestCase
     /**
      * TASK 3 (COA blocker fix, 2026-08-31), mirrors
      * test_first_run_creates_and_maps_all_four_leaves_second_run_creates_nothing above for the
-     * GATEWAY_CLEARING side: 'Knet' (1311) / 'uPayment' (1312) are OPTIONAL leaves this command
-     * backfills as children of the 'Payment Gateway' (1300, Assets) pool. Unlike the fee-expense
-     * pair, CoaSeeder never seeds these for a fresh company either (task 3's own scope is
-     * EnsureSystemLeaves only), so a plain makeOldCompany() already lacks them — no special
-     * fixture deletion needed. Before the backfill, GATEWAY_CLEARING_KNET/UPAYMENT resolve onto
-     * the bare pool itself (SystemAccountsSeeder's own bare-pool branch); after it, they must move
-     * onto their own new dedicated leaves, while MyFatoorah/Hesabe/Tap — which still have no
-     * dedicated child of their own — stay safely mapped to the pool (the "already mapped to pool"
-     * preserve rule resolveGatewayClearing() now carries, mirroring GATEWAY_FEE_EXPENSE's own R-4
-     * fix one pool family over).
+     * GATEWAY_CLEARING side.
+     *
+     * ── CT-A7 ROUND 2, finding F3 — REWRITTEN, and the rewrite is the point ─────────────────────
+     * This case used to assert that the backfill moves 'Knet' (1311) and 'uPayment' (1312) onto
+     * their own leaves while MyFatoorah / Hesabe / Tap "stay safely mapped to the pool". That was
+     * the correct expectation of a command whose leaf list held only two of the five gateways —
+     * and it was also CT-D2b-1: the moment those two children appeared, the pool became a GROUP
+     * and the other three purposes were left pointing at a non-leaf, which
+     * `CoaLinkage::verifyPurposes()` (correctly) calls a defect and exits 1 over.
+     *
+     * F3 closes that by giving the backfill all five leaves, so the expectation inverts: every
+     * gateway moves onto a dedicated leaf of its own and NOTHING is left on the pool. Two changes
+     * here, both load-bearing: `makeOldCompany()` now also removes the 1310-1314 leaves that COA
+     * correction C1 seeds (this fixture is a chart that predates C1), and the tail below asserts
+     * the new five-for-five outcome.
      */
-    public function test_creates_and_maps_gateway_clearing_knet_and_upayment_leaves(): void
+    public function test_creates_and_maps_a_dedicated_clearing_leaf_for_every_gateway(): void
     {
         $company = $this->makeOldCompany();
         $this->trackCompanyForInvariants($company->id);
@@ -541,12 +558,12 @@ class EnsureSystemLeavesTest extends AccountingTestCase
         $this->assertSame(
             0,
             Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1311')->count(),
-            'Precondition: CoaSeeder never seeds a dedicated Knet clearing child.'
+            'Precondition: this fixture is a chart that predates COA correction C1.'
         );
         $this->assertSame(
             0,
             Account::withoutGlobalScopes()->where('company_id', $company->id)->where('code', '1312')->count(),
-            'Precondition: CoaSeeder never seeds a dedicated uPayment clearing child.'
+            'Precondition: this fixture is a chart that predates COA correction C1.'
         );
 
         $pool = Account::withoutGlobalScopes()
@@ -589,14 +606,23 @@ class EnsureSystemLeavesTest extends AccountingTestCase
         $this->assertSame($knet->id, $mappedKnet, 'GATEWAY_CLEARING_KNET must move off the bare pool onto its own new dedicated leaf.');
         $this->assertSame($upayment->id, $mappedUpayment, 'GATEWAY_CLEARING_UPAYMENT must move off the bare pool onto its own new dedicated leaf.');
 
-        // MyFatoorah/Hesabe/Tap have no dedicated clearing child of their own and must stay
-        // exactly where they already validly were (the pool) — never silently disturbed by
-        // Knet/uPayment's own brand-new children landing in the same pool.
-        foreach (['MYFATOORAH', 'HESABE', 'TAP'] as $code) {
-            $this->assertSame(
+        // CT-A7 ROUND 2 (F3): MyFatoorah / Hesabe / Tap now each get a dedicated leaf too, so NONE
+        // of the five is left on the pool. Leaving three behind is precisely CT-D2b-1 — the pool
+        // has become a group, and a purpose mapped to a group is unpostable.
+        foreach (['MYFATOORAH' => '1313', 'HESABE' => '1314', 'TAP' => '1310'] as $code => $expectedCode) {
+            $mapped = DB::table('system_accounts')->where('company_id', $company->id)
+                ->where('purpose_code', "GATEWAY_CLEARING_{$code}")->value('account_id');
+
+            $this->assertNotSame(
                 $pool->id,
-                DB::table('system_accounts')->where('company_id', $company->id)->where('purpose_code', "GATEWAY_CLEARING_{$code}")->value('account_id'),
-                "GATEWAY_CLEARING_{$code} has no dedicated child of its own and must stay mapped to the pool."
+                $mapped,
+                "GATEWAY_CLEARING_{$code} must move off the pool — the pool is a GROUP once the backfill "
+                .'has minted children under it, and a purpose mapped to a group is unpostable (CT-D2b-1).'
+            );
+            $this->assertSame(
+                $expectedCode,
+                Account::withoutGlobalScopes()->where('id', $mapped)->value('code'),
+                "GATEWAY_CLEARING_{$code} must land on its COA-DESIGN-PROPOSAL C1 leaf."
             );
         }
 

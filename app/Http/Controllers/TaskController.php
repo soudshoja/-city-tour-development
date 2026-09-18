@@ -34,6 +34,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceDetail;
 use App\Models\Payment;
 use App\Models\FileUpload;
+use App\Exceptions\Accounting\UnbalancedDocumentException;
 use App\Models\SystemLog;
 use App\Models\AutoBilling;
 use App\Models\HotelBooking;
@@ -3233,6 +3234,8 @@ class TaskController extends Controller
                         $q->where('description', 'like', '%' . $task->reference . '%');
                     })->get();
 
+                $beforeImbalances = $this->legacyDocumentImbalances($journalEntries);
+
                 foreach ($journalEntries as $entry) {
                     $beforeTxAmt = $entry->transaction ? $entry->transaction->amount : null;
                     $beforeDebit = $entry->debit ?? 0;
@@ -3252,7 +3255,22 @@ class TaskController extends Controller
                         ]);
                     }
 
-                    if (($entry->debit ?? 0) > 0) {
+                    $side = $this->legacyRestatementSide($entry);
+
+                    if ($side === null) {
+                        // CT-TALLY: see TaskController::legacyRestatementSide().
+                        Log::warning('accounting.legacy_restatement_skipped_inert_line', [
+                            'journal_entry_id' => $entry->id,
+                            'transaction_id' => $entry->transaction_id,
+                            'task_id' => $task->id,
+                            'type' => $entry->type,
+                            'writer' => 'TaskController::updateAdminFinancial',
+                        ]);
+
+                        continue;
+                    }
+
+                    if ($side === 'debit') {
                         $entry->debit = $newTotal;
                         $entry->credit = 0;
                         $entry->balance = $newTotal;
@@ -3287,6 +3305,11 @@ class TaskController extends Controller
                         ]);
                     }
                 }
+
+                $this->assertLegacyRestatementKeptBalance(
+                    $beforeImbalances,
+                    'TaskController::updateAdminFinancial'
+                );
 
                 return null;
             };
@@ -7427,16 +7450,36 @@ class TaskController extends Controller
             ->whereHas('transaction', fn($q) => $q->where('description', 'like', '%' . $task->reference . '%'))
             ->get();
 
+        $before = $this->legacyDocumentImbalances($journalEntries);
+
         foreach ($journalEntries as $entry) {
             if ($entry->transaction) {
                 $entry->transaction->amount = $task->total;
                 $entry->transaction->save();
             }
 
-            if ($entry->debit > 0) {
+            $side = $this->legacyRestatementSide($entry);
+
+            if ($side === null) {
+                // CT-TALLY: no usable side signal -- restating this line would be a
+                // guess, and a wrong guess puts the document off by 2x. Leave it.
+                Log::warning('accounting.legacy_restatement_skipped_inert_line', [
+                    'journal_entry_id' => $entry->id,
+                    'transaction_id' => $entry->transaction_id,
+                    'task_id' => $task->id,
+                    'type' => $entry->type,
+                    'writer' => 'TaskController::handleAmountChange',
+                ]);
+
+                continue;
+            }
+
+            if ($side === 'debit') {
                 $entry->debit = $task->total;
+                $entry->credit = 0;
             } else {
                 $entry->credit = $task->total;
+                $entry->debit = 0;
             }
             $entry->balance = $task->total;
 
@@ -7444,6 +7487,144 @@ class TaskController extends Controller
                 $entry->amount = $task->total;
             }
             $entry->save();
+        }
+
+        $this->assertLegacyRestatementKeptBalance($before, 'TaskController::handleAmountChange');
+    }
+
+    /**
+     * CT-TALLY (2026-09-18): which COLUMN a legacy journal line's restated amount belongs in.
+     *
+     * Both legacy restatement loops -- {@see self::handleAmountChange()}'s OFF path and
+     * {@see self::updateAdminFinancial()}'s `$legacyLedgerCorrection` closure -- used to pick the
+     * side with a bare `$entry->debit > 0`. That reads the line's CURRENT VALUE as if it were the
+     * line's SIDE, and the two are not the same thing: a debit leg legitimately sitting at 0.000
+     * (the inert pair a zero-priced document leaves behind -- see the zero-price backfill in
+     * {@see self::store()}, which posts `unbilled_cost` 0.000 / `payable` 0.000 and whose own
+     * repair block uses exactly the type->side mapping repeated below) falls into the ELSE branch
+     * and is rewritten as a CREDIT. The document's debit leg becomes a second credit leg and the
+     * document lands off by 2x the restated amount.
+     *
+     * Measured on `citycomm_city-tour-test` company 1 on 2026-09-18, both written by this bug on
+     * 2026-09-16: transaction #36575 (task 20845 RCJ75K, Dr 0.000 / Cr 235.320, off by -235.320)
+     * and #36588 (task 20854 U99GHW, Dr 0.000 / Cr 165.100, off by -165.100). Together with one
+     * unrelated defect they are the whole of that ledger's KWD -721.270 tally failure.
+     *
+     * @return 'debit'|'credit'|null  null when the line carries no usable side signal at all --
+     *                                the caller must then leave the line ALONE. An understated
+     *                                line keeps the ledger balanced; a guessed one does not.
+     */
+    private function legacyRestatementSide(JournalEntry $entry): ?string
+    {
+        if ((float) ($entry->debit ?? 0) > 0.0) {
+            return 'debit';
+        }
+
+        if ((float) ($entry->credit ?? 0) > 0.0) {
+            return 'credit';
+        }
+
+        return match ($entry->type) {
+            'unbilled_cost' => 'debit',
+            'payable' => 'credit',
+            default => null,
+        };
+    }
+
+    /**
+     * CT-TALLY (2026-09-18): the per-document (SUM(debit) - SUM(credit)) of every live line of
+     * every transaction the given legacy lines belong to -- read from the DATABASE, not from the
+     * in-memory collection, so lines of the same document that this restatement loop does not
+     * happen to have loaded still count.
+     *
+     * Paired with {@see self::assertLegacyRestatementKeptBalance()}. The invariant those two
+     * enforce is deliberately narrow: "a legacy restatement must never unbalance a document that
+     * currently BALANCES". It says nothing about documents that were already off before the edit
+     * -- this codebase has a real history of one-sided legacy writes (CT-A1 finding 3, the
+     * credit-only issuance entries), those documents cannot be made right by refusing an unrelated
+     * task edit, and blocking that edit would be a regression, not a repair.
+     *
+     * @param  \Illuminate\Support\Collection<int, JournalEntry>|iterable<JournalEntry>  $entries
+     * @return array<int, float>  transaction_id => imbalance
+     */
+    private function legacyDocumentImbalances($entries): array
+    {
+        $transactionIds = collect($entries)
+            ->pluck('transaction_id')
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($transactionIds === []) {
+            return [];
+        }
+
+        return JournalEntry::withoutGlobalScopes()
+            ->whereIn('transaction_id', $transactionIds)
+            ->whereNull('deleted_at')
+            ->groupBy('transaction_id')
+            ->selectRaw('transaction_id, SUM(debit) - SUM(credit) AS imbalance')
+            ->pluck('imbalance', 'transaction_id')
+            ->map(fn ($v) => (float) $v)
+            ->all();
+    }
+
+    /**
+     * CT-TALLY (2026-09-18): refuse to let a legacy restatement unbalance a BALANCED document.
+     *
+     * Throws out of the caller, which never catches -- both call chains
+     * ({@see self::applyTaskUpdate()} via update()/updateMulti(), and
+     * {@see self::updateAdminFinancial()}) run inside their own `DB::beginTransaction()`, so the
+     * throw rolls the whole edit back and nothing is written. A refusal is the correct outcome
+     * here: a task edit that silently unbalances the ledger is strictly worse than a task edit
+     * that fails.
+     *
+     * @param  array<int, float>  $before  from {@see self::legacyDocumentImbalances()}
+     *
+     * @throws UnbalancedDocumentException
+     */
+    private function assertLegacyRestatementKeptBalance(array $before, string $writer): void
+    {
+        if ($before === []) {
+            return;
+        }
+
+        $after = JournalEntry::withoutGlobalScopes()
+            ->whereIn('transaction_id', array_keys($before))
+            ->whereNull('deleted_at')
+            ->groupBy('transaction_id')
+            ->selectRaw('transaction_id, SUM(debit) - SUM(credit) AS imbalance')
+            ->pluck('imbalance', 'transaction_id')
+            ->map(fn ($v) => (float) $v)
+            ->all();
+
+        foreach ($before as $transactionId => $wasOff) {
+            // Already off before this edit: out of scope, see legacyDocumentImbalances().
+            if (abs($wasOff) >= 0.0005) {
+                continue;
+            }
+
+            $isOff = $after[$transactionId] ?? 0.0;
+
+            if (abs($isOff) < 0.0005) {
+                continue;
+            }
+
+            Log::error('accounting.legacy_restatement_unbalanced_document', [
+                'transaction_id' => $transactionId,
+                'imbalance_before' => round($wasOff, 3),
+                'imbalance_after' => round($isOff, 3),
+                'writer' => $writer,
+            ]);
+
+            throw new UnbalancedDocumentException(null, null, sprintf(
+                '%s would unbalance document #%d (imbalance %s -> %s). Refusing to write.',
+                $writer,
+                $transactionId,
+                number_format($wasOff, 3),
+                number_format($isOff, 3)
+            ));
         }
     }
 

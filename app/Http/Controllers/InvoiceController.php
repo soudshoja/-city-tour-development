@@ -3904,8 +3904,30 @@ class InvoiceController extends Controller
      */
     private function updateOrCreateEntryByAccount(int $detailId, int $accountId, string $description, array $data): void
     {
+        // CT-TALLY (2026-09-18): the lookup is scoped to THIS DOCUMENT as well as the
+        // (invoice_detail, account) pair. Without the transaction_id condition the
+        // `count() === 1 ? first()` shortcut below claims whatever single row happens to sit
+        // on that account for that detail -- INCLUDING a posted line of a completely different
+        // document -- and then ->update()s its debit/credit/amount/description in place.
+        //
+        // Measured on `citycomm_city-tour-test` company 1 on 2026-09-18: 100 MyFatoorah payment
+        // receipts had their gateway-asset DEBIT leg claimed this way by the (since-deleted)
+        // gateway-profit writer and overwritten with its own 0.000 amount -- e.g. journal entry
+        // #84522, document #36590, invoice INV-2026-02072: a 320.850 bank debit rewritten to
+        // 0.000 with the description 'Gateway profit on P9UIVG', leaving that document off by
+        // -320.850 and contributing the largest single slice of that ledger's KWD -721.270
+        // tally failure. (The other 99 were later papered over by accounting:repair into 1654
+        // Suspense / Adjustments.)
+        //
+        // Every one of this method's 13 call sites builds its $data from a $base array that
+        // already carries 'transaction_id', so this narrows nothing legitimate: a real
+        // restatement of this document's own line still matches.
         $entries = JournalEntry::where('invoice_detail_id', $detailId)
             ->where('account_id', $accountId)
+            ->when(
+                isset($data['transaction_id']),
+                fn ($q) => $q->where('transaction_id', $data['transaction_id'])
+            )
             ->get();
 
         $existing = $entries->count() === 1

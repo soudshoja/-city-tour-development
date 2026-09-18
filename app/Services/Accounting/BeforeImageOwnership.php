@@ -53,6 +53,11 @@ final class BeforeImageOwnership
 
         // CT-A8 — supplier on the payable LEAF, derived from posted evidence.
         'accounts.supplier_id' => 'accounting:backfill-supplier-leaf',
+
+        // CT-TALLY (2026-09-18) — lines a legacy writer put on the wrong side or zeroed,
+        // leaving their document unbalanced (the KWD -721.270 tally failure).
+        'journal_entries.debit' => 'accounting:repair-journal-side',
+        'journal_entries.credit' => 'accounting:repair-journal-side',
     ];
 
     /**

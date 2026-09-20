@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Services\Accounting\BeforeImageOwnership;
+use Carbon\CarbonInterface;
 use Illuminate\Console\Command;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -39,7 +41,16 @@ use Illuminate\Support\Str;
  *   - `currency_exchanges` holds ONE MUTABLE ROW per (company, pair) with **no effective date** —
  *     today's number, not the number on the day;
  *   - `exchange_rate_histories` holds **3 rows in fourteen months**;
- *   - `system_exchange_rates` is a USD-base API feed with 31 timestamps and no KWD pair;
+ *   - `system_exchange_rates` holds ONE SNAPSHOT per pair, taken the day the currency was added
+ *     and never refreshed. (CT-A11 finding 25-5 corrects this line, which used to say "a USD-base
+ *     API feed with 31 timestamps and NO KWD PAIR". Measured 2026-09-17: 3,787 rows, 21 base
+ *     currencies, 31 distinct `created_at` across 7 days — and **20 KWD-quoted rows, one per
+ *     pair**, so the "no KWD pair" half was simply false. It changes nothing: EUR->KWD is a single
+ *     row, 0.353397, `created_at` = `updated_at` = 2025-08-05 20:36:08, the SAME number
+ *     `currency_exchanges` carries and 47 days before the earliest refused task. One stale
+ *     snapshot is not the rate on the day, and this command never converts on it. It does
+ *     CORROBORATE the contemporaneity premise from outside `tasks`: the USD snapshot is 0.305220
+ *     and the AED snapshot 0.083157 — each exactly the era-1 rate its tasks carry.);
  *   - no supplier invoice document is stored anywhere.
  * So the command REPAIRS THE FOUR AND REFUSES THE THREE. It reports them by id for owner
  * disclosure, at KWD 1,133.79 across three documents.
@@ -59,10 +70,11 @@ use Illuminate\Support\Str;
  * The same dry run appeared to destroy the premise that `tasks.exchange_rate` is captured at task
  * creation: 354 of 490 in-scope tasks carry a rate equal to TODAY's table rate to six decimals.
  * {@see self::rateInForceAt()} has the full working, but the short version is that the appearance is
- * an artefact of a static rate table — for USD, the one pair whose rate moved twice, **211 of 211
- * tasks carry exactly the rate in force on their own creation date**, with the date ranges disjoint
- * at exactly the two recorded changes. The premise holds, and it is now CHECKED per task rather than
- * asserted: a task whose stored rate is not the rate in force the day it was created is REFUSED.
+ * an artefact of a static rate table — across the TWO pairs whose rate has ever moved, USD and AED,
+ * **298 of 298 tasks carry exactly the rate in force on their own creation date**, with not one
+ * violation either side of any of the three recorded changes. The premise holds, and it is now
+ * CHECKED per task rather than asserted: a task whose stored rate is not the rate in force the day
+ * it was created is REFUSED.
  *
  * ── Detection is allowed to use today's rate. CORRECTION is not. ───────────────────────────────
  * This is the one distinction the whole command turns on, and it is why the three are refused
@@ -146,6 +158,27 @@ class RepairTaskFxConversion extends Command
      *
      * The band is not zero because markup and tax move the ratio a little: the seven sit at 1.000
      * ×5, 1.022 and 1.060.
+     *
+     * ── Why the band stays TIGHT: the signature is RATE-DEPENDENT, and BHD is thin (CT-A11) ───
+     * RECORDED, NOT FIXED. A correctly-converted task at rate `r` carrying markup `m` has
+     * `total / original_total = r(1 + m)`, so it enters this band as soon as `r(1 + m) >= 0.90`.
+     * The markup that takes a currency into the band is therefore a function of its rate:
+     *
+     *     BHD  0.811755  ->  +10.9 %    <- ORDINARY
+     *     JOD  0.430239  ->  +109.2 %
+     *     EUR  0.353397  ->  +154.7 %
+     *     USD  0.310000  ->  +190.3 %
+     *
+     * For every currency but BHD the required markup is absurd. For BHD it is not. Such a task
+     * would pass this gate, pass the contemporaneity gate (its rate IS contemporaneous), fail the
+     * 1 % reconcile tolerance, and be "repaired" DOWNWARD by about 10.9 % — stripping the markup
+     * and calling it a correction.
+     *
+     * Measured on the development database today (2026-09-17): 14 in-scope BHD tasks, largest
+     * implied markup **+0.98 %**, largest ratio 0.8197 — under the 0.90 edge. That margin is a
+     * fact about how BHD has been priced, NOT a property of this construction, and a single
+     * +11 % BHD booking removes it. It is an argument for keeping this band tight, and for a
+     * PER-CURRENCY assertion (BHD in particular) before any future re-run — not for widening it.
      */
     private const UNCONVERTED_RATIO_BAND = 0.10;
 
@@ -404,6 +437,28 @@ class RepairTaskFxConversion extends Command
                         $reports[] = sprintf('  REFUSED --historical-rate for task #%d:', $taskId);
                         $reports[] = sprintf('    it already carries its own recorded rate %.6f.', $ownRate);
                         $reports[] = '    A supplied rate may only stand in for a rate that does not exist.';
+
+                        continue;
+                    }
+
+                    // ── GATE 3a: THE RECONSTRUCTION MUST BE ABLE TO SEE EVERY CHANGE (CT-A11, 25-1)
+                    // rateInForceAt() walks TODAY's table rate backwards through the LOGGED
+                    // changes. That walk is only sound if every change since the task was created
+                    // was logged — and `exchange_rate_histories` is a MANUAL-ONLY log. See
+                    // unloggedTableWriteSince() for the whole argument. Refused by name, because
+                    // the alternative is that the walk silently returns today's rate and the task
+                    // is accepted as contemporaneous on no evidence at all.
+                    $unlogged = $this->unloggedTableWriteSince($companyId, $code, (string) ($row->created_at ?? ''));
+
+                    if ($unlogged !== null) {
+                        $counts['refused']++;
+                        $reports[] = sprintf('  REFUSED task #%d (%s): the rate table was written AFTER this task and the write was NOT logged.', $taskId, $code);
+                        $reports[] = sprintf('    task created %s; the %s->%s currency_exchanges row was last written %s;',
+                            substr((string) ($row->created_at ?? '?'), 0, 19), $code, $base, $unlogged['touched_at']);
+                        $reports[] = sprintf('    newest exchange_rate_histories row for that pair: %s.', $unlogged['newest_history'] ?? 'NONE');
+                        $reports[] = '    exchange_rate_histories is written by CurrencyExchangeController::updateManual() ONLY —';
+                        $reports[] = '    the automatic path saves the rate and no history row — so the rate in force on the day';
+                        $reports[] = '    cannot be reconstructed for this pair. Nothing written; nothing guessed.';
 
                         continue;
                     }
@@ -712,19 +767,46 @@ class RepairTaskFxConversion extends Command
      * demolish that: **354 of 490** in-scope tasks carry a rate equal to TODAY's table rate to six
      * decimals, which looks exactly like a rate copied on later.
      *
-     * It is not. `exchange_rate_histories` holds three rows, and two of them are USD:
+     * It is not. `exchange_rate_histories` holds three rows, and they describe the only two pairs
+     * whose rate has ever moved:
      *
      *     2025-11-26 06:52:54   USD->KWD   0.305220 -> 0.340000   (manual)
+     *     2026-01-14 19:36:51   AED->KWD   0.083157 -> 0.083900   (manual)
      *     2026-08-20 17:06:08   USD->KWD   0.340000 -> 0.310000   (manual)
      *
-     * USD is therefore a natural experiment — the one pair whose rate moved twice. Grouping every
-     * USD task by the era its `created_at` falls in:
+     * ── Natural experiment 1: USD, the pair that moved TWICE ──────────────────────────────────
+     * Grouping every USD task that carries a rate by the era its `created_at` falls in
+     * (`original_currency = 'USD'`, `exchange_rate IS NOT NULL`, soft-deleted rows INCLUDED):
      *
-     *     before 2025-11-26   81 tasks   ALL 0.305220   (2025-08-04 .. 2025-10-25)
-     *     between the two     92 tasks   ALL 0.340000   (2025-12-02 .. 2026-08-19)
-     *     after  2026-08-20   38 tasks   ALL 0.310000   (2026-08-21 .. 2026-09-16)
+     *     before 2025-11-26    81 tasks   ALL 0.305220   (2025-08-04 15:44:22 .. 2025-10-25 19:58:20)
+     *     between the two     106 tasks   ALL 0.340000   (2025-12-02 17:36:13 .. 2026-08-19 23:11:16)
+     *     after  2026-08-20    39 tasks   ALL 0.310000   (2026-08-21 00:57:04 .. 2026-09-16 16:36:38)
      *
-     * **211 of 211, no exceptions, and the date ranges are disjoint at exactly the two changes.**
+     * **226 of 226, no exceptions.** (An earlier revision of this block said 81 / 92 / 38 = 211;
+     * that was the `deleted_at IS NULL` population. Including soft-deleted tasks the property holds
+     * on a LARGER population than was claimed, which strengthens it rather than weakening it. A
+     * further **485** USD tasks carry no rate at all and are outside this analysis entirely.)
+     *
+     * ── Natural experiment 2: AED, independent of USD ─────────────────────────────────────────
+     * The lane did not use the third history row. It is a second, independent replication:
+     *
+     *     48 tasks   ALL 0.083157   (2025-08-14 20:42:28 .. 2026-01-14 18:38:37)
+     *     24 tasks   ALL 0.083900   (2026-01-29 18:28:21 .. 2026-08-30 00:19:51)
+     *
+     * against a change recorded at **2026-01-14 19:36:51** — the last old-rate task is **58 minutes
+     * before it**, and there are **zero violations** either side. That takes the evidence to **298
+     * tasks across both pairs that ever moved**.
+     *
+     * ── The boundary, stated honestly ─────────────────────────────────────────────────────────
+     * "Disjoint at exactly the changes" would overstate it. Only two of the three changes are
+     * tightly bracketed: USD change 2 is a **26-hour** flip (last old 2026-08-19 23:11:16, first
+     * new 2026-08-21 00:57:04) and the AED change is bracketed to **58 minutes** on its old side.
+     * USD change 1 sits in a **5½-week gap** in rate-bearing tasks (2025-10-25 19:58:20 to
+     * 2025-12-02 17:36:13) — and 24 USD tasks WERE created inside that gap, all of them carrying a
+     * NULL rate, so they neither confirm nor contradict. The claim the gate rests on is that no
+     * task anywhere contradicts the reconstruction, which is true; it is not that every change is
+     * pinned to the hour.
+     *
      * So the stored rate IS captured at task creation. The 354 equalities are explained by the
      * table being static: every pair except USD and AED has **zero** recorded changes, so for those
      * pairs "the rate on the day" and "today's rate" are necessarily the same number, and equality
@@ -732,13 +814,14 @@ class RepairTaskFxConversion extends Command
      *
      * That is what makes this a real test rather than a proxy. Returns null when the date is
      * unusable; a null NEVER refuses, because "we could not check" must not read as "we checked and
-     * it failed".
+     * it failed". What a null must NOT be used for is the case where the log itself is incomplete —
+     * see {@see self::unloggedTableWriteSince()}, which refuses by name instead.
      */
     private function rateInForceAt(int $companyId, string $code, string $createdAt, float $todaysRate): ?float
     {
-        $createdAt = trim($createdAt);
+        $created = $this->parseTimestamp($createdAt);
 
-        if ($createdAt === '') {
+        if ($created === null) {
             return null;
         }
 
@@ -746,8 +829,26 @@ class RepairTaskFxConversion extends Command
 
         // Newest change first. Every change made AFTER the task was created is undone in turn, so
         // what is left is the rate the table held on the day.
+        //
+        // ── The comparison is CHRONOLOGICAL, not lexicographic (CT-A11, 25-3) ──────────────────
+        // This was `strcmp($change->changed_at, $createdAt) > 0`. String order equals time order
+        // only while BOTH sides are exactly `Y-m-d H:i:s`. A `T` separator, fractional seconds or
+        // a timezone suffix — any of which a driver option or a column-type change can introduce
+        // on one side and not the other — reorders the walk silently, and the gate degrades to
+        // noise WITH NO SIGNAL: it would still run, still compare, and still return a number.
+        // Carbon parses all of those to the same instant, so the ordering survives the change.
         foreach ($this->rateChanges($companyId, $code) as $change) {
-            if (strcmp((string) $change->changed_at, $createdAt) > 0) {
+            $changedAt = $this->parseTimestamp((string) $change->changed_at);
+
+            if ($changedAt === null) {
+                // A timestamp this command cannot read is a check it cannot perform. "We could not
+                // check" must not read as "we checked and it passed", and the contract of this
+                // method is that null never refuses — so the whole reconstruction is abandoned
+                // rather than completed on a partial walk.
+                return null;
+            }
+
+            if ($changedAt->gt($created)) {
                 $rate = (float) $change->old_rate;
             }
         }
@@ -756,8 +857,141 @@ class RepairTaskFxConversion extends Command
     }
 
     /**
+     * Was `currency_exchanges` written for this pair AFTER the task was created, without a
+     * `exchange_rate_histories` row to account for that write? — CT-A11 finding 25-1.
+     *
+     * ── `exchange_rate_histories` is a MANUAL-ONLY log ─────────────────────────────────────────
+     * `CurrencyExchangeController::updateManual()` writes the rate row AND a history row.
+     * `CurrencyExchangeController::updateAuto()`, a few lines above it, does this:
+     *
+     *     $currencyExchange->exchange_rate = $systemExchangeRate->exchange_rate;
+     *     $currencyExchange->updated_at    = now();
+     *     $currencyExchange->save();
+     *
+     * — the rate, and NO history row at all. Both are live PUT routes on the currency-exchange
+     * screen (`routes/web.php`: `exchange.update.manual`, `exchange.update.auto`), and
+     * `updateMethod()` is a third writer that bumps `updated_at` with no history row either.
+     *
+     * The fingerprint is in the data rather than only in the code. On the development database only
+     * the two `is_manual = 1` pairs (USD, AED) have history rows at all, and `currency_exchanges`
+     * **id 1 (BHD)** and **id 3 (MAD)** both carry `updated_at != created_at` with **zero** history
+     * rows — a rate that moved and was never logged.
+     *
+     * ── Why this has to REFUSE rather than return null ────────────────────────────────────────
+     * {@see self::rateInForceAt()} reconstructs the rate on the day by walking TODAY's table rate
+     * backwards through the logged changes. If a change was not logged there is nothing to undo,
+     * so the walk returns TODAY's rate as though it had always been in force. That fails in two
+     * directions and only one of them is safe:
+     *
+     *   - a task carrying the OLD rate after an unlogged change is compared against today's rate,
+     *     differs from it, and is over-refused — noisy, but nothing wrong is written;
+     *   - a task carrying TODAY's rate that was created BEFORE an unlogged change is compared
+     *     against today's rate, matches, and is **silently accepted as contemporaneous** — which
+     *     is precisely the thing the contemporaneity gate exists to prevent.
+     *
+     * The second is an invisible failure, so this converts it into a named refusal.
+     *
+     * ── What "covered" means, exactly ─────────────────────────────────────────────────────────
+     * `updateManual()` saves the row and then creates the history row, so for a LOGGED change the
+     * history's `changed_at` is at or after the row's `updated_at` — on the real data the two are
+     * equal to the second for both USD (2026-08-20 17:06:08) and AED (2026-01-14 19:36:51). A
+     * write is therefore accounted for when the newest history row for the pair is NOT OLDER than
+     * the row's `updated_at`. No history row, or a newest one that predates the write, means the
+     * last write went unlogged.
+     *
+     * ── What it deliberately over-refuses ─────────────────────────────────────────────────────
+     * `updateMethod()` (the is_manual toggle) bumps `updated_at` without changing the rate and
+     * without logging. This cannot tell that apart from an unlogged rate change and will refuse on
+     * it. That is the right way round: a refusal is reported and costs a conversation, whereas the
+     * failure it replaces writes a number into the books.
+     *
+     * Returns null when there is nothing to object to, or when the check cannot be performed at
+     * all (no table row, an unreadable timestamp) — "could not check" never refuses, exactly as in
+     * `rateInForceAt()`.
+     *
+     * @return array{touched_at: string, newest_history: string|null}|null
+     */
+    private function unloggedTableWriteSince(int $companyId, string $code, string $createdAt): ?array
+    {
+        $created = $this->parseTimestamp($createdAt);
+
+        if ($created === null) {
+            return null;
+        }
+
+        $touchedRaw = $this->tableTouchedAt($companyId, $this->baseCurrency())[$code] ?? null;
+        $touched = $touchedRaw === null ? null : $this->parseTimestamp($touchedRaw);
+
+        if ($touched === null || ! $touched->gt($created)) {
+            return null;
+        }
+
+        $changes = $this->rateChanges($companyId, $code);
+        $newestRaw = $changes === [] ? null : (string) $changes[0]->changed_at;
+        $newest = $newestRaw === null ? null : $this->parseTimestamp($newestRaw);
+
+        if ($newest !== null && ! $newest->lt($touched)) {
+            return null; // the last write to the row is accounted for by a logged change
+        }
+
+        return ['touched_at' => $touched->format('Y-m-d H:i:s'), 'newest_history' => $newestRaw];
+    }
+
+    /**
+     * One timestamp, ordered by CLOCK rather than by string — CT-A11, 25-3.
+     *
+     * Two steps, and the second is not optional. Carbon understands every shape the first step has
+     * to survive (`T` separator, fractional seconds, a trailing `Z` or `+03:00`), which is the
+     * whole point of replacing `strcmp`. But `Carbon::parse()` alone then introduces a SECOND way
+     * to get the same wrong answer: `tasks.created_at` and `exchange_rate_histories.changed_at` are
+     * `datetime`/`timestamp` columns that this application writes and reads as WALL CLOCK in one
+     * timezone, and `config('app.timezone')` here is `Asia/Kuala_Lumpur`. Parse
+     * `2026-08-20T10:00:00.000000Z` naively against a bare `2026-08-20 17:06:08` and the first is
+     * read as UTC while the second is read as +08:00 — the "later" one is then eight hours EARLIER
+     * as an instant, and the walk reverses just as silently as `strcmp` did. (Verified, not
+     * supposed: that exact pair compares the wrong way round under a bare `Carbon::parse`.)
+     *
+     * So the parsed value is re-read as wall clock in one fixed frame. Both sides then order by the
+     * clock they were written with, whatever shape they arrive in, which is the property the
+     * contemporaneity walk actually needs.
+     *
+     * Returns null on anything unreadable, so a caller can say "could not check" instead of
+     * guessing.
+     */
+    private function parseTimestamp(string $value): ?CarbonInterface
+    {
+        $value = trim($value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        try {
+            $parsed = Carbon::parse($value);
+
+            return Carbon::createFromFormat('Y-m-d H:i:s.u', $parsed->format('Y-m-d H:i:s.u'), 'UTC');
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
      * Recorded changes for one pair, newest first. Cached per (company, code) for the run — the
      * whole table is three rows today, but the read is per task and this command walks hundreds.
+     *
+     * ── Scoped to the company, not just cached by it (CT-A11, 25-2) ───────────────────────────
+     * This took `$companyId`, keyed its cache on it, and then filtered on the currency codes
+     * ALONE. `exchange_rate_histories` has no `company_id` column; the link is
+     * `currency_exchange_id -> currency_exchanges.company_id`, and that join was not made — so
+     * company 2's recorded USD change would have rewritten company 1's reconstruction, and the
+     * per-company cache key would have hidden it by making the answer look company-specific.
+     * Latent on this data (every `currency_exchanges` row is company 1) and the same
+     * unscoped-by-company class the lane keeps finding, so it is joined rather than left.
+     *
+     * The join is INNER on purpose: a history row whose `currency_exchange_id` resolves to no
+     * `currency_exchanges` row cannot be attributed to a company, and an unattributable change is
+     * not evidence. Dropping it can only make {@see self::unloggedTableWriteSince()} refuse, never
+     * accept.
      *
      * @return list<object>
      */
@@ -766,11 +1000,13 @@ class RepairTaskFxConversion extends Command
         $key = $companyId.'|'.$code;
 
         if (! array_key_exists($key, $this->rateChangeCache)) {
-            $this->rateChangeCache[$key] = DB::table('exchange_rate_histories')
-                ->whereRaw('UPPER(TRIM(base_currency)) = ?', [$code])
-                ->whereRaw('UPPER(TRIM(exchange_currency)) = ?', [$this->baseCurrency()])
-                ->orderByDesc('changed_at')
-                ->get(['changed_at', 'old_rate', 'new_rate'])
+            $this->rateChangeCache[$key] = DB::table('exchange_rate_histories as h')
+                ->join('currency_exchanges as ce', 'ce.id', '=', 'h.currency_exchange_id')
+                ->where('ce.company_id', $companyId)
+                ->whereRaw('UPPER(TRIM(h.base_currency)) = ?', [$code])
+                ->whereRaw('UPPER(TRIM(h.exchange_currency)) = ?', [$this->baseCurrency()])
+                ->orderByDesc('h.changed_at')
+                ->get(['h.changed_at', 'h.old_rate', 'h.new_rate'])
                 ->all();
         }
 
@@ -779,6 +1015,35 @@ class RepairTaskFxConversion extends Command
 
     /** @var array<string, list<object>> */
     private array $rateChangeCache = [];
+
+    /**
+     * When each pair's `currency_exchanges` row was last written, keyed by foreign code —
+     * CT-A11, 25-1. Separate from {@see self::tableRates()} because it answers a different
+     * question: not "what does the table say" but "when did the table last move", which is what
+     * makes an unlogged change visible at all.
+     *
+     * @return array<string, string|null>
+     */
+    private function tableTouchedAt(int $companyId, string $base): array
+    {
+        $key = $companyId.'|'.$base;
+
+        if (! array_key_exists($key, $this->tableTouchedCache)) {
+            $this->tableTouchedCache[$key] = DB::table('currency_exchanges')
+                ->where('company_id', $companyId)
+                ->whereRaw('UPPER(TRIM(exchange_currency)) = ?', [$base])
+                ->get(['base_currency', 'updated_at'])
+                ->mapWithKeys(fn ($r) => [
+                    strtoupper(trim((string) $r->base_currency)) => $r->updated_at === null ? null : (string) $r->updated_at,
+                ])
+                ->all();
+        }
+
+        return $this->tableTouchedCache[$key];
+    }
+
+    /** @var array<string, array<string, string|null>> */
+    private array $tableTouchedCache = [];
 
     /**
      * Today's `currency_exchanges` rates, keyed by foreign code. Used for DETECTION ONLY — see the

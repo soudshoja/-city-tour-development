@@ -121,7 +121,16 @@ class RepairTaskFxConversionTest extends AccountingTestCase
 
     // ── fixture helpers ─────────────────────────────────────────────────────────────────────────
 
-    private function tableRate(string $foreign, float $rate): void
+    /**
+     * A `currency_exchanges` row, with its timestamps under the test's control — CT-A11, 25-1.
+     *
+     * `updated_at` is load-bearing now: it is how the command sees that the rate table was WRITTEN
+     * after a task was created. The default is the real table's own earliest creation date, which
+     * is before every task in this fixture, so a row nobody has touched since it was created can
+     * never trip the unlogged-write guard — exactly as on the real data, where 16 of the 20 rows
+     * still carry `updated_at = created_at`.
+     */
+    private function tableRate(string $foreign, float $rate, string $touchedAt = '2025-08-04 15:41:58'): void
     {
         DB::table('currency_exchanges')->insert([
             'company_id' => $this->companyId,
@@ -129,9 +138,23 @@ class RepairTaskFxConversionTest extends AccountingTestCase
             'exchange_currency' => 'KWD',
             'exchange_rate' => $rate,
             'is_manual' => 0,
-            'created_at' => now(),
-            'updated_at' => now(),
+            'created_at' => $touchedAt,
+            'updated_at' => $touchedAt,
         ]);
+    }
+
+    /**
+     * The UNLOGGED write — `CurrencyExchangeController::updateAuto()` — CT-A11, 25-1.
+     *
+     * It saves the rate and bumps `updated_at`, and writes NO `exchange_rate_histories` row. This
+     * is the shape `currency_exchanges` id 1 (BHD) and id 3 (MAD) carry on the real development
+     * database: `updated_at != created_at`, zero history rows.
+     */
+    private function unloggedRateChange(string $foreign, float $newRate, string $changedAt): void
+    {
+        DB::table('currency_exchanges')
+            ->where('company_id', $this->companyId)->where('base_currency', $foreign)
+            ->update(['exchange_rate' => $newRate, 'updated_at' => $changedAt]);
     }
 
     private function task(string $currency, float $originalTotal, float $total, ?float $rate, string $createdAt = '2026-06-02 10:00:00'): int
@@ -172,6 +195,14 @@ class RepairTaskFxConversionTest extends AccountingTestCase
      */
     private function rateChange(string $foreign, float $oldRate, float $newRate, string $changedAt): void
     {
+        // `updateManual()` saves the rate row FIRST and then writes the history row, so a LOGGED
+        // change always leaves `currency_exchanges.updated_at` at (or just before) the history
+        // row's `changed_at` — equal to the second for both real pairs. Modelling that here is what
+        // makes the unlogged-write guard's "covered window" case real rather than assumed.
+        DB::table('currency_exchanges')
+            ->where('company_id', $this->companyId)->where('base_currency', $foreign)
+            ->update(['exchange_rate' => $newRate, 'is_manual' => 1, 'updated_at' => $changedAt]);
+
         DB::table('exchange_rate_histories')->insert([
             'currency_exchange_id' => (int) DB::table('currency_exchanges')
                 ->where('company_id', $this->companyId)->where('base_currency', $foreign)->value('id'),
@@ -389,6 +420,212 @@ class RepairTaskFxConversionTest extends AccountingTestCase
 
         // 240.000 x 0.353397 = 84.815
         $this->assertSame('84.815', $this->totalOf($eur), 'a static pair\'s rate is contemporaneous by construction');
+    }
+
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+    // CT-A11 FINDING 25-1 — `exchange_rate_histories` IS A MANUAL-ONLY LOG
+    // ════════════════════════════════════════════════════════════════════════════════════════════
+
+    /**
+     * ── MUTATION PROOF M-A11-UNLOGGED ───────────────────────────────────────────────────────────
+     * `CurrencyExchangeController::updateManual()` writes the rate row AND a history row.
+     * `updateAuto()`, a few lines above it, writes the rate and NO history row. Both are live PUT
+     * routes on the currency-exchange screen. The fingerprint is in the data: `currency_exchanges`
+     * id 1 (BHD) and id 3 (MAD) both carry `updated_at != created_at` with ZERO history rows.
+     *
+     * The failure this proves is the SILENT one, and it is the reason the guard refuses rather than
+     * returning null. BHD here carries TODAY's table rate on a task created BEFORE an unlogged
+     * change. `rateInForceAt()` walks today's rate backwards through the logged changes, finds
+     * none, and hands back today's rate — which MATCHES the task's stored rate. Without the guard
+     * the task is therefore accepted as contemporaneous on no evidence whatsoever and CONVERTED:
+     * 400.000 -> 324.702. With the guard it is refused by name and nothing is written.
+     *
+     * BHD is the right currency for this, and not only because it is one of the two real offenders:
+     * at 0.811755 it is the one pair where an ordinary markup (+10.9 %) reaches the unconverted
+     * signature at all — see RepairTaskFxConversion::UNCONVERTED_RATIO_BAND.
+     *
+     * TWO CONTROLS RUN IN THE SAME INVOCATION, because a build that simply refused everything would
+     * otherwise pass:
+     *   (a) `ownRateUsdId` — USD's write IS covered by a logged change, and must still be repaired;
+     *   (b) a second BHD task created AFTER the unlogged write — its window is not crossed at all,
+     *       so it must be repaired even though the very same pair refused (a).
+     */
+    public function test_an_unlogged_rate_table_write_after_the_task_is_refused_by_name(): void
+    {
+        // The table held 0.750000 when the subject task was created. Nothing records that: the
+        // move to 0.811755 was made through the automatic path and left no history row.
+        $this->tableRate('BHD', 0.750000);
+
+        // The subject: created 2025-09-01, carrying a rate that is TODAY's but was NOT in force
+        // that day. That is the shape the contemporaneity gate exists to catch, and the one it
+        // cannot see through an unlogged change.
+        $before = $this->task('BHD', originalTotal: 400.000, total: 400.000, rate: 0.811755, createdAt: '2025-09-01 10:00:00');
+
+        // CONTROL (b): same pair, created AFTER the unlogged write — nothing crosses its window.
+        $after = $this->task('BHD', originalTotal: 200.000, total: 200.000, rate: 0.811755, createdAt: '2025-11-20 10:00:00');
+
+        // `updateAuto()`: the rate row is written, no history row is written. This is the real
+        // id-1 shape — updated_at moves to 2025-10-08, exchange_rate_histories stays empty for BHD.
+        $this->unloggedRateChange('BHD', 0.811755, '2025-10-08 09:53:43');
+
+        // The VALUE is asserted first and on its own, so that under the mutation the failure names
+        // the number a blind reconstruction would have written (400.000 x 0.811755 = 324.702)
+        // rather than only reporting a missing line of output.
+        $this->assertSame(0, $this->repair(['--apply' => true]));
+
+        $this->assertSame('400.000', $this->totalOf($before), 'an unlogged change means the reconstruction is blind — nothing may be written');
+        $this->assertSame(
+            0,
+            DB::table('coa_linkage_changes')->where('subject_id', $before)->count(),
+            'and no before-image, because nothing was converted'
+        );
+
+        // CONTROL (b): 200.000 x 0.811755 = 162.351.
+        $this->assertSame('162.351', $this->totalOf($after), 'a task created after the unlogged write has an uncrossed window');
+
+        // CONTROL (a): USD's write at 2026-08-20 17:06:08 IS covered by the logged change of the
+        // same instant, so the covered case must still convert.
+        $this->assertSame('125.120', $this->totalOf($this->ownRateUsdId), 'a logged change still covers its own window');
+
+        // And the refusal says WHY, by name, in the report.
+        $this->artisan('accounting:repair-task-fx-conversion', ['--company' => $this->companyId])
+            ->expectsOutputToContain('REFUSED task #'.$before.' (BHD): the rate table was written AFTER this task and the write was NOT logged.')
+            ->expectsOutputToContain('currency_exchanges row was last written 2025-10-08 09:53:43')
+            ->expectsOutputToContain('newest exchange_rate_histories row for that pair: NONE.')
+            ->assertExitCode(0);
+    }
+
+    /**
+     * The other direction of the same defect, kept separate so the report is readable: a task
+     * carrying the OLD rate after an unlogged change was already being refused, but for the WRONG
+     * REASON — "not contemporaneous", which blames the task. It is the log that is incomplete, and
+     * the message now says so.
+     */
+    public function test_an_unlogged_change_is_named_as_such_rather_than_blamed_on_the_task(): void
+    {
+        $this->tableRate('BHD', 0.750000);
+        $stale = $this->task('BHD', originalTotal: 400.000, total: 400.000, rate: 0.750000, createdAt: '2025-09-01 10:00:00');
+        $this->unloggedRateChange('BHD', 0.850000, '2025-10-08 09:53:43');
+
+        $this->artisan('accounting:repair-task-fx-conversion', ['--company' => $this->companyId])
+            ->expectsOutputToContain('REFUSED task #'.$stale.' (BHD): the rate table was written AFTER this task and the write was NOT logged.')
+            ->assertExitCode(0);
+
+        $this->assertSame('400.000', $this->totalOf($stale));
+    }
+
+    /**
+     * ── MUTATION PROOF M-A11-HISTORY-COMPANY (finding 25-2) ─────────────────────────────────────
+     * `rateChanges()` took a `$companyId`, cached by it, and filtered on the currency codes ALONE.
+     * `exchange_rate_histories` has no `company_id`; the link is
+     * `currency_exchange_id -> currency_exchanges.company_id`, and the join was not made.
+     *
+     * Here a SECOND company records a USD change on 2026-07-01 away from 0.900000. The date is
+     * chosen deliberately: the walk runs newest-first and each applicable change overwrites the
+     * last, so what decides the answer is the OLDEST change later than the task — and 2026-07-01
+     * sits between `ownRateUsdId`'s creation (2026-06-02) and company 1's own next change
+     * (2026-08-20). An unscoped read therefore concludes the rate in force on 2026-06-02 was
+     * 0.900000 and REFUSES task 15993's shape as non-contemporaneous. Scoped, the other company's
+     * history is invisible and the task converts.
+     *
+     * The CONTROL is that company 1's own two USD changes are still read: `ownRateUsdSmallId`
+     * carries 0.305220, which is only correct if the 2025-11-26 change is walked back. A build that
+     * "fixed" this by reading no history at all fails on that line.
+     */
+    public function test_another_companys_recorded_rate_change_does_not_move_this_companys_reconstruction(): void
+    {
+        $otherCompanyId = (int) Company::factory()->create()->id;
+
+        DB::table('currency_exchanges')->insert([
+            'company_id' => $otherCompanyId, 'base_currency' => 'USD', 'exchange_currency' => 'KWD',
+            'exchange_rate' => 0.310000, 'is_manual' => 1,
+            'created_at' => '2025-08-04 15:42:11', 'updated_at' => '2026-07-01 12:00:00',
+        ]);
+
+        DB::table('exchange_rate_histories')->insert([
+            'currency_exchange_id' => (int) DB::table('currency_exchanges')
+                ->where('company_id', $otherCompanyId)->where('base_currency', 'USD')->value('id'),
+            'base_currency' => 'USD', 'exchange_currency' => 'KWD',
+            'old_rate' => 0.900000, 'new_rate' => 0.310000, 'method' => 'manual',
+            'changed_at' => '2026-07-01 12:00:00',
+            'created_at' => '2026-07-01 12:00:00', 'updated_at' => '2026-07-01 12:00:00',
+        ]);
+
+        $this->repair(['--apply' => true]);
+
+        $this->assertSame('125.120', $this->totalOf($this->ownRateUsdId), "another company's rate history is not evidence about this one");
+
+        // CONTROL — this company's OWN history is still read and still walked back.
+        $this->assertSame('9.904', $this->totalOf($this->ownRateUsdSmallId), 'the 2025-11-26 change must still be undone for an older task');
+    }
+
+    /**
+     * ── MUTATION PROOF M-A11-CHRONOLOGY (finding 25-3) ──────────────────────────────────────────
+     * The contemporaneity walk compared timestamps with `strcmp`. Lexicographic order equals
+     * chronological order only while BOTH sides are exactly `Y-m-d H:i:s` — and the failure mode is
+     * the bad kind: a `T` separator, fractional seconds or a timezone suffix from a driver option
+     * or a column-type change reorders the walk silently, with no exception and no signal. The gate
+     * keeps running and keeps returning a number.
+     *
+     * This drives `rateInForceAt()` directly, because the misordering enters through the STRING and
+     * a MySQL `datetime` column can never hand one back.
+     *
+     * The case has to be a SAME-DAY one or the bug hides: on two different days the strings differ
+     * inside `Y-m-d` and both implementations agree by luck. Here the task is created on the
+     * MORNING of 2026-08-20 and the recorded change is at 17:06:08 the same afternoon — so the
+     * change is chronologically after the task, must be undone, and the rate in force that morning
+     * was **0.340000**.
+     *
+     * Under `strcmp` the comparison reaches offset 10, where the change's space (0x20) sorts BELOW
+     * the ISO `T` (0x54). The change therefore reads as "not after the task", is not undone, and
+     * the method hands back today's **0.310000** — a wrong rate, with no exception and no warning.
+     */
+    public function test_the_contemporaneity_walk_orders_by_instant_not_by_string(): void
+    {
+        $method = new \ReflectionMethod(RepairTaskFxConversion::class, 'rateInForceAt');
+        $method->setAccessible(true);
+
+        $inForce = $method->invoke(
+            new RepairTaskFxConversion,
+            $this->companyId,
+            'USD',
+            '2026-08-20T10:00:00.000000Z',   // hours before the 17:06:08 change, in a shape strcmp misreads
+            0.310000
+        );
+
+        $this->assertSame(0.340000, $inForce, 'an ISO-8601 created_at must still order BEFORE a same-day change made later that afternoon');
+
+        // CONTROL — the plain `Y-m-d H:i:s` shape both implementations agree on still answers the
+        // same, so this test cannot pass by the method having stopped working altogether.
+        $this->assertSame(
+            0.340000,
+            $method->invoke(new RepairTaskFxConversion, $this->companyId, 'USD', '2026-08-20 10:00:00', 0.310000)
+        );
+
+        // And the era either side, so the walk is proved to MOVE rather than to return a constant.
+        $this->assertSame(
+            0.305220,
+            $method->invoke(new RepairTaskFxConversion, $this->companyId, 'USD', '2025-09-18 15:34:22', 0.310000)
+        );
+        $this->assertSame(
+            0.310000,
+            $method->invoke(new RepairTaskFxConversion, $this->companyId, 'USD', '2026-09-01 10:00:00', 0.310000)
+        );
+    }
+
+    /**
+     * The guard must not fire on a pair nobody has touched since the row was created — which is 16
+     * of the 20 real `currency_exchanges` rows, and every currency in this fixture but USD. Stated
+     * as its own test so that a build which refused on `updated_at` alone, without asking whether a
+     * history row covers it, is caught.
+     */
+    public function test_a_table_row_never_written_since_creation_never_trips_the_guard(): void
+    {
+        $eur = $this->task('EUR', originalTotal: 240.000, total: 240.000, rate: 0.353397, createdAt: '2026-01-12 10:00:00');
+
+        $this->repair(['--apply' => true]);
+
+        $this->assertSame('84.815', $this->totalOf($eur), 'EUR has no history row AND no write since creation — there is nothing to refuse');
     }
 
     /** Every untestable task now says WHY — the silent counter was a reporting gap. */

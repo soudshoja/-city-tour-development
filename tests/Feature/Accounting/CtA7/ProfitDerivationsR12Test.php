@@ -230,12 +230,17 @@ class ProfitDerivationsR12Test extends AccountingTestCase
 
         $response->assertOk();
 
-        // `amount` is credit − debit on both collections: income is positive, expense negative, so
-        // the NET is their plain sum. Not `income − expense`, which would double-negate expenses.
+        // CT port U1 (XBRL X16 item 1): the screen now reads ProfitLossService, whose rows carry
+        // each section on its NORMAL side (income credit − debit, expenses debit − credit, both
+        // positive in a profitable month), so the net is income − expense. The printed total must
+        // be that same number; both are asserted so neither can drift from the other.
         $income = collect($response->viewData('incomeAccounts'))->sum(fn ($row) => (float) $row['amount']);
         $expense = collect($response->viewData('expenseAccounts'))->sum(fn ($row) => (float) $row['amount']);
+        $net = round($income - $expense, 3);
 
-        return round($income + $expense, 3);
+        $this->assertEqualsWithDelta($net, (float) $response->viewData('totals')['net_income'], 0.0005, 'the printed net is the net of the rows');
+
+        return $net;
     }
 
     private function balanceSheetNetProfit(): float
@@ -326,6 +331,10 @@ class ProfitDerivationsR12Test extends AccountingTestCase
      * report bug this lane can settle. If they ever stop agreeing on a standard chart, this case
      * fails and says so, which is the whole point of writing it as an assertion rather than as a
      * paragraph in a report nobody re-runs.
+     *
+     * CT port U1 (XBRL X16 item 1): the deferred TAXONOMY half is now closed. The P&L screen reads
+     * ProfitLossService (Income/Expenses root membership), the rule the balance sheet already
+     * used, so this case now holds by construction on any chart, not only a standard one.
      */
     public function test_the_two_profit_derivations_agree_on_a_standard_chart(): void
     {
@@ -334,10 +343,10 @@ class ProfitDerivationsR12Test extends AccountingTestCase
             $this->screenNetProfit(),
             0.0005,
             'R3-12: the balance sheet\'s Equity profit line and the P&L screen\'s net must be the same '
-            .'number on a standard chart. They are derived differently — root membership vs '
-            .'accounts.report_type + a level-3 walk + a code-prefix sign test — and CT-A7-4 removed only '
-            .'the SOURCE difference between them. A failure here means the two TAXONOMIES have diverged '
-            .'on this chart, which is the deferred half of R3-12.'
+            .'number on a standard chart. CT-A7-4 removed the SOURCE difference; the CT port of XBRL '
+            .'X16 item 1 removed the TAXONOMY difference (the screen now reads ProfitLossService: '
+            .'Income/Expenses root membership, the same rule as the balance sheet). A failure here '
+            .'means the two derivations have diverged again.'
         );
     }
 }

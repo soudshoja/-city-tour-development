@@ -55,9 +55,33 @@ trait BuildsParityFixtures
         $country = \App\Models\Country::factory()->create();
         $user = \App\Models\User::factory()->create();
 
+        // AK-PORT (CT-A6-2): the GLOBAL half of the same two-sided gate. PostingSeam::
+        // isEnabledFor() needs config('accounting.engine.enabled') AND
+        // companies.posting_engine_enabled, so a replayed engine ledger cannot exist
+        // unless both were true.
+        //
+        // AK-PORT F7: an earlier version of this note cited LegacyReplayRunnerTest as the
+        // precedent for overriding the flag afterwards. That test extends
+        // LegacyReplayTestCase and does NOT use this trait, so it was never affected by this
+        // line -- the behaviour was right, the justification was not. The real contract is
+        // simply that this is a plain config() write at world-BUILD time: any test wanting
+        // engine-OFF behaviour sets it false after calling makeParityCompany(), and the later
+        // call wins. No test in tests/Feature/Accounting or tests/Feature/Legacy currently
+        // needs to.
+        config(['accounting.engine.enabled' => true]);
+
         return (int) \App\Models\Company::factory()->create([
             'user_id' => $user->id,
             'country_id' => $country->id,
+            // AK-PORT (CT-A6-2): the parity world models the legacy-ledger-pilot's REPLAYED
+            // ledger, and LegacyReplayRunner refuses to start unless
+            // companies.posting_engine_enabled = 1 (see its own refusal message). Every row
+            // postSyntheticDocument() writes therefore carries the engine shape --
+            // doc_type AND posting_date both set -- so the company flag must say so too.
+            // Before LedgerSource nothing read the flag and the inconsistency was invisible;
+            // now a company left engine-OFF would have its own engine rows excluded from
+            // every report, which is the fixture being wrong, not the restriction.
+            'posting_engine_enabled' => true,
         ])->id;
     }
 

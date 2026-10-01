@@ -3,7 +3,6 @@
 namespace Tests\Feature\Accounting;
 
 use App\Http\Controllers\ReportController;
-use App\Models\Account;
 use App\Models\Company;
 use App\Models\Role;
 use App\Models\User;
@@ -11,6 +10,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Permission;
+use Tests\Concerns\BuildsParityFixtures;
 use Tests\Feature\Accounting\Concerns\GrantsAccountingModule;
 use Tests\TestCase;
 
@@ -28,11 +28,26 @@ use Tests\TestCase;
  * fixture convention `TrialBalanceServiceLedgerBalanceTest::insertJournalEntry()` already
  * establishes) — the point under test is the report's own read-side query, not the posting engine
  * that would normally produce this posting_date/transaction_date split.
+ *
+ * LP5a UPDATE (.planning/phases/legacy-ledger-pilot/LP5A-PL-SCREEN-2026-09-07.md): the fixture and
+ * the assertions moved to the report's NEW population rule, and the change is not cosmetic. This
+ * test used to build a single parentless account with `report_type = 'profit loss'`, `level = 3`
+ * and code `'4001'`, because that was literally what the old implementation selected on: a level-3
+ * account whose code began with `4`. That shape does not describe any real account — a real P&L
+ * account is a LEAF under the positional `Income` or `Expenses` root, at whatever depth the chart
+ * puts it, and its code is an imported legacy code carrying no meaning. The report now selects on
+ * exactly that (see {@see \App\Services\ProfitLossService}), so the fixture is now a real
+ * root -> section -> leaf chain, and the assertions read the totals rather than an account-id-keyed
+ * map the report no longer returns. The posting-date property under test is unchanged.
+ *
+ * CT port (U1, XBRL X16 item 1): taken from Akeed with the P&L screen, plus City Travelers'
+ * accounting-module grant (CT's ReportPolicy gates on the module before the permission).
  */
 class ReportControllerProfitLossPostingDateTest extends TestCase
 {
-    use RefreshDatabase;
+    use BuildsParityFixtures;
     use GrantsAccountingModule;
+    use RefreshDatabase;
 
     protected function tearDown(): void
     {
@@ -42,8 +57,8 @@ class ReportControllerProfitLossPostingDateTest extends TestCase
 
     private function makeAuthorizedAdmin(Company $company): User
     {
-        // ReportPolicy::viewProfitLoss() gates on Modules::ACCOUNTING first (fails closed with no
-        // module.accounting Setting row) -- see GrantsAccountingModule's own docblock.
+        // CT: ReportPolicy::viewProfitLoss() gates on Modules::ACCOUNTING first (fails closed with
+        // no module.accounting Setting row) -- see GrantsAccountingModule's own docblock.
         $this->grantAccountingModule($company);
 
         Permission::firstOrCreate(['name' => 'view profit loss', 'group' => 'report']);
@@ -56,30 +71,31 @@ class ReportControllerProfitLossPostingDateTest extends TestCase
         return $admin;
     }
 
-    /** A level-3 PROFIT_LOSS-report_type Income leaf — exactly the shape profitLoss() groups by. */
-    private function makeIncomeAccount(Company $company): Account
+    /**
+     * An Income LEAF under the Income root — the shape profitLoss() now reports on. The code
+     * deliberately starts with `4`, which under the old prefix rule would have made it an
+     * "expense"; under the positional rule its ROOT decides, and it is income.
+     */
+    private function makeIncomeLeaf(Company $company): int
     {
-        return Account::factory()->create([
-            'company_id' => $company->id,
-            'level' => 3,
-            'report_type' => Account::REPORT_TYPES['PROFIT_LOSS'],
-            'code' => '4001',
-            'parent_id' => null,
-        ]);
+        $root = $this->insertAccount((int) $company->id, null, null, '3000', 'Income', 1, true);
+        $section = $this->insertAccount((int) $company->id, $root, $root, '4000', 'INCOME ON SALES', 2, true);
+
+        return $this->insertAccount((int) $company->id, $section, $root, '4001', 'TICKET SALES', 3, false);
     }
 
     private function insertJournalEntry(
         Company $company,
-        Account $account,
+        int $accountId,
         \DateTimeInterface $transactionDate,
         \DateTimeInterface $postingDate,
         float $credit
     ): void {
         DB::table('journal_entries')->insert([
-            'name' => $account->name,
+            'name' => 'TICKET SALES',
             'transaction_id' => null,
             'company_id' => $company->id,
-            'account_id' => $account->id,
+            'account_id' => $accountId,
             'branch_id' => null,
             'transaction_date' => $transactionDate,
             'posting_date' => $postingDate,
@@ -103,36 +119,34 @@ class ReportControllerProfitLossPostingDateTest extends TestCase
         ]);
     }
 
+    private function netIncomeForMonth(string $month): float
+    {
+        return app(ReportController::class)
+            ->profitLoss(Request::create('/reports/profit-loss', 'GET', ['month' => $month]))
+            ->getData()['totals']['net_income'];
+    }
+
     public function test_february_dated_entry_shifted_to_march_appears_in_marchs_profit_loss_not_februarys(): void
     {
         $company = Company::factory()->create();
-        $account = $this->makeIncomeAccount($company);
+        $accountId = $this->makeIncomeLeaf($company);
         $this->makeAuthorizedAdmin($company);
 
         $this->insertJournalEntry(
             $company,
-            $account,
+            $accountId,
             transactionDate: \Carbon\Carbon::create(2026, 2, 10),
             postingDate: \Carbon\Carbon::create(2026, 3, 15), // shifted forward past Feb's close
             credit: 500.00,
         );
 
-        $controller = app(ReportController::class);
-
-        // profitLoss() builds one $grouped row per level-3 account regardless of whether anything
-        // posted to it that month (a zero-amount row, not an absent key) -- so the assertion is on
-        // the AMOUNT, not key presence.
-        $februaryView = $controller->profitLoss(Request::create('/reports/profit-loss', 'GET', ['month' => '2026-02']));
-        $februaryIncome = $februaryView->getData()['incomeAccounts']->toArray();
-        $this->assertSame(
+        $this->assertEqualsWithDelta(
             0.0,
-            (float) $februaryIncome[$account->id]['amount'],
+            $this->netIncomeForMonth('2026-02'),
+            0.0005,
             'A posting_date-shifted-to-March entry must NOT count toward February\'s P&L.'
         );
-
-        $marchView = $controller->profitLoss(Request::create('/reports/profit-loss', 'GET', ['month' => '2026-03']));
-        $marchIncome = $marchView->getData()['incomeAccounts']->toArray();
-        $this->assertEqualsWithDelta(500.00, $marchIncome[$account->id]['amount'], 0.001);
+        $this->assertEqualsWithDelta(500.00, $this->netIncomeForMonth('2026-03'), 0.0005);
     }
 
     /**
@@ -143,25 +157,18 @@ class ReportControllerProfitLossPostingDateTest extends TestCase
     public function test_unshifted_february_entry_appears_only_in_february(): void
     {
         $company = Company::factory()->create();
-        $account = $this->makeIncomeAccount($company);
+        $accountId = $this->makeIncomeLeaf($company);
         $this->makeAuthorizedAdmin($company);
 
         $this->insertJournalEntry(
             $company,
-            $account,
+            $accountId,
             transactionDate: \Carbon\Carbon::create(2026, 2, 10),
             postingDate: \Carbon\Carbon::create(2026, 2, 10),
             credit: 300.00,
         );
 
-        $controller = app(ReportController::class);
-
-        $februaryIncome = $controller->profitLoss(Request::create('/reports/profit-loss', 'GET', ['month' => '2026-02']))
-            ->getData()['incomeAccounts']->toArray();
-        $this->assertEqualsWithDelta(300.00, $februaryIncome[$account->id]['amount'], 0.001);
-
-        $marchIncome = $controller->profitLoss(Request::create('/reports/profit-loss', 'GET', ['month' => '2026-03']))
-            ->getData()['incomeAccounts']->toArray();
-        $this->assertSame(0.0, (float) $marchIncome[$account->id]['amount']);
+        $this->assertEqualsWithDelta(300.00, $this->netIncomeForMonth('2026-02'), 0.0005);
+        $this->assertEqualsWithDelta(0.0, $this->netIncomeForMonth('2026-03'), 0.0005);
     }
 }

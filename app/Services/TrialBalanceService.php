@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\Accounting\CrossTenantAccountException;
 use App\Models\Account;
+use App\Services\Accounting\ClosingDocuments;
 use App\Services\Accounting\LedgerSource;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -150,13 +151,11 @@ class TrialBalanceService
             // getOpeningBalances() for the following year correctly carries the swept 300 forward.
             ->leftJoin('journal_entries as je', function ($join) use ($companyId, $dateFrom, $dateTo) {
                 $join->on('je.account_id', '=', 'a.id')
-                    ->whereNull('je.deleted_at')
-                    ->whereNotExists(function ($sub) {
-                        $sub->selectRaw('1')
-                            ->from('transactions as yec_t')
-                            ->whereColumn('yec_t.id', 'je.transaction_id')
-                            ->where('yec_t.doc_type', 'YEC');
-                    });
+                    ->whereNull('je.deleted_at');
+                // XBRL-X9r: the whole year-end close FAMILY (the YEC and its reversal, an exact
+                // mirror posted by the reopen procedure), from the one shared definition;
+                // counting one without the other doubles a reopened year's P&L movement.
+                ClosingDocuments::excludeYearEndCloseFamily($join, 'je.transaction_id');
                 // CT-A6-2: one company reads engine rows OR legacy rows for its movement, never
                 // both — see LedgerSource's own docblock for why (CT-D1b's GL 1430 finding).
                 $this->ledgerSource->restrict($join, $companyId, 'je.transaction_id');

@@ -7,7 +7,9 @@ use App\Exceptions\Accounting\CrossTenantAccountException;
 use App\Exceptions\Accounting\DuplicatePaymentReferenceException;
 use App\Exceptions\Accounting\FcConsistencyException;
 use App\Exceptions\Accounting\FrozenAccountException;
+use App\Exceptions\Accounting\InvalidClosingReversalException;
 use App\Exceptions\Accounting\InvalidCurrencyCodeException;
+use App\Exceptions\Accounting\InvalidPriorPeriodAdjustmentException;
 use App\Exceptions\Accounting\InvalidRepostSourceException;
 use App\Exceptions\Accounting\NonCanonicalJournalLineException;
 use App\Exceptions\Accounting\NonLeafAccountException;
@@ -1166,6 +1168,28 @@ final class PostingService
                 );
             }
 
+            // ── Step 5b: prior-period adjustment (PPA) shape rules (XBRL-X9r; PLAN.md L15, L25) ──
+            // Runs after the period resolution (it needs to know whether the date shifted) and
+            // BEFORE step 6 reserves a document number, so a refusal writes nothing.
+            if ($draft->docType === ClosingDocuments::PRIOR_PERIOD_ADJUSTMENT) {
+                $this->assertPriorPeriodAdjustmentShape($draft, $targetAccountIds, $docDate, $postingDate, $postingDateShifted);
+            }
+
+            // XBRL-X9r (X9R-VERIFY m-2, m-5): the reversal of a YEC or a PPA must land on its own
+            // date too. A YEC reversal shifted out of a locked December would reopen nothing and
+            // count in the next year; a PPA reversal shifted out of January would leave the
+            // opening restated while the reversal reads as current-year movement.
+            if ($draft->docType === ClosingDocuments::REVERSAL
+                && in_array($draft->subType, [ClosingDocuments::YEAR_END_CLOSE, ClosingDocuments::PRIOR_PERIOD_ADJUSTMENT], true)
+                && ($postingDateShifted || $postingDate->toDateString() !== $docDate->toDateString())) {
+                throw new InvalidClosingReversalException(sprintf(
+                    'The reversal of a %s dated %s would be moved to %s because that period is not open to this post; it must land on its own date. Reopen the period first.',
+                    $draft->subType,
+                    $docDate->toDateString(),
+                    $postingDate->toDateString(),
+                ));
+            }
+
             $transaction = null;
             $serialCollisionAttempts = 0;
 
@@ -1770,6 +1794,10 @@ final class PostingService
             if ($existingReversal !== null) {
                 return $this->toPostedDocument($existingReversal);
             }
+
+            // XBRL-X9r (X9R-VERIFY m-2, m-5): closing-family documents are reversed only on
+            // their own terms. Refused before anything is written.
+            $this->assertClosingReversalAllowed($posted, Carbon::instance($reversalDate));
 
             // P1 FIX ROUND (HIGH soft-delete finding): a legacy document whose one leg was
             // soft-deleted by the delete-and-recreate edit path (R4.1 — the exact corruption P3
@@ -2435,6 +2463,126 @@ final class PostingService
             // $docDate instead.
             postingDate: $draft->postingDate,
         );
+    }
+
+    /**
+     * XBRL-X9r (X9R-VERIFY m-2, m-5): the rules for reversing a closing-family document.
+     *   - A YEC is reversed only inside its own fiscal year (the reopen procedure dates it
+     *     31 December). A reversal in a later year would leave the closed year's P&L unswept
+     *     while its reversal fell outside the closing family's year.
+     *   - A PPA is reversed only on its own date (1 January), so the reversal is part of the same
+     *     opening position and the opening is restored, never left restated.
+     *   - The reversal of a YEC or a PPA is never itself reversed: a REV-of-REV falls outside the
+     *     closing family and would read as ordinary movement. Re-close the year, or post a new PPA.
+     *
+     * @throws InvalidClosingReversalException
+     */
+    private function assertClosingReversalAllowed(Transaction $posted, Carbon $reversalDate): void
+    {
+        $docType = (string) $posted->doc_type;
+        $subType = $posted->sub_type === null ? null : (string) $posted->sub_type;
+        $documentDate = Carbon::parse($posted->transaction_date);
+
+        if ($docType === ClosingDocuments::YEAR_END_CLOSE && $reversalDate->year !== $documentDate->year) {
+            throw new InvalidClosingReversalException(sprintf(
+                'A year-end close (YEC) is reversed only inside its own fiscal year (%d); got %s. Use accounting:reopen-year, which dates it 31 December.',
+                $documentDate->year,
+                $reversalDate->toDateString(),
+            ));
+        }
+
+        if ($docType === ClosingDocuments::PRIOR_PERIOD_ADJUSTMENT && $reversalDate->toDateString() !== $documentDate->toDateString()) {
+            throw new InvalidClosingReversalException(sprintf(
+                'A prior-period adjustment (PPA) is reversed only on its own date, %s; got %s.',
+                $documentDate->toDateString(),
+                $reversalDate->toDateString(),
+            ));
+        }
+
+        if ($docType === ClosingDocuments::REVERSAL && in_array($subType, [ClosingDocuments::YEAR_END_CLOSE, ClosingDocuments::PRIOR_PERIOD_ADJUSTMENT], true)) {
+            throw new InvalidClosingReversalException(sprintf(
+                'Transaction #%d is the reversal of a %s and is not itself reversed. %s',
+                $posted->id,
+                $subType,
+                $subType === ClosingDocuments::YEAR_END_CLOSE
+                    ? 'Close the year again (accounting:reclose-year) instead.'
+                    : 'Post a new PPA instead.',
+            ));
+        }
+    }
+
+    /**
+     * XBRL-X9r (PLAN.md L15 route (ii), L25 rule 3): the shape of a `PPA` (prior-period
+     * adjustment, IAS 8) document. A PPA restates the OPENING position of the current year, which
+     * the statements read as `balancesAsOf(CY start - 1 day)` plus the PPA lines dated the CY start
+     * ({@see ClosedYearAdjustmentService::openingPositionIncludingPpa()}). Every rule below keeps
+     * it there, and each refusal names what to do instead:
+     *
+     *   1. No Income or Expenses leaf. A restatement moves balance-sheet leaves and opening retained
+     *      earnings; a P&L line would put prior-year profit into the current year's P&L.
+     *   2. Dated 1 January (the first day of the fiscal year; the year-end close is calendar-year,
+     *      see YearEndCloseService). Any other date is not an opening position.
+     *   3. It must land on its own date. A PPA into a locked or soft-closed January WITHOUT a valid
+     *      override would otherwise be silently moved to a later month by step 5 (the same trap
+     *      H2 N-B2 found for back-dated posts), where it would read as current-year movement.
+     *   4. Never with the locked-period bypass, which stays reserved for the YEC job (L13).
+     *
+     * @param  array<int, int>  $targetAccountIds  line index => resolved account id (step 2a)
+     *
+     * @throws InvalidPriorPeriodAdjustmentException
+     */
+    private function assertPriorPeriodAdjustmentShape(
+        DocumentDraft $draft,
+        array $targetAccountIds,
+        Carbon $docDate,
+        Carbon $postingDate,
+        bool $postingDateShifted,
+    ): void {
+        $roots = DB::table('accounts as a')
+            ->join('accounts as root', 'root.id', '=', 'a.root_id')
+            ->whereIn('a.id', array_values(array_unique($targetAccountIds)))
+            ->pluck('root.name', 'a.id')
+            ->all();
+
+        foreach ($targetAccountIds as $index => $accountId) {
+            $rootName = (string) ($roots[$accountId] ?? '');
+
+            if (in_array($rootName, ['Income', 'Expenses'], true)) {
+                $account = Account::withoutGlobalScopes()->find($accountId);
+
+                throw new InvalidPriorPeriodAdjustmentException(sprintf(
+                    'A prior-period adjustment (PPA) may not post to a profit-and-loss account: line %d targets %s %s (%s). '
+                    .'A PPA restates opening balances only (balance-sheet accounts and opening retained earnings). '
+                    .'An adjustment that belongs in a closed year\'s profit goes through accounting:reopen-year instead.',
+                    $index,
+                    $account?->code ?? '#'.$accountId,
+                    $account?->name ?? '',
+                    $rootName,
+                ));
+            }
+        }
+
+        if ($docDate->month !== 1 || $docDate->day !== 1) {
+            throw new InvalidPriorPeriodAdjustmentException(sprintf(
+                'A prior-period adjustment (PPA) must be dated the first day of the fiscal year (1 January); got %s.',
+                $docDate->toDateString(),
+            ));
+        }
+
+        if ($draft->allowLockedPeriods) {
+            throw new InvalidPriorPeriodAdjustmentException(
+                'A prior-period adjustment (PPA) may not use the locked-period bypass; it is reserved for the year-end close job.'
+            );
+        }
+
+        if ($postingDateShifted || $postingDate->toDateString() !== $docDate->toDateString()) {
+            throw new InvalidPriorPeriodAdjustmentException(sprintf(
+                'A prior-period adjustment (PPA) dated %s would be moved to %s because that period is not open to this post. '
+                .'A PPA must land on its own date: soft-close the period and post with the override reason, or reopen it first.',
+                $docDate->toDateString(),
+                $postingDate->toDateString(),
+            ));
+        }
     }
 
     /**

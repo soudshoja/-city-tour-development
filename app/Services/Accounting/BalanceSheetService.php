@@ -38,12 +38,17 @@ use Illuminate\Support\Facades\DB;
  *   excludes whole `doc_type='YEC'` documents, which is correct for a bounded period but would
  *   silently drop a year-end close's real, balance-affecting sweep from a balance-sheet figure
  *   spanning across it.
- * - **Un-closed-period net profit, from the day after the LAST year-end close on or before $asOf
- *   (else the beginning of the ledger) to $asOf**, shown as one synthetic Equity line — without
- *   it, Equity would be short by exactly the Income/Expense leaves' un-swept net for every period
- *   `YearEndCloseService` has not yet closed. CT-A56 R3-6 corrected this from the ported
- *   calendar-year window, which silently omitted every prior UNCLOSED year — and this ledger has
- *   no year-end close at all. See {@see self::unclosedPeriodStart()}.
+ * - **Profit not yet closed: the cumulative Income/Expenses leaf balance through $asOf, YEC
+ *   lines included, shown as one synthetic Equity line** (XBRL-X1, ported from Akeed #92; see
+ *   {@see self::unsweptProfit()}). A year-end close moves a year's net off the Income/Expenses
+ *   leaves and into Retained Earnings, so what is still on those leaves on $asOf is exactly the
+ *   profit no YEC has swept yet, whichever years were or were not closed, and in whatever order.
+ *   It is read from the SAME `getOpeningBalances()` call as every other line, so both halves of
+ *   the statement see one population (same leaf test, same LedgerSource restriction, same dates).
+ *
+ *   This replaces CT-A56 R3-6's window "from the day after the NEWEST YEC" (see
+ *   {@see self::unclosedPeriodStart()}, now unused): with FY2024 unclosed and FY2025 closed that
+ *   window still strands FY2024's profit, so the sheet missed by exactly it (plan review H-M2).
  * - **Grouped by immediate parent, with subtotals** — same shape as
  *   {@see TrialBalanceService::groupByRootCategory()} one level deeper: it groups by root, this
  *   groups by the leaf's immediate parent, so multi-account sections ("Current Assets" / "Fixed
@@ -54,6 +59,9 @@ use Illuminate\Support\Facades\DB;
 final class BalanceSheetService
 {
     public const BALANCE_SHEET_ROOTS = ['Assets', 'Liabilities', 'Equity'];
+
+    /** The roots whose leaves carry profit until a year-end close sweeps it into Equity. */
+    public const PROFIT_LOSS_ROOTS = ['Income', 'Expenses'];
 
     public function __construct(
         private readonly ?TrialBalanceService $trialBalance = null,
@@ -132,7 +140,9 @@ final class BalanceSheetService
             $totals[$rootName] += $balance;
         }
 
-        $netProfit = $this->netProfit($companyId, $this->unclosedPeriodStart($companyId, $asOf), $asOf);
+        // XBRL-X1: the profit no year-end close has swept yet, from the SAME balances as every
+        // line above (see unsweptProfit()).
+        $netProfit = $this->unsweptProfit($companyId, $balances);
 
         // Synthetic Equity line — no real account backs it, so it is never linkable to the
         // general ledger the way every other row on this screen is.
@@ -142,7 +152,7 @@ final class BalanceSheetService
             'accounts' => [(object) [
                 'id' => null,
                 'code' => '',
-                'name' => 'Current Period Profit / (Loss)',
+                'name' => 'Profit / (Loss) Not Yet Closed',
                 'balance' => $netProfit,
             ]],
             'subtotal' => $netProfit,
@@ -186,6 +196,31 @@ final class BalanceSheetService
     }
 
     /**
+     * XBRL-X1: the profit no year-end close has swept yet, as of the date $balances was taken on.
+     *
+     * Sum of (credit - debit) over every Income/Expenses leaf, from the SAME life-to-date balances
+     * the Assets/Liabilities/Equity lines come from. Because those balances include YEC lines, a
+     * closed year nets to zero here and its profit shows in Retained Earnings instead; an unclosed
+     * year's profit is still here. Nothing is counted twice and nothing is lost, including when an
+     * earlier year was left open and a later one was closed.
+     *
+     * @param  Collection<int, array{opening_debit: float, opening_credit: float}>  $balances
+     */
+    private function unsweptProfit(int $companyId, Collection $balances): float
+    {
+        $profit = 0.0;
+
+        foreach ($this->leafAccounts($companyId, self::PROFIT_LOSS_ROOTS) as $account) {
+            $bal = $balances->get((int) $account->id, ['opening_debit' => 0.0, 'opening_credit' => 0.0]);
+            $profit += (float) $bal['opening_credit'] - (float) $bal['opening_debit'];
+        }
+
+        return round($profit, 3);
+    }
+
+    /**
+     * STALE since XBRL-X1 (no caller): listed for removal, awaiting the owner's approval.
+     *
      * Net income for [$from, $to] = Σ(Income leaves' normal-side balances) − Σ(Expenses leaves'
      * normal-side balances), read off {@see TrialBalanceService::getAccountBalances()}'s own
      * per-root subtotal_debit/subtotal_credit rather than re-deriving a parallel query — see class
@@ -193,6 +228,8 @@ final class BalanceSheetService
      * automatically.
      */
     /**
+     * STALE since XBRL-X1 (no caller): listed for removal, awaiting the owner's approval.
+     *
      * CT-A56 R3-6 — the day after the LAST year-end close on or before $asOf, else the beginning
      * of this company's ledger.
      *
@@ -219,7 +256,7 @@ final class BalanceSheetService
     {
         $lastClose = DB::table('transactions')
             ->where('company_id', $companyId)
-            ->where('doc_type', 'YEC')
+            ->where('doc_type', ClosingDocuments::YEAR_END_CLOSE)
             ->whereNull('deleted_at')
             ->where(DB::raw('COALESCE(posting_date, transaction_date)'), '<=', $asOf)
             ->max(DB::raw('COALESCE(posting_date, transaction_date)'));
@@ -252,17 +289,20 @@ final class BalanceSheetService
     }
 
     /**
-     * Leaf accounts (no children) under the three balance-sheet roots, for one company. Same leaf
-     * test as {@see TrialBalanceService::getAccountBalances()}.
+     * Leaf accounts (no children) under the given positional roots (default: the three
+     * balance-sheet roots), for one company. Same leaf test as
+     * {@see TrialBalanceService::getAccountBalances()} and
+     * {@see TrialBalanceService::getOpeningBalances()}.
      *
+     * @param  list<string>  $roots
      * @return Collection<int, object>
      */
-    private function leafAccounts(int $companyId): Collection
+    private function leafAccounts(int $companyId, array $roots = self::BALANCE_SHEET_ROOTS): Collection
     {
         return DB::table('accounts as a')
             ->join('accounts as root', 'root.id', '=', 'a.root_id')
             ->where('a.company_id', $companyId)
-            ->whereIn('root.name', self::BALANCE_SHEET_ROOTS)
+            ->whereIn('root.name', $roots)
             ->whereRaw('NOT EXISTS (SELECT 1 FROM accounts child WHERE child.parent_id = a.id)')
             ->selectRaw('a.id, a.code, a.name, a.parent_id, root.name as root_name')
             ->orderBy('a.code')

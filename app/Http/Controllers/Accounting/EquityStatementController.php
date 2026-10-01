@@ -11,6 +11,7 @@ use App\Services\Accounting\Reports\EquityChangesReportService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
@@ -45,9 +46,7 @@ class EquityStatementController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $year = (int) $request->input('year', (int) now()->format('Y'));
-
-        $statement = $this->equityChanges->generate($companyId, $year);
+        [$year, $statement] = $this->statement($request, $companyId);
 
         return view('accounting.reports.equity-changes', [
             'company' => Company::find($companyId),
@@ -69,15 +68,20 @@ class EquityStatementController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $year = (int) $request->input('year', (int) now()->format('Y'));
         $company = Company::find($companyId);
-        $statement = $this->equityChanges->generate($companyId, $year);
+        [$year, $statement] = $this->statement($request, $companyId);
 
         // Same shape as ReportController::trialBalanceExport() — a hand-built CSV string, no
         // package dependency, matching this codebase's existing convention for report exports.
         $csv = "Statement of Changes in Equity\n";
         $csv .= 'Company: '.($company->name ?? '')."\n";
-        $csv .= 'Fiscal Year: '.$year."\n";
+        // XBRL X9b (X9-VERIFY m-4): the statement covers a date range; say which.
+        $from = $statement['period']['from'];
+        $to = $statement['period']['to'];
+        if ($from === sprintf('%04d-01-01', $year) && $to === sprintf('%04d-12-31', $year)) {
+            $csv .= 'Fiscal Year: '.$year."\n";
+        }
+        $csv .= 'Period: '.$from.' to '.$to."\n";
         $csv .= 'Generated: '.now()->format('Y-m-d H:i:s')."\n\n";
         $csv .= "Component,Code,Opening,Movement,Closing\n";
 
@@ -93,14 +97,38 @@ class EquityStatementController extends Controller
         $csv .= 'Dividends paid this year,,,,"'.number_format($statement['dividends_paid_this_year'], 3)."\"\n";
         $csv .= 'Opening equity total,,"'.number_format($statement['opening_equity_total'], 3)."\",,\n";
         $csv .= 'Closing equity total,,,,"'.number_format($statement['closing_equity_total'], 3)."\"\n";
-        $csv .= 'Ties to next-year opening,,,,'.($statement['checks']['ties_to_next_year_opening'] ? 'YES' : 'NO')."\n";
+        $csv .= 'Profit/(loss) of earlier years not yet closed (in the opening),,"'.number_format($statement['unswept_profit_before_period'], 3)."\",,\n";
+        $csv .= 'Ties to the opening after the period,,,,'.($statement['checks']['ties_to_next_year_opening'] ? 'YES' : 'NO')."\n";
 
-        $filename = 'equity-changes-'.$year.'.csv';
+        $filename = 'equity-changes-'.$from.'-to-'.$to.'.csv';
 
         return response($csv, 200, [
             'Content-Type' => 'text/csv',
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ]);
+    }
+
+    /**
+     * XBRL X9: `?from=YYYY-MM-DD&to=YYYY-MM-DD` gives any date range; otherwise `?year=` (default
+     * this year), 1 January to 31 December.
+     *
+     * @return array{0: int, 1: array<string, mixed>}
+     */
+    private function statement(Request $request, int $companyId): array
+    {
+        $from = $request->input('from');
+        $to = $request->input('to');
+        if (is_string($from) && is_string($to)
+            && preg_match('/^\d{4}-\d{2}-\d{2}$/', $from) === 1 && preg_match('/^\d{4}-\d{2}-\d{2}$/', $to) === 1
+            && $from <= $to) {
+            $start = Carbon::parse($from);
+
+            return [$start->year, $this->equityChanges->generateForRange($companyId, $start, Carbon::parse($to))];
+        }
+
+        $year = (int) $request->input('year', (int) now()->format('Y'));
+
+        return [$year, $this->equityChanges->generate($companyId, $year)];
     }
 
     private function resolveCompanyId(Request $request): ?int

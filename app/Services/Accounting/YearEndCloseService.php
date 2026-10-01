@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Accounting;
 
+use App\Exceptions\Accounting\DuplicateLiveYearEndCloseException;
+use App\Exceptions\Accounting\PostingException;
 use App\Models\Account;
 use App\Models\AccountingPeriod;
 use App\Models\Company;
 use App\Models\Transaction;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -37,6 +40,8 @@ use Illuminate\Support\Facades\DB;
  *     method's "MOVEMENT, NOT BALANCE" note). The mirror case blocks too: when the mapping DOES
  *     exist but points at only part of the 3200 subtree, the rest of that subtree's movement would
  *     be left behind by the mapped-account-only sweep — the same silent loss, same refusal.
+ *   - XBRL X9: the PREVIOUS year must not still hold an unswept profit or loss, back to the
+ *     company's earliest ledger year (see {@see self::priorYearLeftOpen()}).
  *
  * ── The closing entry itself ──────────────────────────────────────────────────────────────────
  * This ledger has no separate "year" reset — every balance is a date-range QUERY
@@ -63,8 +68,13 @@ use Illuminate\Support\Facades\DB;
  * implementation of both halves of this proof.
  *
  * ── Idempotency ────────────────────────────────────────────────────────────────────────────────
- * A second run for the same (company, year) finds an existing `doc_type = 'YEC'` transaction dated
- * in that year and returns it unchanged rather than attempting to post again — belt-and-braces on
+ * A second run for the same (company, year) finds an existing LIVE `doc_type = 'YEC'` transaction
+ * dated in that year (one with no live reversal; XBRL-X9r, {@see self::liveYec()}) and returns it
+ * unchanged rather than attempting to post again. A YEC that the reopen procedure reversed does not
+ * count: the year is open again, and the re-run posts a new YEC under a deterministic key
+ * (`yec:{company}:{year}:replaces:{id}`, {@see self::nextYecIdempotencyKey()}). Concurrent runs
+ * are serialised by {@see self::lockYear()}, and at most one live YEC per year is enforced by
+ * the post-condition and by a database unique index (X9R-VERIFY B-1) — belt-and-braces on
  * top of the fact that a second run's OWN P&L query would in practice already see every leaf back
  * at zero net movement (the first YEC's own lines are dated inside the year and therefore counted),
  * so there would be nothing left to sweep even without this explicit short-circuit.
@@ -90,10 +100,38 @@ final class YearEndCloseService
      */
     private const DIVIDENDS_PAID_CODE = '3200';
 
+    /** XBRL-X9r (X9R-VERIFY B-1): the database's one-live-YEC-per-year index (migration 2026_09_27_000001). */
+    public const LIVE_YEC_UNIQUE_INDEX = 'transactions_company_live_yec_year_unique';
+
+    private readonly LedgerSource $ledgerSource;
+
     public function __construct(
         private readonly PostingService $posting,
         private readonly AccountResolver $accountResolver,
-    ) {}
+        ?LedgerSource $ledgerSource = null,
+    ) {
+        $this->ledgerSource = $ledgerSource ?? app(LedgerSource::class);
+    }
+
+    /**
+     * XBRL-X1 (verifier finding M-1): every balance this service reads from `journal_entries` is
+     * restricted to the company's CURRENT ledger source, the same `LedgerSource::restrict()` every
+     * report applies (engine ON: `doc_type IS NOT NULL AND posting_date IS NOT NULL` on the
+     * header; engine OFF: the complement).
+     *
+     * Without it the close swept engine AND legacy rows together on an engine-ON company that
+     * still carries legacy history (City Travelers company 1). The reports read engine rows only,
+     * so the YEC moved legacy profit into Retained Earnings that no report had ever counted as
+     * profit: measured on a fence, Retained Earnings 560 instead of 500 and a balance-sheet
+     * "not yet closed" line of 240 instead of 300. The sweep must close exactly what the reports
+     * show as open, or the two disagree silently.
+     *
+     * @param  \Illuminate\Database\Query\Builder  $query  a query on the bare `journal_entries` table
+     */
+    private function restrictToLedgerSource($query, int $companyId)
+    {
+        return $this->ledgerSource->restrict($query, $companyId, 'journal_entries.transaction_id');
+    }
 
     /**
      * @return array{
@@ -106,102 +144,307 @@ final class YearEndCloseService
      */
     public function run(int $companyId, int $year, ?int $userId = null): array
     {
-        $existing = Transaction::withoutGlobalScopes()
-            ->whereNull('deleted_at')
-            ->where('company_id', $companyId)
-            ->where('doc_type', 'YEC')
-            ->whereYear('transaction_date', $year)
-            ->first();
+        // XBRL-X9r (X9R-VERIFY B-1): one close per (company, year) at a time. Two concurrent
+        // re-closes used to post two live YECs (Retained Earnings 12,000 instead of 6,000, the
+        // sheet still footing). The whole run is one transaction that FIRST takes a row lock on
+        // the year's December period (lockYear()); a second process blocks there until the first
+        // commits, and then reads the live YEC with a locking (current) read, never a stale
+        // snapshot. The deterministic re-close key (nextYecIdempotencyKey()) and the database's
+        // `transactions_company_live_yec_year_unique` index are the two further backstops, and
+        // assertAtMostOneLiveYec() is the post-condition.
+        //
+        // When run() is called inside an outer transaction (reclose, postIntoClosedYear) this is a
+        // savepoint and PostingService::post()'s own deadlock retry is inert; acceptable for an
+        // operator procedure, and the lock is what serialises it.
+        return DB::transaction(function () use ($companyId, $year, $userId) {
+            $this->lockYear($companyId, $year);
 
-        if ($existing !== null) {
+            // XBRL-X9r (L25 rule 2, H2 N-B2): only a LIVE YEC closes the year. A YEC with a live
+            // (not soft-deleted) reversal was undone by the reopen procedure, so the year is open
+            // again and must be closable again; see liveYec().
+            $existing = $this->liveYec($companyId, $year, forUpdate: true);
+
+            if ($existing !== null) {
+                // XBRL-X9r (X9R-VERIFY M-1): a live YEC is "already closed" only while nothing
+                // was posted into the year after it. A December reopened the old way (the period
+                // screen), posted into and re-locked leaves the YEC live but the new profit
+                // unswept; answering "already closed" there hid it. Say so, and say how.
+                $stale = $this->unsweptAfterLiveYec($companyId, $year);
+
+                if ($stale !== null) {
+                    return ['success' => false, 'already_closed' => false, 'blocking' => [$stale], 'net_profit' => null, 'transaction' => $existing];
+                }
+
+                return [
+                    'success' => true,
+                    'already_closed' => true,
+                    'blocking' => [],
+                    'net_profit' => null,
+                    'transaction' => $existing,
+                ];
+            }
+
+            $blocking = $this->checkPreconditions($companyId, $year);
+
+            if ($blocking !== []) {
+                return ['success' => false, 'already_closed' => false, 'blocking' => $blocking, 'net_profit' => null, 'transaction' => null];
+            }
+
+            $yearStart = Carbon::create($year, 1, 1)->startOfDay();
+            $yearEnd = Carbon::create($year, 12, 31)->endOfDay();
+
+            [$lines, $netProfit] = $this->buildClosingLines($companyId, $yearStart, $yearEnd);
+
+            if ($lines === []) {
+                // No P&L activity at all this year — nothing to sweep, nothing to post. Not a failure.
+                return ['success' => true, 'already_closed' => false, 'blocking' => [], 'net_profit' => 0.0, 'transaction' => null];
+            }
+
+            $branch = Company::find($companyId)?->branches()->first();
+
+            if ($branch === null) {
+                return [
+                    'success' => false,
+                    'already_closed' => false,
+                    'blocking' => ["Company #{$companyId} has no branch to post the YEC document against."],
+                    'net_profit' => $netProfit,
+                    'transaction' => null,
+                ];
+            }
+
+            $draft = new DocumentDraft(
+                companyId: $companyId,
+                branchId: $branch->id,
+                docType: ClosingDocuments::YEAR_END_CLOSE,
+                subType: null,
+                docDate: $yearEnd,
+                narration: "Year-end closing entry {$year}: sweep net P&L to Retained Earnings.",
+                lines: $lines,
+                idempotencyKey: $this->nextYecIdempotencyKey($companyId, $year),
+                userId: $userId,
+                allowLockedPeriods: true,
+            );
+
+            try {
+                $posted = $this->posting->post($draft, $userId);
+            } catch (QueryException $e) {
+                if (str_contains($e->getMessage(), self::LIVE_YEC_UNIQUE_INDEX)) {
+                    throw new DuplicateLiveYearEndCloseException(sprintf(
+                        'Fiscal year %d for company #%d already has a live year-end close; the database refused a second one (%s). Nothing was posted.',
+                        $year,
+                        $companyId,
+                        self::LIVE_YEC_UNIQUE_INDEX,
+                    ), 0, $e);
+                }
+
+                throw $e;
+            }
+
+            $this->assertAtMostOneLiveYec($companyId, $year);
+
             return [
                 'success' => true,
-                'already_closed' => true,
+                'already_closed' => false,
                 'blocking' => [],
-                'net_profit' => null,
-                'transaction' => $existing,
+                'net_profit' => $netProfit,
+                'transaction' => $posted->transaction,
             ];
+        });
+    }
+
+    /**
+     * XBRL-X9r (X9R-VERIFY B-1): the per-(company, year) close lock: a `SELECT ... FOR UPDATE` on
+     * the year's December period row (the annual row under `annual` length). Held until the
+     * caller's transaction ends. The reopen and re-close procedures take the same lock
+     * ({@see ClosedYearAdjustmentService}), so a close, a reopen and a re-close of one year are
+     * serialised against each other. A year with no period row has nothing to close (run()'s
+     * precondition needs the row locked), so there is nothing to serialise.
+     */
+    public function lockYear(int $companyId, int $year): void
+    {
+        $month = (string) config('accounting.period.length', 'monthly') === 'annual' ? AccountingPeriod::ANNUAL_MONTH : 12;
+
+        AccountingPeriod::query()
+            ->where('company_id', $companyId)
+            ->where('year', $year)
+            ->where('month', $month)
+            ->lockForUpdate()
+            ->first();
+    }
+
+    /**
+     * XBRL-X9r (X9R-VERIFY B-1): the post-condition. At most one live (unreversed) YEC per
+     * (company, year); read with a locking (current) read so a concurrent commit is seen.
+     *
+     * @throws DuplicateLiveYearEndCloseException
+     */
+    private function assertAtMostOneLiveYec(int $companyId, int $year): void
+    {
+        $live = $this->liveYecQuery($companyId, $year)->lockForUpdate()->pluck('id')->all();
+
+        if (count($live) > 1) {
+            throw new DuplicateLiveYearEndCloseException(sprintf(
+                'Fiscal year %d for company #%d would have %d live year-end close documents (#%s); that sweeps the year\'s profit into Retained Earnings more than once. Nothing was posted.',
+                $year,
+                $companyId,
+                count($live),
+                implode(', #', $live),
+            ));
         }
+    }
 
-        $blocking = $this->checkPreconditions($companyId, $year);
-
-        if ($blocking !== []) {
-            return ['success' => false, 'already_closed' => false, 'blocking' => $blocking, 'net_profit' => null, 'transaction' => null];
+    /**
+     * XBRL-X9r (X9R-VERIFY M-1): null when the live YEC still sweeps the whole year; otherwise the
+     * refusal text naming the unswept amount. "Unswept" is exactly what run() would sweep now
+     * (buildClosingLines() non-empty), because the live YEC's own lines are dated in the year.
+     */
+    private function unsweptAfterLiveYec(int $companyId, int $year): ?string
+    {
+        try {
+            [$lines, $net] = $this->buildClosingLines(
+                $companyId,
+                Carbon::create($year, 1, 1)->startOfDay(),
+                Carbon::create($year, 12, 31)->endOfDay(),
+            );
+        } catch (PostingException $e) {
+            return "Fiscal year {$year} has a live year-end close, but its sweep cannot be re-checked: ".$e->getMessage();
         }
-
-        $yearStart = Carbon::create($year, 1, 1)->startOfDay();
-        $yearEnd = Carbon::create($year, 12, 31)->endOfDay();
-
-        [$lines, $netProfit] = $this->buildClosingLines($companyId, $yearStart, $yearEnd);
 
         if ($lines === []) {
-            // No P&L activity at all this year — nothing to sweep, nothing to post. Not a failure.
-            return ['success' => true, 'already_closed' => false, 'blocking' => [], 'net_profit' => 0.0, 'transaction' => null];
+            return null;
         }
 
-        $branch = Company::find($companyId)?->branches()->first();
-
-        if ($branch === null) {
-            return [
-                'success' => false,
-                'already_closed' => false,
-                'blocking' => ["Company #{$companyId} has no branch to post the YEC document against."],
-                'net_profit' => $netProfit,
-                'transaction' => null,
-            ];
-        }
-
-        $draft = new DocumentDraft(
-            companyId: $companyId,
-            branchId: $branch->id,
-            docType: 'YEC',
-            subType: null,
-            docDate: $yearEnd,
-            narration: "Year-end closing entry {$year}: sweep net P&L to Retained Earnings.",
-            lines: $lines,
-            idempotencyKey: "yec:{$companyId}:{$year}",
-            userId: $userId,
-            allowLockedPeriods: true,
+        return sprintf(
+            'Fiscal year %d has a live year-end close, but %s of profit/(loss) was posted into the year after it and is not swept to Retained Earnings. '
+            .'A plain close cannot sweep it: reopen the year with accounting:reopen-year, then accounting:reclose-year.',
+            $year,
+            number_format($net, 3),
         );
+    }
 
-        $posted = $this->posting->post($draft, $userId);
+    /**
+     * XBRL-X9r (L25 rule 2, H2 N-B2): the year's LIVE year-end close, or null.
+     *
+     * A `YEC` document dated in `$year` counts only while it has no live (not soft-deleted)
+     * reversal. {@see PostingService::reverse()} stamps `reversal_of_transaction_id` on the
+     * reversal row, pointing back at the YEC; that link, not the YEC's own `posting_status`, is
+     * the test, because it is the same definition reverse() itself uses to decide "already
+     * reversed" (a soft-deleted reversal no longer counts there either).
+     *
+     * Before X9r, run() treated ANY YEC dated in the year as "already closed", reversed or not, so
+     * once a YEC was reversed the year could never be closed again. The change is listed for the
+     * owner in PLAN.md §10 item 7.
+     */
+    public function liveYec(int $companyId, int $year, bool $forUpdate = false): ?Transaction
+    {
+        $query = $this->liveYecQuery($companyId, $year)->orderByDesc('id');
 
-        return [
-            'success' => true,
-            'already_closed' => false,
-            'blocking' => [],
-            'net_profit' => $netProfit,
-            'transaction' => $posted->transaction,
-        ];
+        if ($forUpdate) {
+            $query->lockForUpdate();
+        }
+
+        return $query->first();
+    }
+
+    /** @return \Illuminate\Database\Eloquent\Builder<Transaction> */
+    private function liveYecQuery(int $companyId, int $year)
+    {
+        return Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where('doc_type', ClosingDocuments::YEAR_END_CLOSE)
+            ->whereYear('transaction_date', $year)
+            ->whereNotExists(function ($reversal) {
+                $reversal->selectRaw('1')
+                    ->from('transactions as yec_rev')
+                    ->whereColumn('yec_rev.reversal_of_transaction_id', 'transactions.id')
+                    ->whereNull('yec_rev.deleted_at');
+            });
+    }
+
+    /**
+     * XBRL-X9r: `yec:{company}:{year}` for the first close of a year; after a reopen,
+     * `yec:{company}:{year}:replaces:{id}`, where {id} is the newest REVERSED YEC of the year, the
+     * one this close replaces.
+     *
+     * The key is DETERMINISTIC (X9R-VERIFY B-1): every process that closes the same reopened year
+     * derives the same key from the same reversed YEC, so a second, racing close collides on the
+     * unique `(company_id, idempotency_key)` index and post() hands back the first close's YEC
+     * instead of posting another. The first build counted the existing YECs
+     * (nextRepostIdempotencyKey(), `:rev{n}`); a racer that had not yet seen the first close's
+     * commit counted one fewer, took `:rev2`, and posted a second live YEC. The base key is never
+     * re-used once any YEC exists: post() would hand back the REVERSED YEC as the new close.
+     */
+    private function nextYecIdempotencyKey(int $companyId, int $year): string
+    {
+        // The newest REVERSED YEC, never simply the newest YEC: a racer that reads after the first
+        // close committed must still derive the first close's key, not one from its new YEC.
+        $newest = Transaction::withoutGlobalScopes()
+            ->whereNull('deleted_at')
+            ->where('company_id', $companyId)
+            ->where('doc_type', ClosingDocuments::YEAR_END_CLOSE)
+            ->whereYear('transaction_date', $year)
+            ->whereExists(function ($reversal) {
+                $reversal->selectRaw('1')
+                    ->from('transactions as yec_rev')
+                    ->whereColumn('yec_rev.reversal_of_transaction_id', 'transactions.id')
+                    ->whereNull('yec_rev.deleted_at');
+            })
+            ->orderByDesc('id')
+            ->lockForUpdate()
+            ->value('id');
+
+        return $newest === null
+            ? "yec:{$companyId}:{$year}"
+            : "yec:{$companyId}:{$year}:replaces:{$newest}";
+    }
+
+    /**
+     * XBRL-X9r: the rule behind `FinancialStatementsSource::isYearClosed()` (X2 contract).
+     *
+     * A fiscal year is closed when BOTH hold:
+     *   1. every period of the year is `locked` (the same rule, and the same "a missing row is not
+     *      locked" reading, as run()'s own precondition); and
+     *   2. there is NOTHING LEFT TO SWEEP: the year's Income/Expenses leaves (and Dividends Paid)
+     *      net to zero on this company's ledger source, the live YEC's own lines included. That is
+     *      true after a YEC, and for a locked year with no trading (which gets no YEC document).
+     *
+     * There is deliberately NO "a live YEC exists" shortcut (X9R-VERIFY M-1): a December reopened
+     * the old way after the YEC, posted into and re-locked leaves the YEC live but profit unswept,
+     * and the shortcut certified that year as closed with Retained Earnings short. A year whose
+     * YEC was reversed by `accounting:reopen-year` is likewise not closed until it is re-closed.
+     * If the sweep cannot even be computed (an unmapped Retained Earnings or Dividends Paid
+     * purpose), the year is reported as not closed rather than guessed.
+     */
+    public function isClosed(int $companyId, int $year): bool
+    {
+        if ($this->periodsNotLocked($companyId, $year) !== []) {
+            return false;
+        }
+
+        try {
+            [$lines] = $this->buildClosingLines(
+                $companyId,
+                Carbon::create($year, 1, 1)->startOfDay(),
+                Carbon::create($year, 12, 31)->endOfDay(),
+            );
+        } catch (PostingException) {
+            return false;
+        }
+
+        return $lines === [];
     }
 
     /** @return list<string> */
     private function checkPreconditions(int $companyId, int $year): array
     {
-        $blocking = [];
-        $isAnnual = (string) config('accounting.period.length', 'monthly') === 'annual';
-
-        if ($isAnnual) {
-            $row = AccountingPeriod::query()->where('company_id', $companyId)->where('year', $year)
-                ->where('month', AccountingPeriod::ANNUAL_MONTH)->first();
-            if ($row === null || ! $row->isLocked()) {
-                $blocking[] = "Fiscal year {$year} is not locked.";
-            }
-        } else {
-            for ($month = 1; $month <= 12; $month++) {
-                $row = AccountingPeriod::query()->where('company_id', $companyId)->where('year', $year)
-                    ->where('month', $month)->first();
-                if ($row === null || ! $row->isLocked()) {
-                    $blocking[] = sprintf('%04d-%02d is not locked.', $year, $month);
-                }
-            }
-        }
+        $blocking = $this->periodsNotLocked($companyId, $year);
 
         $memoCode = (string) config('accounting.period_close.airline_memo_control_code', '1952');
         $memoAccount = Account::withoutGlobalScopes()->where('company_id', $companyId)->where('code', $memoCode)->first();
 
         if ($memoAccount !== null) {
-            $totals = DB::table('journal_entries')
+            $totals = $this->restrictToLedgerSource(DB::table('journal_entries'), $companyId)
                 ->where('account_id', $memoAccount->id)
                 ->whereNull('deleted_at')
                 ->where(DB::raw('COALESCE(posting_date, transaction_date)'), '<=', Carbon::create($year, 12, 31)->endOfDay())
@@ -222,6 +465,99 @@ final class YearEndCloseService
 
         foreach ($this->checkDividendMappingGap($companyId, $year) as $reason) {
             $blocking[] = $reason;
+        }
+
+        foreach ($this->priorYearLeftOpen($companyId, $year) as $reason) {
+            $blocking[] = $reason;
+        }
+
+        return $blocking;
+    }
+
+    /**
+     * XBRL X9 (PLAN.md X9, H-M2, §4.1 D-8; §10 item 6, a behaviour change): refuses to close year Y
+     * while Y-1 still has P&L activity that no year-end close has swept. Closing Y
+     * over an unclosed Y-1 creates the gap-year state, in which Y-1's profit sits in the P&L leaves
+     * forever while Retained Earnings is short by it; the balance sheet (X1) and the SOCE opening
+     * (X9) read around it, but this guard stops the state from being created at all.
+     *
+     * "Unswept" is a P&L leaf {@see self::run()} would sweep for Y-1 now (the same buildClosingLines(),
+     * which counts a live YEC's own lines), so a closed Y-1 and a Y-1 with no P&L activity pass. **Floor:** it looks back only to the company's EARLIEST year with rows
+     * on its ledger source ({@see LedgerSource::restrict()}), so a pre-ledger year is never demanded.
+     * (The sweep is itself restricted to the ledger source, so a pre-ledger year could not show an
+     * unswept amount anyway; the floor states the rule and saves that query.)
+     * Only Y-1 is checked: Y-1's own close was held to the same rule against Y-2.
+     *
+     * @return list<string>
+     */
+    private function priorYearLeftOpen(int $companyId, int $year): array
+    {
+        $prior = $year - 1;
+
+        $earliest = $this->restrictToLedgerSource(DB::table('journal_entries'), $companyId)
+            ->where('company_id', $companyId)
+            ->whereNull('deleted_at')
+            ->min(DB::raw('COALESCE(posting_date, transaction_date)'));
+
+        if ($earliest === null || $prior < Carbon::parse($earliest)->year) {
+            return [];
+        }
+
+        try {
+            [, $net, $profitAndLossLines] = $this->buildClosingLines(
+                $companyId,
+                Carbon::create($prior, 1, 1)->startOfDay(),
+                Carbon::create($prior, 12, 31)->endOfDay(),
+            );
+        } catch (PostingException $e) {
+            return ["Fiscal year {$prior} cannot be checked for an unswept profit or loss, so {$year} cannot be closed after it: ".$e->getMessage()];
+        }
+
+        // P&L activity only (PLAN.md X9): an unswept dividend carried from Y-1 is the separate
+        // backfill question of the T5 ruling (a dividend balance carried in with no movement is
+        // never swept by a later close either), not a gap year.
+        if ($profitAndLossLines === 0) {
+            return [];
+        }
+
+        return [sprintf(
+            'Fiscal year %d still has %s of profit/(loss) that no year-end close has swept. Close %d first '
+            .'(lock its periods and run accounting:year:close for %d), then close %d; closing %d over it would leave %d\'s result outside Retained Earnings.',
+            $prior,
+            number_format($net, 3),
+            $prior,
+            $prior,
+            $year,
+            $year,
+            $prior,
+        )];
+    }
+
+    /**
+     * One message per period of `$year` that is not `locked` (a MISSING row counts as not locked;
+     * see the class docblock). Shared by run()'s precondition and {@see self::isClosed()}.
+     *
+     * @return list<string>
+     */
+    private function periodsNotLocked(int $companyId, int $year): array
+    {
+        $blocking = [];
+        $isAnnual = (string) config('accounting.period.length', 'monthly') === 'annual';
+
+        if ($isAnnual) {
+            $row = AccountingPeriod::query()->where('company_id', $companyId)->where('year', $year)
+                ->where('month', AccountingPeriod::ANNUAL_MONTH)->first();
+            if ($row === null || ! $row->isLocked()) {
+                $blocking[] = "Fiscal year {$year} is not locked.";
+            }
+        } else {
+            for ($month = 1; $month <= 12; $month++) {
+                $row = AccountingPeriod::query()->where('company_id', $companyId)->where('year', $year)
+                    ->where('month', $month)->first();
+                if ($row === null || ! $row->isLocked()) {
+                    $blocking[] = sprintf('%04d-%02d is not locked.', $year, $month);
+                }
+            }
         }
 
         return $blocking;
@@ -292,7 +628,7 @@ final class YearEndCloseService
             ->value('account_id');
 
         if ($mappedId === null) {
-            $movement = $this->dividendMovement($accountIds, $year);
+            $movement = $this->dividendMovement($companyId, $accountIds, $year);
 
             if (abs($movement) <= $tolerance) {
                 return [];
@@ -336,7 +672,7 @@ final class YearEndCloseService
             return [];
         }
 
-        $stranded = $this->dividendMovement($strandedIds, $year);
+        $stranded = $this->dividendMovement($companyId, $strandedIds, $year);
 
         if (abs($stranded) <= $tolerance) {
             return [];
@@ -357,9 +693,9 @@ final class YearEndCloseService
      *
      * @param  list<int>  $accountIds
      */
-    private function dividendMovement(array $accountIds, int $year): float
+    private function dividendMovement(int $companyId, array $accountIds, int $year): float
     {
-        $totals = DB::table('journal_entries')
+        $totals = $this->restrictToLedgerSource(DB::table('journal_entries'), $companyId)
             ->whereIn('account_id', $accountIds)
             ->whereNull('deleted_at')
             ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [
@@ -459,7 +795,7 @@ final class YearEndCloseService
     }
 
     /**
-     * @return array{0: LineDraft[], 1: float}
+     * @return array{0: LineDraft[], 1: float, 2: int} the lines, the net profit, and how many of the lines sweep a P&L leaf
      */
     private function buildClosingLines(int $companyId, Carbon $yearStart, Carbon $yearEnd): array
     {
@@ -477,7 +813,8 @@ final class YearEndCloseService
                 ->get();
 
             foreach ($leaves as $leaf) {
-                $totals = DB::table('journal_entries')
+                // XBRL-X1: one ledger source, never a mixed read; see restrictToLedgerSource().
+                $totals = $this->restrictToLedgerSource(DB::table('journal_entries'), $companyId)
                     ->where('account_id', $leaf->id)
                     ->whereNull('deleted_at')
                     ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$yearStart, $yearEnd])
@@ -560,7 +897,7 @@ final class YearEndCloseService
         if ($dividendsMapped) {
             $dividendsAccount = $this->accountResolver->resolve('DIVIDENDS_PAID', $companyId);
 
-            $dividendTotals = DB::table('journal_entries')
+            $dividendTotals = $this->restrictToLedgerSource(DB::table('journal_entries'), $companyId)
                 ->where('account_id', $dividendsAccount->id)
                 ->whereNull('deleted_at')
                 ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$yearStart, $yearEnd])
@@ -577,8 +914,11 @@ final class YearEndCloseService
         $hasDividendSweep = $dividendsAccount !== null && abs($dividendBalance) > $tolerance;
 
         if ($lines === [] && ! $hasDividendSweep) {
-            return [[], 0.0];
+            return [[], 0.0, 0];
         }
+
+        // XBRL X9: how many of the lines sweep a P&L leaf (the prior-year guard counts only these).
+        $profitAndLossLines = count($lines);
 
         $retainedEarnings = $this->accountResolver->resolve('RETAINED_EARNINGS', $companyId);
 
@@ -628,6 +968,6 @@ final class YearEndCloseService
             );
         }
 
-        return [$lines, $netProfit];
+        return [$lines, $netProfit, $profitAndLossLines];
     }
 }

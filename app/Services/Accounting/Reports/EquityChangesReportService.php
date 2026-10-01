@@ -7,9 +7,12 @@ namespace App\Services\Accounting\Reports;
 use App\Exceptions\Accounting\UnmappedPurposeException;
 use App\Models\Account;
 use App\Services\Accounting\AccountResolver;
+use App\Services\Accounting\ClosingDocuments;
+use App\Services\Accounting\LedgerSource;
 use App\Services\TrialBalanceService;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * accounting-builds T6 (L10): Statement of Changes in Equity — a pure READ-layer report. Every
@@ -76,6 +79,10 @@ use Illuminate\Support\Collection;
  *     period profit") even though the LEDGER itself only truly moves it at year-end close — the
  *     `checks` block reports both numbers so a reader can see which regime they are in, never
  *     silently picks one.
+ *   - XBRL X9 (H-M2) / X9b (X9-VERIFY m-4): the difference is this period's net profit PLUS any
+ *     profit of EARLIER years that no close has swept (`unswept_profit_before_period`, which the
+ *     opening retained earnings include). So a year that IS closed still shows a difference while
+ *     an earlier year is open; the screen words that case as "an earlier year is not closed".
  *
  * `checks.ties_to_ledger_derivation` is a SECOND, independently-derived proof of the same closing
  * total: `Σ TrialBalanceService::generate()`'s own per-leaf `closing_balance` (opening_credit −
@@ -95,6 +102,23 @@ final class EquityChangesReportService
     public const CODE_DIVIDENDS_PAID = '3200';
 
     public const CODE_RETAINED_EARNINGS = '3400';
+
+    /**
+     * XBRL X8: the equity components added to the canonical chart (the SOCE columns the MOCI
+     * template carries beside capital and retained earnings: statutory reserve, voluntary reserve,
+     * partners' current accounts). Each is a DIRECT component (closing = opening + movement, like
+     * Capital) resolved by its reporting purpose ONLY: a company whose chart has no such leaf
+     * (every pre-X8 chart) simply has no row for it, and a legacy chart's code is never guessed.
+     * X9 replaces this list, and the four codes above, with the XBRL equity bindings (PLAN §10
+     * item 2).
+     *
+     * @var array<string, string> component key => reporting purpose code
+     */
+    public const PURPOSE_COMPONENTS = [
+        'statutory_reserve' => 'STATUTORY_RESERVE',
+        'voluntary_reserve' => 'VOLUNTARY_RESERVE',
+        'partners_current_account' => 'PARTNERS_CURRENT_ACCOUNT',
+    ];
 
     public function __construct(
         private readonly TrialBalanceService $trialBalance,
@@ -116,9 +140,29 @@ final class EquityChangesReportService
      */
     public function generate(int $companyId, int $year): array
     {
-        $yearStart = Carbon::create($year, 1, 1)->startOfDay();
-        $yearEnd = Carbon::create($year, 12, 31)->endOfDay();
-        $nextYearStart = Carbon::create($year + 1, 1, 1)->startOfDay();
+        return $this->generateForRange($companyId, Carbon::create($year, 1, 1), Carbon::create($year, 12, 31));
+    }
+
+    /**
+     * XBRL X9 (PLAN.md X9, §10 item 2): the same statement over any whole-day range `$from` to
+     * `$to` (both inclusive), no longer only a calendar year. `year` in the result is `$from`'s
+     * year; "next year" in the checks means the day after `$to`.
+     *
+     * XBRL X9 (H-M2): the OPENING retained earnings include the profit no year-end close had swept
+     * before `$from` (`unswept_profit_before_period`: every Income/Expenses leaf, YEC lines
+     * included, on this company's ledger source). Without it an unclosed prior year's profit
+     * vanished from the statement while the balance sheet (X1) carried it. On a ledger whose every
+     * earlier year is closed the figure is 0 and nothing changes.
+     */
+    public function generateForRange(int $companyId, Carbon $from, Carbon $to): array
+    {
+        if ($from->copy()->startOfDay()->gt($to->copy()->startOfDay())) {
+            throw new \InvalidArgumentException(sprintf('The statement of changes in equity needs from <= to; got %s to %s.', $from->toDateString(), $to->toDateString()));
+        }
+        $year = $from->year;
+        $yearStart = $from->copy()->startOfDay();
+        $yearEnd = $to->copy()->endOfDay();
+        $nextYearStart = $to->copy()->addDay()->startOfDay();
         $tolerance = (float) config('accounting.engine.balance_tolerance', 0.0005);
 
         $capital = $this->resolveLeafByCode($companyId, self::CODE_CAPITAL, 'Capital Stock');
@@ -126,13 +170,25 @@ final class EquityChangesReportService
         $dividends = $this->resolvePurposeOrCode($companyId, 'DIVIDENDS_PAID', self::CODE_DIVIDENDS_PAID, 'Dividends Paid');
         $retainedEarnings = $this->resolvePurposeOrCode($companyId, 'RETAINED_EARNINGS', self::CODE_RETAINED_EARNINGS, 'Retained Earnings');
 
+        /** @var array<string, Account> $extras X8: the purpose-resolved components this chart has */
+        $extras = [];
+        foreach (self::PURPOSE_COMPONENTS as $key => $purposeCode) {
+            try {
+                $extras[$key] = $this->accountResolver->resolve($purposeCode, $companyId);
+            } catch (UnmappedPurposeException) {
+                // No such leaf on this chart: no row, never a guessed code (see PURPOSE_COMPONENTS).
+            }
+        }
+
         $opening = $this->trialBalance->getOpeningBalances($companyId, $yearStart);
         $nextYearOpening = $this->trialBalance->getOpeningBalances($companyId, $nextYearStart);
 
         $openingCapital = $this->netCredit($capital->id, $opening);
         $openingObe = $this->netCredit($obe->id, $opening);
         $openingDividends = $this->netCredit($dividends->id, $opening);
-        $openingRe = $this->netCredit($retainedEarnings->id, $opening);
+        // H-M2: the retained-earnings component PLUS the profit not yet swept before the period.
+        $unsweptBefore = $this->unsweptProfitBefore($companyId, $yearStart);
+        $openingRe = $this->netCredit($retainedEarnings->id, $opening) + $unsweptBefore;
         $openingTotal = $openingCapital + $openingObe + $openingDividends + $openingRe;
 
         $movementReport = $this->trialBalance->generate($companyId, $yearStart, $yearEnd, ['show_zero' => true]);
@@ -147,6 +203,35 @@ final class EquityChangesReportService
         $dividendsMovement = $this->netMovement($dividends->id, $accountsById);
         $reMovement = $this->netMovement($retainedEarnings->id, $accountsById);
 
+        // XBRL-X9r (PLAN.md L15 route (ii), X9R-VERIFY m-1): a prior-period adjustment (PPA,
+        // IAS 8) dated inside this year restates the OPENING position; it is never a current-year
+        // movement. The trial balance counts it as movement (its opening is strictly before the
+        // year), so its per-leaf net is moved from Movement into Opening here. Closing and every
+        // check are unchanged by construction (opening + movement is the same sum).
+        $ppa = $this->priorPeriodAdjustmentNetCredit($companyId, $yearStart, $yearEnd);
+        $restate = fn (int $accountId): float => (float) ($ppa[$accountId] ?? 0.0);
+
+        $openingCapital += $restate($capital->id);
+        $capitalMovement -= $restate($capital->id);
+        $openingObe += $restate($obe->id);
+        $obeMovement -= $restate($obe->id);
+        $openingDividends += $restate($dividends->id);
+        $dividendsMovement -= $restate($dividends->id);
+        $openingRe += $restate($retainedEarnings->id);
+        $reMovement -= $restate($retainedEarnings->id);
+
+        // X8: the purpose-resolved direct components, rolled forward like Capital.
+        $extraRows = [];
+        foreach ($extras as $key => $account) {
+            $o = $this->netCredit($account->id, $opening) + $restate($account->id);
+            $m = $this->netMovement($account->id, $accountsById) - $restate($account->id);
+            $extraRows[$key] = ['code' => $account->code, 'name' => $account->name, 'opening' => $o, 'movement' => $m, 'closing' => $o + $m];
+        }
+        $extrasOpening = array_sum(array_column($extraRows, 'opening'));
+        $extrasClosing = array_sum(array_column($extraRows, 'closing'));
+
+        $openingTotal = $openingCapital + $openingObe + $openingDividends + $openingRe + $extrasOpening;
+
         $income = $movementReport['grouped']['Income'] ?? ['subtotal_debit' => 0.0, 'subtotal_credit' => 0.0];
         $expenses = $movementReport['grouped']['Expenses'] ?? ['subtotal_debit' => 0.0, 'subtotal_credit' => 0.0];
         $netProfit = ((float) $income['subtotal_credit'] - (float) $income['subtotal_debit'])
@@ -159,7 +244,7 @@ final class EquityChangesReportService
         // read the moment this year is closed.
         $closingRetainedEarnings = $openingRe + $reMovement + $netProfit + $dividendsMovement;
 
-        $closingTotal = $closingCapital + $closingObe + $closingRetainedEarnings;
+        $closingTotal = $closingCapital + $closingObe + $closingRetainedEarnings + $extrasClosing;
 
         // Wave 3 lane I item A2 (T5/T6 §12 sign-off finding): the Dividends Paid row's presented
         // Closing must NOT be the raw unswept leaf balance (`$openingDividends + $dividendsMovement`).
@@ -192,6 +277,9 @@ final class EquityChangesReportService
             + $this->netCredit($obe->id, $nextYearOpening)
             + $this->netCredit($dividends->id, $nextYearOpening)
             + $this->netCredit($retainedEarnings->id, $nextYearOpening);
+        foreach ($extras as $account) {
+            $nextYearOpeningTotal += $this->netCredit($account->id, $nextYearOpening);
+        }
 
         $difference = $closingTotal - $nextYearOpeningTotal;
 
@@ -203,7 +291,10 @@ final class EquityChangesReportService
             + $this->closingBalance($obe->id, $accountsById)
             + $this->closingBalance($dividends->id, $accountsById)
             + $this->closingBalance($retainedEarnings->id, $accountsById);
-        $ledgerDerivationTotal = $ledgerClosingSum + $netProfit;
+        foreach ($extras as $account) {
+            $ledgerClosingSum += $this->closingBalance($account->id, $accountsById);
+        }
+        $ledgerDerivationTotal = $ledgerClosingSum + $netProfit + $unsweptBefore;
         $ledgerDifference = $closingTotal - $ledgerDerivationTotal;
 
         return [
@@ -214,8 +305,10 @@ final class EquityChangesReportService
                 'opening_balance_equity' => ['code' => $obe->code, 'name' => $obe->name, 'opening' => $openingObe, 'movement' => $obeMovement, 'closing' => $closingObe],
                 'retained_earnings' => ['code' => $retainedEarnings->code, 'name' => $retainedEarnings->name, 'opening' => $openingRe, 'movement' => $reMovement, 'closing' => $closingRetainedEarnings],
                 'dividends_paid' => ['code' => $dividends->code, 'name' => $dividends->name, 'opening' => $openingDividends, 'movement' => $dividendsMovement, 'closing' => $closingDividendsPresented],
-            ],
+            ] + $extraRows,
             'net_profit' => $netProfit,
+            'unswept_profit_before_period' => $unsweptBefore,
+            'period' => ['from' => $yearStart->toDateString(), 'to' => $yearEnd->toDateString()],
             'dividends_paid_this_year' => -$dividendsMovement,
             'opening_equity_total' => $openingTotal,
             'closing_equity_total' => $closingTotal,
@@ -228,6 +321,56 @@ final class EquityChangesReportService
                 'ledger_difference' => $ledgerDifference,
             ],
         ];
+    }
+
+    /**
+     * XBRL-X9r: the net (credit − debit) per account of the prior-period adjustment family (a PPA
+     * and a reversal of one) dated inside [$from, $to], on this company's ledger source, soft-
+     * deleted lines excluded. The family is the shared definition in ClosingDocuments.
+     *
+     * @return array<int, float>
+     */
+    private function priorPeriodAdjustmentNetCredit(int $companyId, Carbon $from, Carbon $to): array
+    {
+        $query = DB::table('journal_entries as je')
+            ->where('je.company_id', $companyId)
+            ->whereNull('je.deleted_at')
+            ->whereBetween(DB::raw('COALESCE(je.posting_date, je.transaction_date)'), [$from, $to])
+            ->whereExists(function ($doc) {
+                $doc->selectRaw('1')
+                    ->from('transactions as ppa_t')
+                    ->whereColumn('ppa_t.id', 'je.transaction_id')
+                    ->whereNull('ppa_t.deleted_at');
+                ClosingDocuments::wherePriorPeriodAdjustmentFamily($doc, 'ppa_t');
+            });
+
+        app(LedgerSource::class)->restrict($query, $companyId, 'je.transaction_id');
+
+        return $query->groupBy('je.account_id')
+            ->selectRaw('je.account_id, COALESCE(SUM(je.credit), 0) - COALESCE(SUM(je.debit), 0) AS net')
+            ->pluck('net', 'je.account_id')
+            ->map(fn ($v) => (float) $v)
+            ->all();
+    }
+
+    /**
+     * XBRL X9 (H-M2): the sum of credit - debit of every Income/Expenses leaf dated strictly
+     * before `$before`, ALL documents (the YEC lines are what zero a closed year), on this
+     * company's ledger source: the profit no year-end close has swept yet.
+     */
+    private function unsweptProfitBefore(int $companyId, Carbon $before): float
+    {
+        $query = DB::table('journal_entries as je')
+            ->join('accounts as a', 'a.id', '=', 'je.account_id')
+            ->join('accounts as root', 'root.id', '=', 'a.root_id')
+            ->where('je.company_id', $companyId)
+            ->whereNull('je.deleted_at')
+            ->whereIn('root.name', ['Income', 'Expenses'])
+            ->where(DB::raw('COALESCE(je.posting_date, je.transaction_date)'), '<', $before);
+
+        app(LedgerSource::class)->restrict($query, $companyId, 'je.transaction_id');
+
+        return (float) $query->selectRaw('COALESCE(SUM(je.credit), 0) - COALESCE(SUM(je.debit), 0) AS net')->value('net');
     }
 
     /**

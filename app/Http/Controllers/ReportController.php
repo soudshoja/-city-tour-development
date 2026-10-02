@@ -31,6 +31,7 @@ use App\Models\Charge;
 use Exception;
 use Illuminate\Support\Str;
 use App\Services\TrialBalanceService;
+use App\Services\ProfitLossService;
 use App\Services\Accounting\DeferredRevenueScheduleReport;
 use App\Services\Accounting\AccountResolver;
 use App\Services\Accounting\LedgerSource;
@@ -554,6 +555,20 @@ class ReportController extends Controller
         ]);
     }
 
+    /**
+     * XBRL X16 item 1 (ported from Akeed LP5a / AK-PORT F1): the P&L screen reads
+     * {@see ProfitLossService}, the one derivation the parity harness ({@see
+     * \App\Services\Onboarding\Parity\LedgerFigures::profitAndLoss()}) and
+     * {@see ProfitLossServiceParityTest} hold equal. It replaces this method's former level-3 walk
+     * plus `code LIKE '4%' / '5%'` sign test (finding R3-12, the TAXONOMY half, which CT-A7-4
+     * deliberately left open): P&L accounts are now the leaves under the positional roots
+     * 'Income' and 'Expenses', exactly as the balance sheet and trial balance already read them,
+     * restricted to one ledger source, with the year-end-close and prior-period-adjustment
+     * families excluded ({@see \App\Services\Accounting\ClosingDocuments}).
+     *
+     * Adds the date-range filter (`date_from`/`date_to`) beside the month picker; the month stays
+     * the default.
+     */
     public function profitLoss(Request $request)
     {
         Gate::authorize('viewProfitLoss', Report::class);
@@ -561,220 +576,75 @@ class ReportController extends Controller
         $user = Auth::user();
         $companyId = getCompanyId($user);
 
-        if (!$companyId) {
+        if (! $companyId) {
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $month = $request->input('month', now()->format('Y-m'));
-        $year = $request->input('year', now()->format('Y'));
-        $from = \Carbon\Carbon::parse($month)->startOfMonth();
-        $to = \Carbon\Carbon::parse($month)->endOfMonth();
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
+        $usingDateRange = filled($dateFrom) || filled($dateTo);
 
-        $allAccounts = Account::where('company_id', $companyId)->get();
-        $accountsById = $allAccounts->keyBy('id');
+        if ($usingDateRange) {
+            // Either bound alone is enough to mean "range mode"; the missing one widens to the
+            // other's own year so a half-specified URL still answers a well-defined question
+            // instead of silently reverting to the current month.
+            $to = Carbon::parse($dateTo ?: $dateFrom)->endOfDay();
+            $from = Carbon::parse($dateFrom ?: $to->copy()->startOfYear())->startOfDay();
 
-        $childrenMap = [];
-        foreach ($allAccounts as $account) {
-            if ($account->parent_id) {
-                if (!isset($childrenMap[$account->parent_id])) {
-                    $childrenMap[$account->parent_id] = collect();
-                }
-                $childrenMap[$account->parent_id]->push($account);
-            }
-        }
-
-        $level3Accounts = $allAccounts
-            ->where('report_type', Account::REPORT_TYPES['PROFIT_LOSS'])
-            ->where('level', 3)
-            ->sortBy('code');
-
-        $descendantsCache = [];
-        foreach ($level3Accounts as $parent) {
-            $descendantsCache[$parent->id] = $this->getAllDescendants($parent->id, $childrenMap);
-        }
-
-        // P2.5.B fix (BUG-C4, doc 08; p2_5-brief.md §P2.5.B): this used to bucket by created_at
-        // (when the row was inserted) rather than posting_date (which accounting period the entry
-        // actually belongs to) — a document entered on a different day than its own accounting
-        // date (a late-arriving cost, a correction posted today against an earlier month, or any
-        // document PeriodGuard has shifted forward per period-lock-design.md §8.1) would land in
-        // the wrong month's P&L. COALESCE(posting_date, transaction_date), not a bare
-        // posting_date: posting_date is backfilled for every pre-existing row by this wave's own
-        // migration and always set by PostingService::post() going forward, but a legacy call
-        // site this build's strangler cutover has not yet migrated (doc 11 §C2's 131-site census)
-        // would otherwise leave a new row's posting_date NULL and silently invisible to this
-        // report — transaction_date is the correct, non-regressive fallback for exactly that row.
-        //
-        // CT-A7-4 (finding **R3-12**, the HALF of it that is unambiguous): this query had NO
-        // LedgerSource restriction, so on a ledger carrying both engine rows and their mirrored
-        // legacy twins (CT-A5a: 2,081 dual-posted transactions) it summed both and this screen read
-        // roughly DOUBLE the trial balance and balance sheet. Same defect, same fix, as R3-5 on the
-        // dashboard tiles and R3-11 on the paid report. It does NOT by itself close R3-12 — see
-        // this method's own note below on the two profit TAXONOMIES, which is an owner decision.
-        $plLedgerSource = app(LedgerSource::class);
-
-        $journalEntriesQuery = JournalEntry::where('company_id', $companyId)
-            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$from, $to]);
-        $plLedgerSource->restrict($journalEntriesQuery, $companyId, 'transaction_id');
-        $journalEntries = $journalEntriesQuery->get();
-
-        $entriesByAccount = $journalEntries->groupBy('account_id');
-
-        $grouped = [];
-
-        foreach ($level3Accounts as $parent) {
-            $descendants = $descendantsCache[$parent->id];
-            $totalAmount = 0;
-            $childRows = [];
-
-            foreach ($descendants as $child) {
-                $childEntries = $entriesByAccount->get($child->id, collect());
-                $childAmount = $childEntries->sum(fn($j) => $j->credit - $j->debit);
-                $totalAmount += $childAmount;
-
-                if ($childAmount != 0) {
-                    $childRows[] = [
-                        'account' => $child,
-                        'amount' => $childAmount,
-                    ];
-                }
+            if ($from->greaterThan($to)) {
+                [$from, $to] = [$to->copy()->startOfDay(), $from->copy()->endOfDay()];
             }
 
-            $parentEntries = $entriesByAccount->get($parent->id, collect());
-            $parentAmount = $parentEntries->sum(fn($j) => $j->credit - $j->debit);
-            $totalAmount += $parentAmount;
-
-            $grouped[$parent->id] = [
-                'account' => $parent,
-                'amount' => $totalAmount,
-                'children' => $childRows,
-            ];
+            $month = $from->format('Y-m');
+            $year = $request->input('year', $to->format('Y'));
+        } else {
+            $month = $request->input('month', now()->format('Y-m'));
+            $from = Carbon::parse($month)->startOfMonth();
+            $to = Carbon::parse($month)->endOfMonth();
+            $year = $request->input('year', now()->format('Y'));
         }
 
-        // P&L-2: also include profit-loss accounts the level-3 walk never reaches
-        // (e.g. a P&L account sitting ABOVE level 3, or off any level-3 branch).
-        // Each such account's OWN entries are counted once; its covered
-        // descendants, if any, were already summed above, so nothing is
-        // double-counted (the missed set is disjoint from the covered set).
-        $coveredIds = [];
-        foreach ($level3Accounts as $parent) {
-            $coveredIds[$parent->id] = true;
-            foreach ($descendantsCache[$parent->id] as $desc) {
-                $coveredIds[$desc->id] = true;
-            }
-        }
-        $missedPlAccounts = $allAccounts->filter(fn($a) =>
-            $a->report_type === Account::REPORT_TYPES['PROFIT_LOSS'] && !isset($coveredIds[$a->id]));
-        foreach ($missedPlAccounts as $acct) {
-            $ownAmount = $entriesByAccount->get($acct->id, collect())
-                ->sum(fn($j) => $j->credit - $j->debit);
-            if ($ownAmount == 0) {
-                continue;
-            }
-            $grouped[$acct->id] = [
-                'account' => $acct,
-                'amount' => $ownAmount,
-                'children' => [],
-            ];
-        }
+        $service = new ProfitLossService;
+        $profitLoss = $service->generate($companyId, $from, $to);
 
-        $incomeAccounts = collect($grouped)->filter(fn($item) => str_starts_with($item['account']->code, '4'));
-        $expenseAccounts = collect($grouped)->filter(fn($item) => str_starts_with($item['account']->code, '5'));
-
-        $relevantAccountIds = collect();
-        foreach ($level3Accounts as $parent) {
-            $relevantAccountIds->push($parent->id);
-            foreach ($descendantsCache[$parent->id] as $desc) {
-                $relevantAccountIds->push($desc->id);
-            }
-        }
-        // P&L-2: include the missed profit-loss accounts in the yearly chart too.
-        foreach ($missedPlAccounts as $acct) {
-            $relevantAccountIds->push($acct->id);
-        }
-        $relevantAccountIds = $relevantAccountIds->unique()->values();
-
-        $yearStart = \Carbon\Carbon::createFromDate($year, 1, 1)->startOfYear();
-        $yearEnd = \Carbon\Carbon::createFromDate($year, 12, 31)->endOfYear();
-
-        // P2.5.B fix (BUG-C4) — same COALESCE(posting_date, transaction_date) rationale as the
-        // monthly query above.
-        //
-        // CT-A7-4 (R3-12): the same restriction as the monthly query above. The twelve-month chart
-        // and the table beneath it must not disagree about which rows exist.
-        $yearlyEntriesQuery = JournalEntry::where('company_id', $companyId)
-            ->whereIn('account_id', $relevantAccountIds)
-            ->whereBetween(DB::raw('COALESCE(posting_date, transaction_date)'), [$yearStart, $yearEnd]);
-        $plLedgerSource->restrict($yearlyEntriesQuery, $companyId, 'transaction_id');
-        $yearlyEntries = $yearlyEntriesQuery->get();
-
-        $entriesByMonthAndAccount = [];
-        foreach ($yearlyEntries as $entry) {
-            $monthKey = ($entry->posting_date ?? $entry->transaction_date)->format('n');
-            $accountId = $entry->account_id;
-
-            if (!isset($entriesByMonthAndAccount[$monthKey])) {
-                $entriesByMonthAndAccount[$monthKey] = [];
-            }
-            if (!isset($entriesByMonthAndAccount[$monthKey][$accountId])) {
-                $entriesByMonthAndAccount[$monthKey][$accountId] = collect();
-            }
-            $entriesByMonthAndAccount[$monthKey][$accountId]->push($entry);
-        }
+        $incomeAccounts = $profitLoss['income'];
+        $expenseAccounts = $profitLoss['expenses'];
+        $totals = $profitLoss['totals'];
 
         $monthlyLabels = [];
         $monthlyProfits = [];
         $monthlyProfitsColors = [];
+        $monthlyNet = $service->monthlyNetIncome($companyId, (int) $year);
 
         foreach (range(1, 12) as $m) {
-            $monthEntries = $entriesByMonthAndAccount[$m] ?? [];
-
-            $income = 0;
-            $expense = 0;
-
-            foreach ($level3Accounts as $parent) {
-                $descendants = $descendantsCache[$parent->id];
-                $total = 0;
-
-                foreach ($descendants as $child) {
-                    $childEntries = $monthEntries[$child->id] ?? collect();
-                    $amount = $childEntries->sum(fn($j) => $j->credit - $j->debit);
-                    $total += $amount;
-                }
-
-                $parentEntries = $monthEntries[$parent->id] ?? collect();
-                $amount = $parentEntries->sum(fn($j) => $j->credit - $j->debit);
-                $total += $amount;
-
-                if (str_starts_with($parent->code, '4')) $income += $total;
-                if (str_starts_with($parent->code, '5')) $expense += abs($total);
-            }
-
-            // P&L-2: add the missed profit-loss accounts' own monthly contribution.
-            foreach ($missedPlAccounts as $acct) {
-                $amount = ($monthEntries[$acct->id] ?? collect())
-                    ->sum(fn($j) => $j->credit - $j->debit);
-                if (str_starts_with($acct->code, '4')) $income += $amount;
-                if (str_starts_with($acct->code, '5')) $expense += abs($amount);
-            }
-
-            $monthlyLabels[] = \Carbon\Carbon::createFromDate($year, $m, 1)->format('M');
-            $profit = $income - $expense;
+            $profit = $monthlyNet[$m] ?? 0.0;
+            $monthlyLabels[] = Carbon::createFromDate((int) $year, $m, 1)->format('M');
             $monthlyProfits[] = round($profit, 2);
             $monthlyProfitsColors[] = $profit >= 0 ? '#16a34a' : '#dc2626';
         }
 
-        return view('reports.profit-loss', compact(
-            'month',
-            'year',
-            'monthlyLabels',
-            'monthlyProfits',
-            'monthlyProfitsColors',
-            'incomeAccounts',
-            'expenseAccounts',
-        ));
+        return view('reports.profit-loss', [
+            'transitionBanner' => app(LedgerSource::class)->transitionBanner($companyId),
+            'month' => $month,
+            'year' => $year,
+            'dateFrom' => $usingDateRange ? $from->toDateString() : null,
+            'dateTo' => $usingDateRange ? $to->toDateString() : null,
+            'usingDateRange' => $usingDateRange,
+            'periodFrom' => $from->toDateString(),
+            'periodTo' => $to->toDateString(),
+            'monthlyLabels' => $monthlyLabels,
+            'monthlyProfits' => $monthlyProfits,
+            'monthlyProfitsColors' => $monthlyProfitsColors,
+            'incomeAccounts' => $incomeAccounts,
+            'expenseAccounts' => $expenseAccounts,
+            'totals' => $totals,
+        ]);
     }
 
+    /**
+     * STALE since the P&L screen moved to ProfitLossService (XBRL X16 item 1): no caller remains
+     * in this controller. Listed for removal, awaiting the owner's approval.
+     */
     private function getAllDescendants($parentId, $childrenMap)
     {
         $descendants = collect();
@@ -4189,8 +4059,13 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
-        $dateTo = $request->input('date_to', now()->toDateString());
+        // XBRL-X1 (verifier m-4), ported: `filled()`, not input()'s default. A PRESENT-but-empty
+        // `date_from=` (a cleared form field) bypassed the default: the totals then parsed '' as
+        // NOW while the unbalanced panel got a null bound from ReportDateRange and listed
+        // ALL-TIME documents, so one screen showed two different ranges. An empty bound now means
+        // the default, for both.
+        $dateFrom = $request->filled('date_from') ? (string) $request->input('date_from') : now()->startOfMonth()->toDateString();
+        $dateTo = $request->filled('date_to') ? (string) $request->input('date_to') : now()->toDateString();
         $branchId = $request->input('branch_id', '');
         $showZero = $request->boolean('show_zero', false);
 
@@ -4257,8 +4132,13 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
-        $dateTo = $request->input('date_to', now()->toDateString());
+        // XBRL-X1 (verifier m-4), ported: `filled()`, not input()'s default. A PRESENT-but-empty
+        // `date_from=` (a cleared form field) bypassed the default: the totals then parsed '' as
+        // NOW while the unbalanced panel got a null bound from ReportDateRange and listed
+        // ALL-TIME documents, so one screen showed two different ranges. An empty bound now means
+        // the default, for both.
+        $dateFrom = $request->filled('date_from') ? (string) $request->input('date_from') : now()->startOfMonth()->toDateString();
+        $dateTo = $request->filled('date_to') ? (string) $request->input('date_to') : now()->toDateString();
         $showZero = $request->boolean('show_zero', false);
 
         $service = new TrialBalanceService();
@@ -4314,8 +4194,13 @@ class ReportController extends Controller
             return redirect()->back()->with('error', 'Please select a company first.');
         }
 
-        $dateFrom = $request->input('date_from', now()->startOfMonth()->toDateString());
-        $dateTo = $request->input('date_to', now()->toDateString());
+        // XBRL-X1 (verifier m-4), ported: `filled()`, not input()'s default. A PRESENT-but-empty
+        // `date_from=` (a cleared form field) bypassed the default: the totals then parsed '' as
+        // NOW while the unbalanced panel got a null bound from ReportDateRange and listed
+        // ALL-TIME documents, so one screen showed two different ranges. An empty bound now means
+        // the default, for both.
+        $dateFrom = $request->filled('date_from') ? (string) $request->input('date_from') : now()->startOfMonth()->toDateString();
+        $dateTo = $request->filled('date_to') ? (string) $request->input('date_to') : now()->toDateString();
         $showZero = $request->boolean('show_zero', false);
 
         $service = new TrialBalanceService();

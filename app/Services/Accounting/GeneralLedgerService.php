@@ -193,10 +193,17 @@ final class GeneralLedgerService
             ->where('je.account_id', $accountId)
             ->where('je.company_id', $companyId)
             ->whereNull('je.deleted_at')
-            ->whereBetween(DB::raw('COALESCE(je.posting_date, je.transaction_date)'), [$dateFrom, $dateTo])
-            ->where(function ($q) {
-                $q->whereNull('t.doc_type')->orWhere('t.doc_type', '<>', 'YEC');
-            });
+            ->whereBetween(DB::raw('COALESCE(je.posting_date, je.transaction_date)'), [$dateFrom, $dateTo]);
+
+        // `t.doc_type <> 'YEC'` alone is wrong in SQL: a legacy-written header has doc_type NULL,
+        // and `NULL <> 'YEC'` is UNKNOWN, not TRUE, so the bare comparison dropped every legacy
+        // line from period movement while openingBalance() kept them.
+        //
+        // XBRL-X9r (X9R-VERIFY M-2), ported: the whole year-end close FAMILY (the YEC and its
+        // reversal) from the one shared, NULL-safe definition. Excluding the YEC alone counted the
+        // reopen procedure's reversal as movement, so after one reopen cycle an income leaf read
+        // the reversal on top of the year's trading while the trial balance did not.
+        ClosingDocuments::whereNotYearEndCloseFamily($query, 't');
 
         return $this->ledgerSource()->restrictJoinedTransactions($query, $companyId, 't.doc_type');
     }

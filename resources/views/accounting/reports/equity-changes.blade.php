@@ -1,5 +1,13 @@
 @php
     $ties = $statement['checks']['ties_to_next_year_opening'];
+    // XBRL X9b (X9-VERIFY m-4): the statement covers a date range; show it, and word the
+    // reconciliation on WHAT is open: an earlier year never closed, or this period.
+    $from = $statement['period']['from'] ?? sprintf('%04d-01-01', $year);
+    $to = $statement['period']['to'] ?? sprintf('%04d-12-31', $year);
+    $calendarYear = $from === sprintf('%04d-01-01', $year) && $to === sprintf('%04d-12-31', $year);
+    $unsweptBefore = (float) ($statement['unswept_profit_before_period'] ?? 0.0);
+    $earlierOpen = abs($unsweptBefore) > 0.0005;
+    $exportQuery = $calendarYear ? ['year' => $year] : ['from' => $from, 'to' => $to];
 @endphp
 <x-app-layout>
     <div class="my-3">
@@ -15,7 +23,7 @@
                 </div>
                 <div>
                     <h2 class="text-2xl md:text-3xl font-bold dark:text-white">Statement of Changes in Equity</h2>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ $company->name ?? '' }} &middot; fiscal year {{ $year }}</p>
+                    <p class="text-sm text-gray-500 dark:text-gray-400">{{ $company->name ?? '' }} &middot; {{ $calendarYear ? 'fiscal year '.$year.' ('.$from.' to '.$to.')' : 'period '.$from.' to '.$to }}</p>
                 </div>
             </div>
 
@@ -30,7 +38,7 @@
                     </select>
                 </form>
 
-                <a href="{{ route('accounting.reports.equity-changes.export', ['year' => $year]) }}"
+                <a href="{{ route('accounting.reports.equity-changes.export', $exportQuery) }}"
                    class="px-4 py-2 rounded-lg text-sm font-medium bg-slate-800 text-white hover:bg-slate-700">
                     Export CSV
                 </a>
@@ -111,21 +119,31 @@
             <div class="flex items-center gap-3 flex-wrap text-sm">
                 <span @class([
                     'px-3 py-1 rounded-full font-medium',
-                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' => $ties,
-                    'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' => !$ties,
+                    'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' => $ties && ! $earlierOpen,
+                    'bg-amber-50 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' => ! $ties || $earlierOpen,
                 ])>
-                    {{ $ties ? 'Ties to next-year opening balance' : 'Not yet closed — pending year-end close' }}
+                    @if ($earlierOpen)
+                        An earlier year is not closed — {{ number_format($unsweptBefore, 3) }} of profit/(loss) before {{ $from }} is unswept
+                    @elseif ($ties)
+                        Ties to the opening balance after {{ $to }}
+                    @else
+                        This period is not closed yet — pending year-end close
+                    @endif
                 </span>
                 <span class="text-gray-500 dark:text-gray-400">
                     Next-year opening total: {{ number_format($statement['checks']['next_year_opening_total'], 3) }}
                     (difference {{ number_format($statement['checks']['difference'], 3) }})
                 </span>
             </div>
-            @unless ($ties)
+            @if ($earlierOpen)
                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
-                    This year has not been closed (Accounting &rarr; Period Control &rarr; Close fiscal year). The figures above are a pro-forma projection of what equity will read once closed; the real ledger will not reflect the year's net profit until then.
+                    A year before {{ $from }} still holds profit or loss that no year-end close has swept. It is included in the opening retained earnings above, so the statement agrees with the balance sheet, but the ledger's own retained earnings will not carry it until that year is closed (Accounting &rarr; Period Control &rarr; Close fiscal year, oldest year first).
                 </p>
-            @endunless
+            @elseif (! $ties)
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-2">
+                    This period has not been closed (Accounting &rarr; Period Control &rarr; Close fiscal year). The figures above are a pro-forma projection of what equity will read once closed; the real ledger will not reflect the period's net profit until then.
+                </p>
+            @endif
         </div>
     </div>
 </x-app-layout>

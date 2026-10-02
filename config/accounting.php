@@ -174,6 +174,39 @@ return [
         'DEP' => 'Depreciation',
         'DSP' => 'Asset Disposal',
         'GWS' => 'Gateway Settlement',
+        // XBRL-X9r (PLAN.md L15 route (ii), L25 rule 3): a prior-period adjustment (IAS 8
+        // restatement), dated 1 January of the current year, against balance-sheet leaves and
+        // opening retained earnings only. PostingService::post() enforces that shape (step 5b);
+        // the P&L excludes it whole-document and the opening position includes it
+        // (App\Services\Accounting\ClosingDocuments, ClosedYearAdjustmentService).
+        'PPA' => 'Prior-Period Adjustment',
+        // XBRL X9 (PLAN.md L13, X9; H-M3): the year-end reserve appropriation, dated 31 December,
+        // Dr retained earnings / Cr statutory and voluntary reserves, posted by
+        // App\Services\Accounting\ReserveAppropriationService before December is locked. Its own
+        // doc_type so the appropriation already posted for a year is read from the ledger (the APR
+        // family), and so the statement of changes in equity shows it as a transfer to reserves.
+        'APR' => 'Reserve Appropriation',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Year-end reserve appropriation (XBRL X9; PLAN.md L13, OD-3)
+    |--------------------------------------------------------------------------
+    |
+    | The statutory reserve is law (10% of net profit, Companies Law Art. 222) and is not
+    | configurable. The voluntary reserve rate is the owner's (OD-3: default 0%, at most 10%,
+    | Art. 225), in basis points; a run may pass its own rate, which is then kept for that year.
+    | capital_codes: the issued-capital account codes the 50%-of-capital cap reads (every
+    | descendant of one included).
+    |
+    | City Travelers: the reserve leaves (STATUTORY_RESERVE / VOLUNTARY_RESERVE purposes) arrive
+    | with the chart unit (U2). Until they are mapped, a year that owes a transfer is refused by
+    | the resolver and nothing is written; a nil (loss or zero-profit) year records normally.
+    |
+    */
+    'reserves' => [
+        'voluntary_rate_basis_points' => (int) env('ACCOUNTING_VOLUNTARY_RESERVE_RATE_BP', 0),
+        'capital_codes' => ['3100'],
     ],
 
     /*

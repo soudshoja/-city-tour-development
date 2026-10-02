@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Onboarding\Parity;
 
+use App\Services\Accounting\ClosingDocuments;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -167,10 +168,8 @@ final class LedgerFigures
                         $sub->selectRaw('1')
                             ->from('transactions as ojv_t')
                             ->whereColumn('ojv_t.id', 'je.transaction_id')
-                            ->where('ojv_t.sub_type', $openingSubType)
-                            ->where(function ($inner) {
-                                $inner->whereNull('ojv_t.doc_type')->orWhere('ojv_t.doc_type', '<>', 'YEC');
-                            });
+                            ->where('ojv_t.sub_type', $openingSubType);
+                        ClosingDocuments::whereNotYearEndCloseFamily($sub, 'ojv_t');
                     });
             })
             ->groupBy('je.account_id')
@@ -207,11 +206,12 @@ final class LedgerFigures
                 $sub->selectRaw('1')
                     ->from('transactions as ex_t')
                     ->whereColumn('ex_t.id', 'je.transaction_id')
-                    ->where(function ($q) use ($openingSubType) {
-                        $q->where('ex_t.doc_type', 'YEC')
-                            ->orWhere('ex_t.sub_type', $openingSubType);
-                    });
+                    ->where('ex_t.sub_type', $openingSubType);
             })
+            // XBRL-X9r (X9R-VERIFY M-2): the whole year-end close FAMILY (a YEC and its
+            // reversal) from the one shared definition; this oracle read 11,000 against the
+            // P&L's 6,000 after one reopen cycle while it excluded the YEC alone.
+            ->tap(fn ($q) => ClosingDocuments::excludeYearEndCloseFamily($q, 'je.transaction_id'))
             ->groupBy('je.account_id')
             ->get();
 

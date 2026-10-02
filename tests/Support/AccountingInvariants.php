@@ -217,5 +217,28 @@ trait AccountingInvariants
         $this->assertTenantConsistency($companyId);
         $this->assertNoDuplicateAccountCodes($companyId);
         $this->assertCompanyLedgerBalanced($companyId);
+        $this->assertAtMostOneLiveYearEndClosePerYear($companyId);
+    }
+
+    /**
+     * XBRL-X9r (X9R-VERIFY B-1): at most ONE live (unreversed, not soft-deleted) YEC per company
+     * and fiscal year. Two live YECs sweep the year's profit into Retained Earnings twice while
+     * the ledger and the balance sheet still balance, so no other invariant here can see it.
+     * Re-written in SQL here, never read from YearEndCloseService.
+     */
+    protected function assertAtMostOneLiveYearEndClosePerYear(int $companyId): void
+    {
+        $dupes = \Illuminate\Support\Facades\DB::table('transactions as t')
+            ->where('t.company_id', $companyId)
+            ->where('t.doc_type', 'YEC')
+            ->whereNull('t.deleted_at')
+            ->whereNotExists(fn ($r) => $r->selectRaw('1')->from('transactions as r')
+                ->whereColumn('r.reversal_of_transaction_id', 't.id')->whereNull('r.deleted_at'))
+            ->selectRaw('YEAR(t.transaction_date) AS y, COUNT(*) AS n')
+            ->groupBy(\Illuminate\Support\Facades\DB::raw('YEAR(t.transaction_date)'))
+            ->havingRaw('COUNT(*) > 1')
+            ->get();
+
+        Assert::assertCount(0, $dupes, "Company {$companyId} has more than one live YEC for a year: ".json_encode($dupes));
     }
 }

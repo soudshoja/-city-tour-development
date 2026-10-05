@@ -7,20 +7,14 @@ use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
-use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\TwoFAController;
 use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
-// Legacy self-registration (creates ADMIN users) — local development only.
-// Public tenant registration lives at /register/company/{token} (invite-gated).
-if (app()->environment('local')) {
-    Route::get('register', [RegisteredUserController::class, 'create'])->name('register');
-    Route::post('register', [RegisteredUserController::class, 'storeAdmin'])->name('register.admin');
-}
-
-
-
+// There is deliberately NO public /register route (GET or POST) in any environment: the old
+// self-registration created ADMIN users for anyone on a hard-coded domain with no mailbox proof.
+// Tenant onboarding is invite-gated at /register/company/{token}; staff are created by an
+// authenticated admin. Pinned by tests/Feature/Auth/PublicAccountCreationClosedTest.
 
 Route::middleware('guest')->group(function () {
 

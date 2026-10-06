@@ -31,12 +31,8 @@ class AuthenticatedSessionController extends Controller
 
         if ($user) {
 
-            // Check if user first time login
-            if (!$user->first_login) {
-                Auth::login($user);
-                return redirect()->route('dashboard');
-            }
-
+            // Never sign anyone in here: knowing an email address is not a credential. Every
+            // user, first sign-in or not, proves the password on the next step.
             // Store the email in the session for later retrieval
             session()->put('email', $request->email);
 
